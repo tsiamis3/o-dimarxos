@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Προγνωστικά</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- εδώ μπαίνουν τυχόν Google Fonts -->
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand-row">
+      <div class="brand">
+        <!-- όνομα / λογότυπο του site -->
+        <h1>Προγνωστικά</h1>
+        <small id="updated"></small>
+      </div>
+      <div class="controls">
+        <div class="seg" id="comp-seg" role="group" aria-label="Διοργάνωση"></div>
+        <select id="season-sel" aria-label="Σεζόν"></select>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <a href="#home">Αρχική</a>
+      <a href="#teams">Ομάδες</a>
+      <a href="#players">Παίκτες</a>
+      <a href="#explorer">Βάση</a>
+      <a href="#predictions">Προβλέψεις</a>
+    </nav>
+  </div>
+</header>
+<div class="demo-banner" id="demo-banner" hidden>
+  <div class="wrap">Δεδομένα επίδειξης: φανταστικές ομάδες και παίκτες. Με το πρώτο run του GitHub Action αντικαθίστανται από πραγματικά δεδομένα EuroLeague/EuroCup.</div>
+</div>
+<main class="wrap" id="view"><div class="empty">Φόρτωση δεδομένων…</div></main>
+<footer class="wrap">Δεδομένα: EuroLeague API (μέσω euroleague-api). PIR = Performance Index Rating. Προβλέψεις: feed-forward νευρωνικό δίκτυο (Keras).</footer>
+<script src="app.js"></script>
+</body>
+</html>

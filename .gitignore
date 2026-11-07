@@ -1,0 +1,7 @@
+# το site/data χτίζεται σε κάθε run του Action
+site/data/
+__pycache__/
+*.pyc
+.venv/
+# demo δεδομένα δεν ανεβαίνουν
+data/raw/.demo

@@ -1,0 +1,58 @@
+# o-dimarxos
+
+Στατιστικά EuroLeague / EuroCup σε GitHub Pages, με επερχόμενα ματς, προσομοίωση αγώνων,
+σύγκριση ομάδων/παικτών, πλήρη βάση με φίλτρα και πρόβλεψη απόδοσης παικτών (Keras).
+
+## Δομή
+
+```
+scripts/
+  config.py          ρυθμίσεις (διοργανώσεις, σεζόν, στόχοι μοντέλου)
+  fetch_data.py      κατέβασμα από το EuroLeague API (incremental) -> data/raw/
+  dataset.py         raw CSV -> καθαρό game log (κοινό για site + μοντέλο)
+  train_model.py     feed-forward δίκτυο Keras -> models/ + site/data/predictions_*.json
+  build_site.py      JSON βάση για το site -> site/data/
+  make_demo_data.py  συνθετικά δεδομένα για τοπικό test χωρίς internet
+site/                index.html, style.css, app.js (στατικό, χωρίς build step)
+.github/workflows/update.yml   καθημερινό fetch -> train -> build -> deploy
+```
+
+## Στήσιμο στο GitHub
+
+1. Νέο repo (π.χ. `o-dimarxos`), ανέβασε όλα τα αρχεία (GitHub Desktop: copy στον φάκελο, commit, push).
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. **Actions → "Update data, train model, deploy site" → Run workflow**.
+   Το πρώτο run κατεβάζει 4 σεζόν × 2 διοργανώσεις (~20–40 λεπτά). Μετά τρέχει μόνο του κάθε πρωί
+   και κατεβάζει μόνο τα νέα ματς.
+4. Το site: `https://<username>.github.io/o-dimarxos/`
+
+## Αισθητική
+
+Όλα τα χρώματα, οι γραμματοσειρές και τα στρογγυλέματα είναι στο `site/theme.css`.
+Το όνομα/λογότυπο είναι στο `<h1>` και στο `<title>` του `site/index.html`.
+Το `site/style.css` έχει μόνο layout.
+
+## Τοπικά
+
+```bash
+pip install -r requirements.txt
+python scripts/fetch_data.py          # ή: python scripts/make_demo_data.py
+python scripts/train_model.py         # --arch ffn_wide --epochs 80 για άλλη αρχιτεκτονική
+python scripts/build_site.py
+python -m http.server -d site 8000    # http://localhost:8000
+```
+
+## Μοντέλο
+
+Για κάθε (παίκτη, αγώνα) τα features βγαίνουν μόνο από προηγούμενους αγώνες: lag-1, κυλιόμενοι μέσοι
+3/5/10, EWM, μέσος σεζόν, πόσα ματς έχει παίξει, ποσοστό βασικού, ξεκούραση, έδρα, και η απόδοση
+ομάδας/αντιπάλου μέχρι εκείνη τη στιγμή (πόντοι που δέχεται, PIR που δέχεται, ρυθμός).
+Στόχοι: PTS, REB, AST, PIR, MIN του επόμενου αγώνα. Χρονικό split (τελευταίο 15% = test) και σύγκριση
+με baselines (μέσος 10 αγώνων, μέσος σεζόν). Νέες αρχιτεκτονικές: πρόσθεσε συνάρτηση στο `ARCHS`
+του `train_model.py`.
+
+## Προσομοίωση αγώνα
+
+Monte Carlo στον browser: αναμενόμενοι πόντοι = ρυθμός × (ORTG ομάδας + DRTG αντιπάλου − μέσος όρος)/100,
+±1.5 πόντοι για έδρα, θόρυβος N(0, 10) ανά ομάδα, παράταση στην ισοπαλία. Τα ratings «τραβιούνται» προς τον
+μέσο όρο στην αρχή της σεζόν (4 εικονικά ματς). Παράμετροι στην κλάση `MatchSim` του `site/app.js`.

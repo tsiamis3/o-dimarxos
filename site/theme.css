@@ -1,0 +1,54 @@
+/* =====================================================================
+ * THEME — το μόνο αρχείο που χρειάζεται να αλλάξεις για την αισθητική.
+ * Αυτή τη στιγμή: ουδέτερο demo (γκρι + ένα χρώμα έμφασης, system fonts).
+ * Για δικές σου γραμματοσειρές: πρόσθεσε το <link> του Google Fonts στο
+ * index.html και άλλαξε τα --font-* παρακάτω.
+ * ===================================================================== */
+:root {
+  /* επιφάνειες & κείμενο */
+  --bg: #f4f4f5;
+  --surface: #ffffff;
+  --surface-2: #ebebed;
+  --fg: #18181b;
+  --muted: #63636b;
+  --line: #d9d9de;
+
+  /* έμφαση (κουμπιά, ενεργό tab, links) */
+  --accent: #2f5bd3;
+  --accent-soft: #e3e9fb;
+
+  /* σειρές γραφημάτων: 1 = γηπεδούχος / παίκτης Α, 2 = φιλοξενούμενος / παίκτης Β */
+  --c1: #2f5bd3;
+  --c2: #d9822b;
+  --c3: #3a9a6b;
+  --c4: #9a4fb0;
+
+  /* καλό / κακό (νίκη/ήττα, "καλύτερος" στις συγκρίσεις) */
+  --good: #1f8a4c;
+  --bad: #c0392b;
+
+  /* τυπογραφία */
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;  /* τίτλοι */
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;     /* κείμενο */
+  --font-num: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;    /* αριθμοί */
+  --head-case: none;           /* βάλε uppercase για κεφαλαία σε τίτλους/tabs */
+
+  /* σχήμα */
+  --r: 8px;                    /* στρογγύλεμα καρτών/πινάκων */
+}
+
+/* σκοτεινό θέμα (ακολουθεί τη ρύθμιση της συσκευής) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121214; --surface: #1b1b1f; --surface-2: #26262b; --fg: #ececef; --muted: #a0a0a8;
+    --line: #303036; --accent: #7c9cf2; --accent-soft: #1f2a48;
+    --c1: #7c9cf2; --c2: #f0a45a; --c3: #5cc08f; --c4: #c587d8; --good: #4cc27c; --bad: #ec6a5c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121214; --surface: #1b1b1f; --surface-2: #26262b; --fg: #ececef; --muted: #a0a0a8;
+  --line: #303036; --accent: #7c9cf2; --accent-soft: #1f2a48;
+  --c1: #7c9cf2; --c2: #f0a45a; --c3: #5cc08f; --c4: #c587d8; --good: #4cc27c; --bad: #ec6a5c;
+  color-scheme: dark;
+}
