@@ -1,0 +1,71 @@
+name: Scrape other leagues (GBL, NBA, Α2 γυναικών)
+
+on:
+  schedule:
+    - cron: "41 5 * * *"          # κάθε μέρα, μετά το κύριο update
+  workflow_dispatch:
+  push:
+    branches: [scrapers]          # δοκιμαστικό branch
+
+permissions:
+  contents: write
+
+concurrency:
+  # στο main τρέχει "στη σειρά" με το κύριο workflow ώστε να μη συγκρούονται τα commits
+  group: ${{ github.ref == 'refs/heads/main' && 'update-and-deploy' || 'scrapers-test' }}
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install pandas requests
+
+      - name: Seasons
+        id: s
+        run: |
+          # στο δοκιμαστικό branch μόνο η τρέχουσα σεζόν (γρήγορο τεστ)
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then echo "args=" >> $GITHUB_OUTPUT;
+          else echo "args=--season 2026" >> $GITHUB_OUTPUT; fi
+
+      - name: Greek Basket League (esake.gr)
+        continue-on-error: true
+        run: python scripts/scrapers/esake.py ${{ steps.s.outputs.args }}
+
+      - name: NBA (ESPN)
+        continue-on-error: true
+        run: python scripts/scrapers/nba_espn.py ${{ steps.s.outputs.args }}
+
+      - name: Α2 γυναικών (apps.basket.gr)
+        continue-on-error: true
+        run: python scripts/scrapers/eok_apps.py --comp 5 --code WBL2
+
+      - name: Quick check
+        run: |
+          python - <<'EOF'
+          import glob, pandas as pd
+          for f in sorted(glob.glob("data/raw/[GNW]*_games.csv")):
+              g = pd.read_csv(f); print(f, len(g), "games,", int(g.played.sum()), "played")
+          for f in sorted(glob.glob("data/raw/[GN]*_box.csv.gz")):
+              b = pd.read_csv(f); print(f, len(b), "rows,", b.Gamecode.nunique(), "games")
+              print(b.groupby(["Gamecode", "Team"]).Points.sum().head(4).to_string())
+          EOF
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/raw
+          git diff --cached --quiet && exit 0
+          git commit -m "Other leagues data $(date -u +'%Y-%m-%d')"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
