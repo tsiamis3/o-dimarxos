@@ -1,0 +1,4 @@
+https://apps.basket.gr/iframe/livescores/get-boxscore?match_id=18705 | 404 | application/json
+{
+    "message": "The route iframe/livescores/get-boxscore could not be found."
+}

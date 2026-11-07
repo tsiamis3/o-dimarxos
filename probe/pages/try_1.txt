@@ -1,0 +1,4 @@
+https://apps.basket.gr/iframe/matches/18705/boxscore | 404 | application/json
+{
+    "message": "The route iframe/matches/18705/boxscore could not be found."
+}
