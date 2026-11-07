@@ -3,10 +3,14 @@ name: Probe data sources (temporary)
 on:
   push:
     branches: [probe]
+    paths: ["probe/probe.py", ".github/workflows/probe.yml"]
 
 concurrency:
   group: probe
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   probe:
@@ -19,3 +23,10 @@ jobs:
           python-version: "3.12"
       - run: pip install requests
       - run: python probe/probe.py
+      - name: Save pages to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe/pages
+          git diff --cached --quiet || git commit -m "probe pages"
+          git push

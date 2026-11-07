@@ -1,69 +1,68 @@
-"""Προσωρινό: δεύτερος γύρος — δομή σελίδων/endpoints."""
-import json
+"""Προσωρινό: τρίτος γύρος — αποθηκεύει σελίδες για μελέτη (probe/pages/)."""
 import re
+from pathlib import Path
+from urllib.parse import urljoin
 
 import requests
 
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
-      "Accept-Language": "el-GR,el;q=0.9,en;q=0.8"}
-S = requests.Session(); S.headers.update(UA)
+OUT = Path("probe/pages"); OUT.mkdir(parents=True, exist_ok=True)
+S = requests.Session()
+S.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+                  "Accept-Language": "el-GR,el;q=0.9"})
 
 
-def strip(html, n=1500):
-    t = re.sub(r"<script.*?</script>|<style.*?</style>", " ", html, flags=re.S | re.I)
-    t = re.sub(r"<[^>]+>", " ", t)
-    return re.sub(r"\s+", " ", t)[:n]
-
-
-def show(name, url, n=1500, grep=None):
-    print(f"\n===== {name}: {url}")
+def get(url):
     try:
-        r = S.get(url, timeout=25)
+        r = S.get(url, timeout=30)
+        return r.content.decode("utf-8", "replace"), r.status_code
     except Exception as e:  # noqa: BLE001
-        print("ERROR", e); return None
-    ct = r.headers.get("content-type", "")
-    print("STATUS", r.status_code, "|", ct, "| bytes", len(r.content), "| final", r.url)
-    t = r.text
-    if "json" in ct:
-        print(t[:n]); return r
-    scripts = sorted(set(re.findall(r"<script[^>]+src=[\"']([^\"']+)", t)))
-    print("SCRIPTS:", *scripts[:25], sep="\n  ")
-    js = sorted(set(re.findall(r"""["'`]((?:https?:)?/[^"'`\s]*(?:api|ajax|json|sse|stream|data|feed|action|stats)[^"'`\s]*)["'`]""", t, re.I)))
-    print("URLS IN PAGE:", *js[:60], sep="\n  ")
-    if grep:
-        for m in re.finditer(grep, t, re.I):
-            print("GREP:", t[max(0, m.start() - 200): m.end() + 300].replace("\n", " "))
-            break
-    tables = re.findall(r"<table.*?</table>", t, re.S | re.I)
-    print("TABLES:", len(tables))
-    for tb in tables[:2]:
-        print("  TABLE TEXT:", strip(tb, 700))
-    print("TEXT:", strip(t, n))
-    return r
+        return f"ERROR {e}", 0
 
 
-# ---------- ESAKE ----------
-show("esake-results", "https://www.esake.gr/el/action/EsakeResults", grep=r"idgame|season|round")
-show("esake-game-m2", "https://www.esake.gr/el/action/EsakegameView?idgame=2FCC32F1&mode=2")
-show("esake-game-m3", "https://www.esake.gr/el/action/EsakegameView?idgame=2FCC32F1&mode=3")
-show("esake-stats", "https://www.esake.gr/el/action/EsakeStats?mode=", grep=r"season|idseason")
+def save(name, url):
+    t, st = get(url)
+    (OUT / f"{name}.html").write_text(f"<!-- {url} status {st} -->\n" + t, encoding="utf-8")
+    print(name, st, len(t), url)
+    return t
 
-# ---------- basket.gr ----------
-show("stats-basketgr", "https://stats.basket.gr/", grep=r"EventSource|fetch\(|axios|api")
-show("basketgr-stats-women", "https://www.basket.gr/stats-women/", grep=r"stats\.basket\.gr|iframe|EventSource|api")
-show("basketgr-all-games", "https://www.basket.gr/all-games/", grep=r"stats\.basket\.gr|iframe|api|game")
 
-# ---------- ESPN NBA ----------
-sb = S.get("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20261105", timeout=25).json()
-evs = sb.get("events", [])
-print("\n===== espn scoreboard 2026-11-05: events", len(evs))
-if evs:
-    e = evs[0]
-    print("event keys:", list(e.keys()), "| id", e["id"], "|", e["name"], "|", e["date"], "|", e["status"]["type"]["name"])
-    sm = S.get(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={e['id']}", timeout=25).json()
-    print("summary keys:", list(sm.keys()))
-    bp = sm["boxscore"]["players"][0]
-    print("team:", bp["team"]["abbreviation"], "| stat groups:", len(bp["statistics"]))
-    st = bp["statistics"][0]
-    print("labels:", st.get("labels")); print("names:", st.get("names")); print("keys:", st.get("keys"))
-    print("first athlete:", json.dumps(st["athletes"][0])[:700])
+def links(html, base, pat):
+    out = []
+    for href, txt in re.findall(r"<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>", html, re.S | re.I):
+        txt = re.sub(r"<[^>]+>", " ", txt).strip()
+        if re.search(pat, href + " " + txt, re.I):
+            out.append((urljoin(base, href), re.sub(r"\s+", " ", txt)[:80]))
+    return list(dict.fromkeys(out))
+
+
+# ---------------- ESAKE ----------------
+B = "https://www.esake.gr"
+save("esake_results", B + "/el/action/EsakeResults")
+save("esake_results_m1", B + "/el/action/EsakeResults?mode=1")
+save("esake_results_m2", B + "/el/action/EsakeResults?mode=2")
+save("esake_game_m3", B + "/el/action/EsakegameView?idgame=2FCC32F1&mode=3")
+save("esake_stats", B + "/el/action/EsakeStats?mode=")
+
+# ---------------- basket.gr ----------------
+G = "https://www.basket.gr"
+home = save("basketgr_home", G + "/")
+champ = links(home, G, r"2026-2027|champs|πρωτάθλ")
+print("CHAMP LINKS:", *champ[:40], sep="\n  ")
+seen = 0
+for url, txt in champ:
+    if "2026-2027" in url + txt and seen < 3:
+        page = save(f"basketgr_champ_{seen}", url); seen += 1
+        sub = links(page, url, r"a2|α2|γυναικ|women|gyn")
+        print("  SUB:", *sub[:30], sep="\n    ")
+        for j, (u2, t2) in enumerate(sub[:4]):
+            p2 = save(f"basketgr_champ_{seen}_{j}", u2)
+            games = links(p2, u2, r"game|agon|αγων|match|stats\.basket|boxscore")
+            print("    GAMES:", *games[:15], sep="\n      ")
+            if games:
+                save(f"basketgr_game_{seen}_{j}", games[0][0])
+# JS that may contain EventSource / SSE
+for m in set(re.findall(r"<script[^>]+src=[\"']([^\"']+basket\.gr[^\"']+\.js[^\"']*)", home))[:30]:
+    t, _ = get(m)
+    if re.search(r"EventSource|text/event-stream|sse", t, re.I):
+        print("SSE JS:", m)
+        (OUT / ("js_" + re.sub(r"\W", "_", m)[-60:] + ".js")).write_text(t, encoding="utf-8")
