@@ -1,4 +1,4 @@
-"""Προσωρινό: τρίτος γύρος — αποθηκεύει σελίδες για μελέτη (probe/pages/)."""
+"""Προσωρινό: τέταρτος γύρος — apps.basket.gr (stats app της ΕΟΚ) + ESAKE results ανά αγωνιστική."""
 import re
 from pathlib import Path
 from urllib.parse import urljoin
@@ -6,63 +6,50 @@ from urllib.parse import urljoin
 import requests
 
 OUT = Path("probe/pages"); OUT.mkdir(parents=True, exist_ok=True)
+for f in OUT.glob("*"):
+    f.unlink()
 S = requests.Session()
 S.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
                   "Accept-Language": "el-GR,el;q=0.9"})
 
 
-def get(url):
+def save(name, url, **kw):
     try:
-        r = S.get(url, timeout=30)
-        return r.content.decode("utf-8", "replace"), r.status_code
+        r = S.get(url, timeout=30, **kw)
+        t, st, ct = r.content.decode("utf-8", "replace"), r.status_code, r.headers.get("content-type", "")
     except Exception as e:  # noqa: BLE001
-        return f"ERROR {e}", 0
-
-
-def save(name, url):
-    t, st = get(url)
-    (OUT / f"{name}.html").write_text(f"<!-- {url} status {st} -->\n" + t, encoding="utf-8")
-    print(name, st, len(t), url)
+        t, st, ct = f"ERROR {e}", 0, ""
+    ext = "json" if "json" in ct else ("txt" if "event-stream" in ct else "html")
+    (OUT / f"{name}.{ext}").write_text(t, encoding="utf-8")
+    print(name, st, ct, len(t), url)
     return t
 
 
-def links(html, base, pat):
-    out = []
-    for href, txt in re.findall(r"<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>", html, re.S | re.I):
-        txt = re.sub(r"<[^>]+>", " ", txt).strip()
-        if re.search(pat, href + " " + txt, re.I):
-            out.append((urljoin(base, href), re.sub(r"\s+", " ", txt)[:80]))
-    return list(dict.fromkeys(out))
+A = "https://apps.basket.gr"
+p = save("apps_standings_12", A + "/iframe/seasons/12/standings")
+save("apps_root", A + "/")
+# όλα τα links / scripts της σελίδας
+hrefs = sorted(set(urljoin(A, h) for h in re.findall(r"(?:href|src)=[\"']([^\"'#]+)", p)))
+print("HREFS:", *hrefs[:80], sep="\n  ")
+for i, js in enumerate([h for h in hrefs if h.endswith(".js") or ".js?" in h][:12]):
+    t = save(f"apps_js_{i}", js)
+    for m in sorted(set(re.findall(r"""["'`](/(?:api|iframe|sse|stream|events)[^"'`\s]{0,120})["'`]""", t)))[:80]:
+        print("   API PATH:", m)
+# πιθανά routes
+for i, path in enumerate(["/iframe/seasons/12/games", "/iframe/seasons/12/schedule", "/iframe/seasons/12/results",
+                          "/iframe/seasons/12/stats", "/iframe/seasons/12/players", "/iframe/seasons/12/teams",
+                          "/iframe/seasons", "/api/seasons", "/api/seasons/12", "/api/seasons/12/games",
+                          "/api/competitions", "/iframe/seasons/11/standings", "/iframe/seasons/13/standings"]):
+    save(f"apps_try_{i}", A + path)
 
+# basket.gr wbl1 & livescore (μπορεί να έχουν iframes)
+for n, u in [("basketgr_wbl1", "https://www.basket.gr/wbl1/"), ("basketgr_livescore", "https://www.basket.gr/livescore/")]:
+    t = save(n, u)
+    print("  IFRAMES:", *re.findall(r"<iframe[^>]+src=[\"']([^\"']+)", t), sep="\n    ")
 
-# ---------------- ESAKE ----------------
+# ESAKE: results για συγκεκριμένη αγωνιστική / σεζόν
 B = "https://www.esake.gr"
-save("esake_results", B + "/el/action/EsakeResults")
-save("esake_results_m1", B + "/el/action/EsakeResults?mode=1")
-save("esake_results_m2", B + "/el/action/EsakeResults?mode=2")
-save("esake_game_m3", B + "/el/action/EsakegameView?idgame=2FCC32F1&mode=3")
-save("esake_stats", B + "/el/action/EsakeStats?mode=")
-
-# ---------------- basket.gr ----------------
-G = "https://www.basket.gr"
-home = save("basketgr_home", G + "/")
-champ = links(home, G, r"2026-2027|champs|πρωτάθλ")
-print("CHAMP LINKS:", *champ[:40], sep="\n  ")
-seen = 0
-for url, txt in champ:
-    if "2026-2027" in url + txt and seen < 3:
-        page = save(f"basketgr_champ_{seen}", url); seen += 1
-        sub = links(page, url, r"a2|α2|γυναικ|women|gyn")
-        print("  SUB:", *sub[:30], sep="\n    ")
-        for j, (u2, t2) in enumerate(sub[:4]):
-            p2 = save(f"basketgr_champ_{seen}_{j}", u2)
-            games = links(p2, u2, r"game|agon|αγων|match|stats\.basket|boxscore")
-            print("    GAMES:", *games[:15], sep="\n      ")
-            if games:
-                save(f"basketgr_game_{seen}_{j}", games[0][0])
-# JS that may contain EventSource / SSE
-for m in list(set(re.findall(r"<script[^>]+src=[\"']([^\"']+basket\.gr[^\"']+\.js[^\"']*)", home)))[:30]:
-    t, _ = get(m)
-    if re.search(r"EventSource|text/event-stream|sse", t, re.I):
-        print("SSE JS:", m)
-        (OUT / ("js_" + re.sub(r"\W", "_", m)[-60:] + ".js")).write_text(t, encoding="utf-8")
+t = save("esake_results", B + "/el/action/EsakeResults")
+for i, m in enumerate(sorted(set(re.findall(r"EsakeResults\?[^\"'\s<>]+", t)))[:20]):
+    print("  ESAKE RESULTS LINK:", m)
+print("  onclick/series:", *sorted(set(re.findall(r"""(?:onclick|data-[a-z]+)=["'][^"']*(?:series|idseason|champ)[^"']*["']""", t)))[:20], sep="\n    ")
