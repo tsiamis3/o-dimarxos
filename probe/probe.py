@@ -1,4 +1,4 @@
-"""Προσωρινό: τέταρτος γύρος — apps.basket.gr (stats app της ΕΟΚ) + ESAKE results ανά αγωνιστική."""
+"""Προσωρινό: πέμπτος γύρος — WBL2 (Α2 γυναικών) στο apps.basket.gr + δομή box score ΕΣΑΚΕ."""
 import re
 from pathlib import Path
 from urllib.parse import urljoin
@@ -13,43 +13,34 @@ S.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537
                   "Accept-Language": "el-GR,el;q=0.9"})
 
 
-def save(name, url, **kw):
+def save(name, url, stream=False):
     try:
-        r = S.get(url, timeout=30, **kw)
-        t, st, ct = r.content.decode("utf-8", "replace"), r.status_code, r.headers.get("content-type", "")
+        if stream:   # SSE: διάβασε μόνο τα πρώτα ~20KB
+            r = S.get(url, timeout=20, stream=True); buf = b""
+            for chunk in r.iter_content(2048):
+                buf += chunk
+                if len(buf) > 20000: break
+            t = buf.decode("utf-8", "replace")
+        else:
+            r = S.get(url, timeout=30); t = r.content.decode("utf-8", "replace")
+        st, ct = r.status_code, r.headers.get("content-type", "")
     except Exception as e:  # noqa: BLE001
         t, st, ct = f"ERROR {e}", 0, ""
-    ext = "json" if "json" in ct else ("txt" if "event-stream" in ct else "html")
-    (OUT / f"{name}.{ext}").write_text(t, encoding="utf-8")
+    (OUT / f"{name}.html").write_text(f"<!-- {url} | {st} | {ct} -->\n{t}", encoding="utf-8")
     print(name, st, ct, len(t), url)
     return t
 
 
 A = "https://apps.basket.gr"
-p = save("apps_standings_12", A + "/iframe/seasons/12/standings")
-save("apps_root", A + "/")
-# όλα τα links / scripts της σελίδας
-hrefs = sorted(set(urljoin(A, h) for h in re.findall(r"(?:href|src)=[\"']([^\"'#]+)", p)))
-print("HREFS:", *hrefs[:80], sep="\n  ")
-for i, js in enumerate([h for h in hrefs if h.endswith(".js") or ".js?" in h][:12]):
-    t = save(f"apps_js_{i}", js)
-    for m in sorted(set(re.findall(r"""["'`](/(?:api|iframe|sse|stream|events)[^"'`\s]{0,120})["'`]""", t)))[:80]:
-        print("   API PATH:", m)
-# πιθανά routes
-for i, path in enumerate(["/iframe/seasons/12/games", "/iframe/seasons/12/schedule", "/iframe/seasons/12/results",
-                          "/iframe/seasons/12/stats", "/iframe/seasons/12/players", "/iframe/seasons/12/teams",
-                          "/iframe/seasons", "/api/seasons", "/api/seasons/12", "/api/seasons/12/games",
-                          "/api/competitions", "/iframe/seasons/11/standings", "/iframe/seasons/13/standings"]):
-    save(f"apps_try_{i}", A + path)
-
-# basket.gr wbl1 & livescore (μπορεί να έχουν iframes)
-for n, u in [("basketgr_wbl1", "https://www.basket.gr/wbl1/"), ("basketgr_livescore", "https://www.basket.gr/livescore/")]:
-    t = save(n, u)
-    print("  IFRAMES:", *re.findall(r"<iframe[^>]+src=[\"']([^\"']+)", t), sep="\n    ")
-
-# ESAKE: results για συγκεκριμένη αγωνιστική / σεζόν
-B = "https://www.esake.gr"
-t = save("esake_results", B + "/el/action/EsakeResults")
-for i, m in enumerate(sorted(set(re.findall(r"EsakeResults\?[^\"'\s<>]+", t)))[:20]):
-    print("  ESAKE RESULTS LINK:", m)
-print("  onclick/series:", *sorted(set(re.findall(r"""(?:onclick|data-[a-z]+)=["'][^"']*(?:series|idseason|champ)[^"']*["']""", t)))[:20], sep="\n    ")
+save("esake_game_m3", "https://www.esake.gr/el/action/EsakegameView?idgame=2FCC32F1&mode=3")
+st = save("apps_standings_wbl2", A + "/iframe/seasons/12/standings?competition_id=5")
+lv = save("apps_livescores", A + "/iframe/livescores")
+fl = save("basketgr_live_file", "https://basket.gr/files/live/data/livescore.html")
+for name, t, base in [("standings", st, A), ("livescores", lv, A), ("livefile", fl, "https://basket.gr/files/live/data/")]:
+    urls = sorted(set(urljoin(base, h) for h in re.findall(r"""(?:href|src|url|EventSource\()\s*[=(]?\s*["']([^"'#]+)["']""", t)))
+    print(f"  [{name}] URLS:", *[u for u in urls if not re.search(r"\.(css|png|jpg|svg|woff)", u)][:50], sep="\n    ")
+    for m in re.findall(r"(?:EventSource|fetch|\$\.(?:get|ajax|getJSON)|axios)[^;]{0,200}", t)[:10]:
+        print("   JS CALL:", m)
+# πιθανά endpoints από livescore.html (π.χ. .json / sse)
+for i, u in enumerate(sorted(set(re.findall(r"""["']([^"']+\.(?:json|php)[^"']*)["']""", fl)))[:8]):
+    save(f"live_dep_{i}", urljoin("https://basket.gr/files/live/data/", u), stream="sse" in u or "stream" in u)
