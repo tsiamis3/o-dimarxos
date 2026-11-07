@@ -61,7 +61,7 @@ for url, txt in champ:
             if games:
                 save(f"basketgr_game_{seen}_{j}", games[0][0])
 # JS that may contain EventSource / SSE
-for m in set(re.findall(r"<script[^>]+src=[\"']([^\"']+basket\.gr[^\"']+\.js[^\"']*)", home))[:30]:
+for m in list(set(re.findall(r"<script[^>]+src=[\"']([^\"']+basket\.gr[^\"']+\.js[^\"']*)", home)))[:30]:
     t, _ = get(m)
     if re.search(r"EventSource|text/event-stream|sse", t, re.I):
         print("SSE JS:", m)
