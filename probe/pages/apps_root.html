@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="el">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- CSRF Token -->
+    <meta name="csrf-token" content="jkYwwJUahSHkStrHyYkaOEGlpyjC9lLW7eFjWPjm">
+    <title>ΕΟΚ</title>
+    <!-- Styles -->
+    <!--Favicon-->
+<link rel="shortcut icon" href="https://apps.basket.gr/images/icon.ico"/>
+<!-- Fonts -->
+
+<!-- Bootstrap -->
+<link rel="stylesheet" href="https://apps.basket.gr/css/bootstrap.min.css">
+
+<link rel="stylesheet" href="https://apps.basket.gr/css/jquery.steps.css"/>
+<!-- jQuery Ui Css -->
+<link rel="stylesheet" href="https://apps.basket.gr/css/jquery-ui.min.css">
+
+<link href="https://apps.basket.gr/css/select2.min.css" rel="stylesheet"/>
+
+<link rel="stylesheet" href="https://apps.basket.gr/css/jquery.mCustomScrollbar.min.css">
+
+<link rel='stylesheet' href="https://apps.basket.gr/css/timepicki.css"/>
+
+<link rel='stylesheet' href="https://apps.basket.gr/css/flag-icon.min.css"/>
+
+<link rel="stylesheet" href="https://apps.basket.gr/css/esCss.css"/>
+
+<link rel="stylesheet" href="https://apps.basket.gr/css/project.css"/>
+
+<link href="https://apps.basket.gr/css/bootstrap4-toggle.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="https://apps.basket.gr/css/dropzone.css"/>
+
+<link rel="stylesheet" href="https://apps.basket.gr/css/all.css"/>
+<link rel="stylesheet" href="https://apps.basket.gr/css/pace.css"/>
+
+<style>
+            #content {
+            width: 100%;
+
+            margin-left: auto;
+            /*Aineias*/
+            /*padding: 40px;*/
+            /*Aineias*/
+
+            transition: all 0.3s;
+            /*position: absolute;*/
+            /*Aineias*/
+            /*top: 63px;
+            right: 0;*/
+        }
+
+    
+
+
+    /*
+     * Navbar
+     */
+    .navbar, .navbar a {
+        color: #fff;
+    }
+
+    .navbar {
+        background: #051b39;
+        background: -moz-linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        background: -webkit-linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        background: linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+    }
+
+    .navbar .dropdown-menu {
+        background: #051b39;
+        background: -moz-linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        background: -webkit-linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        background: linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        color: #fff;
+        border: 0px;
+    }
+
+    .navbar .dropdown-item {
+        color: #fff;
+    }
+
+    .navbar .dropdown-item:focus,
+    .navbar .dropdown-item:active,
+    .navbar .dropdown-item:hover {
+        background: transparent;
+        color: #ddd;
+    }
+
+    /*
+     * Button
+     */
+    .btn-project {
+        /*background-color: #26D0CE;*/
+        background: #092c5c;
+        /*background: -webkit-linear-gradient(to right, #26D0CE, #1A2980);  !* Chrome 10-25, Safari 5.1-6 *!*/
+        /*background: linear-gradient(to right, #26D0CE, #1A2980); !* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ *!*/
+        color: #fff;
+        border: 1px solid transparent;
+    }
+
+    .btn-project:hover,
+    .btn-project:focus,
+    .btn-project:active {
+        color: #fff;
+
+        background: #051b39;
+        /*background: #1A2980;  !* fallback for old browsers *!*/
+        /*background: -webkit-linear-gradient(to right, #26D0CE, #1A2980);  !* Chrome 10-25, Safari 5.1-6 *!*/
+        /*background: linear-gradient(to right, #26D0CE, #1A2980); !* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ *!*/
+    
+/*border: 1px solid #ddd;*/
+    }
+
+    .btn-white-fill:hover,
+    .btn-white-fill:focus,
+    .btn-white-fill:active {
+        color: #051b39 !important;
+        background-color: #fff;
+    }
+
+    .btn-white-fill:hover i,
+    .btn-white-fill:focus i,
+    .btn-white-fill:active i {
+        color: #051b39 !important;
+    }
+
+    /*
+     * Paginator
+     */
+    .page-item.active .page-link {
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .page-link {
+        color: #007bff;
+    }
+
+    .page-link:hover {
+        color: #007bff;
+    }
+
+    /*
+     * Footer
+     */
+    .footer {
+        padding: 15px 25px;
+        text-align: center;
+        background-color: transparent;
+        
+        color: #fff;
+    }
+
+    .footer a {
+        color: #fff;
+        text-decoration: none;
+    }
+
+    /*
+     * Cards
+     */
+    .card-project > .card-header {
+        background: #051b39;
+        background: -moz-linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        background: -webkit-linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        background: linear-gradient(0deg, rgba(5, 27, 57,1) 0%, rgba(5, 27, 57,1) 100%);
+        border-bottom: 0px solid #007bff;
+    
+}
+
+    .card-project > .card-body {
+        background-color: rgba(255, 255, 255, 0.85);
+        /*background-color: rgba(82, 88, 94, 0.85);*/
+    }
+
+    .card-project > .card-footer {
+        background-color: rgba(255, 255, 255, 0.75);
+    }
+
+    .card-login > .card-header {
+        background: rgb(0,131,176);
+        background: -moz-linear-gradient(0deg, rgba(0,131,176,1) 0%, rgba(0,180,219,1) 100%);
+        background: -webkit-linear-gradient(0deg, rgba(0,131,176,1) 0%, rgba(0,180,219,1) 100%);
+        background: linear-gradient(0deg, rgba(0,131,176,1) 0%, rgba(0,180,219,1) 100%);
+    }
+
+    .login-button {
+        background-image: -moz-linear-gradient( -61deg, rgb(255,186,0) 0%, rgb(255,108,0) 100%);
+        background-image: -webkit-linear-gradient( -61deg, rgb(255,186,0) 0%, rgb(255,108,0) 100%);
+        background-image: -ms-linear-gradient( -61deg, rgb(255,186,0) 0%, rgb(255,108,0) 100%);
+        box-shadow: 2.828px 2.828px 9px 0px rgba(50, 54, 52, 0.27);
+    }
+
+    /*
+     * Alert
+     */
+    .alert-project {
+        background-color: #229bff;
+        color: #fff;
+        border-color: #005bdf;
+    }
+
+    /*
+     * Nav tabs
+     */
+    .color-purple .nav-tabs .nav-item.show .nav-link,
+    .nav-tabs .nav-link.active {
+        color: #007bff;
+    }
+
+    .nav-tabs .nav-link {
+        color: #fff;
+    }
+
+    /*
+     * Nav pills
+     */
+    
+        
+        
+    
+
+    
+        
+    
+
+
+    /*
+     * Sidebar
+     */
+    
+        
+        
+    
+
+    
+        
+    
+
+    
+        
+    
+
+    #sidebar .sidebar-header {
+        background: #d16406;
+    }
+
+    #sidebar ul li a {
+        color: #fff;
+        background: #f58220;
+        /*border-bottom: 1px solid #ddd;*/
+    }
+
+    #sidebar ul li a.dev {
+        color: #fff;
+        background: #ff78fb;
+    }
+
+    #sidebar ul li a:hover {
+        background: #ff9b45;
+    }
+
+    #sidebar ul li.active > a,
+    #sidebar ul li a[aria-expanded="true"] {
+        background: #c96612;
+    }
+
+    /*
+     * PROJECT
+     */
+    .subview-secondary-header {
+        color: #fff;
+        background-color: #007bff;
+        font-size: 20px;
+        border-bottom: 0px;
+        padding: 10px 15px;
+        margin-bottom: 0px;
+    }
+
+    html {
+        background: rgb(64,45,129);
+        background: -moz-linear-gradient(61deg, rgba(64,45,129,1) 0%, rgba(23,77,156,1) 100%);
+        background: -webkit-linear-gradient(61deg, rgba(64,45,129,1) 0%, rgba(23,77,156,1) 100%);
+        background: linear-gradient(61deg, rgba(64,45,129,1) 0%, rgba(23,77,156,1) 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#402d81",endColorstr="#174d9c",GradientType=1);
+    }
+
+    .navbar-button {
+        text-decoration: none;
+        font-weight: 400;
+        color: #212529;
+        text-align: inherit;
+        white-space: nowrap;
+        background-color: transparent;
+        border: 0;
+        padding-left: 5px;
+        padding-right: 5px;
+        margin-right: 3px;
+        margin-left: 3px;
+        padding-top: 7px;
+    }
+
+    .navbar-button:hover {
+        text-decoration: none;
+        color: #dedede;
+    }
+
+    .navbar-button.active {
+        border-bottom: 1px solid #d16406;
+    }
+</style>
+
+    <style>
+        #content {
+            width: 100% !important;
+            margin-left: 0px !important;
+        }
+    </style>
+
+    <style>
+        .home-tile {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .home-tile > a {
+            color: #fff;
+            display: block;
+            padding: 1rem;
+            font-size: 1.5rem;
+            background-color: #c96612;
+        }
+
+        .home-tile > a:hover,
+        .home-tile > a:focus,
+        .home-tile > a:active {
+            text-decoration: none;
+            color: #fff;
+            background-color: #e3781b;
+        }
+
+        /* Extra Small Devices, Phones */
+        @media only screen and (min-width : 480px) {
+            .home-width{
+                width: 80%;
+            }
+
+            .custom-border-right{
+                border-bottom: 1px solid black;
+                margin-bottom: 15px;
+            }
+        }
+
+        /* Medium Devices, Desktops */
+        @media only screen and (min-width : 768px) {
+            .home-width{
+                width: 900px;
+            }
+
+            .custom-border-right{
+                border-right: 1px solid black;
+                margin-bottom: 0px;
+                border-bottom: none;
+            }
+        }
+
+        /* Large Devices, Wide Screens */
+        @media only screen and (min-width : 1200px) {
+
+        }
+
+        .wrapper {
+            margin-top: 116px !important;
+        }
+    </style>
+    <style>
+        .register-button {
+            border-width: 1px;
+            border-color: #fff;
+            border-style: dashed;
+            border-radius: 5px;
+            color: #fff;
+            box-shadow: 10.239px 9.548px 9px 0px rgba(50, 54, 52, 0.27);
+            /*transition-duration: 0.4s;*/
+        }
+        .register-button:hover {
+            background: rgba(0,0,0,0.2);
+        }
+        .login-taxis {
+            background-color: #f4821d !important;
+            box-shadow: 10.239px 9.548px 9px 0px rgba(50, 54, 52, 0.27);
+        }
+        .login-taxis:hover {
+            background-color: #f45e1d !important;
+        }
+        .login-email {
+            background-color: #0099ff !important;
+            box-shadow: 10.239px 9.548px 9px 0px rgba(50, 54, 52, 0.27);
+        }
+        .login-email:hover {
+            background-color: #006fff !important;
+        }
+        .arrow-circle {
+            background-image: url("../images/arrow-circle.png");
+            background-size: cover;
+            display: inline-block;
+            height: 55px;
+            width: 55px;
+        }
+        html {
+            /**background - gradient***/
+            background-image: -moz-linear-gradient(-61deg, rgb(64, 45, 129) 0%, rgb(23, 77, 156) 100%);
+            background-image: -webkit-linear-gradient(-61deg, rgb(64, 45, 129) 0%, rgb(23, 77, 156) 100%);
+            background-image: -ms-linear-gradient(-61deg, rgb(64, 45, 129) 0%, rgb(23, 77, 156) 100%);
+        }
+    </style>
+    <link rel="stylesheet" href="https://apps.basket.gr/css/new-sidebar.css"/>
+</head>
+<body class="hold-transition">
+<div id="app">
+    
+            <nav class="fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="https://apps.basket.gr">
+            <img src="https://apps.basket.gr/images/logo.png" class="m-l-10 d-inline-block align-top" alt="">
+            
+        </a>
+    </div>
+</nav>
+    
+    <div class="wrapper">
+    
+    
+    <!-- Page Content  -->
+        <div id="content">
+            <div id="main-content">
+                <div class="container">
+                    
+                    <div class="row">
+                        <div class="col-12">
+                                                    </div>
+                    </div>
+
+                    
+                    <div class="row">
+                        <div class="col-12">
+                                                    </div>
+                    </div>
+                </div>
+
+                
+                    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                            </div>
+        </div>
+        <div class="row">
+            <div class="x-centerized text-center home-width">
+
+                                    <div class="form-group">
+    <div class="row">
+        <div class="col-md-12 col-lg-6 m-t-20">
+            <div class="card bg-transparent border-1 border-white">
+                <div class="card-header">
+                    <h4 class="text-white">Σωματεία</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="row mb-3">
+                                <div class="col-12">
+                            <span class="text-white" style="font-family: Roboto;font-weight: 300;font-size: 20px;">
+                                Πρώτη φορά στην Πλατφόρμα Μητρώου της<br>
+                                Ελληνικής Ομοσπονδίας Καλαθοσφαίρισης;
+                            </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <a href="https://apps.basket.gr/taxis-authorize" class="btn px-5 py-4 register-button text-light" style="font-family:'Roboto', sans-serif;font-weight:300;">
+                                        Εγγραφείτε με κωδικούς<br>TAXISNET του σωματείου
+                                    </a>
+                                </div>
+                            </div>
+                            <hr style="border-color: #fff">
+                            <div class="row mb-3">
+                                <div class="col-12">
+                            <span class="text-white" style="font-family: Roboto;font-weight: 300;font-size: 22px;">
+                                Είστε εγγεγραμμένο σωματείο;
+                            </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <a href="https://apps.basket.gr/taxis-authorize" class="btn btn-warning text-white px-4 login-taxis">
+                                        <i class="arrow-circle"></i>
+                                        <span class="mb-2" style="display: inline-block">
+                                    Είσοδος σωματείων <br> με κωδικούς taxisnet
+                                </span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12 col-lg-6 m-t-20">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card bg-transparent border-1 border-white">
+                        <div class="card-header">
+                            <h4 class="text-white">Φυσικά Πρόσωπα</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="row">
+                                        <div class="col-12 mb-2">
+                                            <a href="https://apps.basket.gr/taxis-authorize" class="btn px-5 py-4 register-button text-light"
+                                               style="font-family:'Roboto', sans-serif;font-weight:300;">
+                                                Εγγραφή / είσοδος με προσωπικούς <br> κωδικούς TAXISNET
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-12 m-t-5">
+                                            <span class="text-white" style="font-family: Roboto;font-weight: 300;font-size: 17px;">
+                                                Για εγγραφή / είσοδο στην πλατφόρμα της ΕΟΚ μόνο σε χρήστες που δεν
+                                                έχουν τη δυνατότητα έκδοσης κωδικών Taxisnet πατήστε
+                                                <a href="javascript:alertRegisteredUser()" class="text-warning">εδώ</a>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                                
+            </div>
+        </div>
+    </div>
+            </div>
+
+            <div class="footer">
+    <div class="row">
+        <div class="col-6 text-left">
+            
+        </div>
+        <div class="col-6 text-right" style="">
+            
+            
+
+
+
+
+
+            <a href="https://apps.basket.gr/documentation" target="_blank">
+                Οδηγίες χρήσης πλατφόρμας
+            </a>
+        </div>
+    </div>
+</div>
+
+        </div>
+
+        
+        <div class="modal modal-success fade" id="generic-success" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    <i class="fas fa-check-circle"></i>Επιτυχία
+                </h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-dismiss="modal">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="modal modal-warning fade" id="generic-warning" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><i class="fas fa-exclamation-triangle fa-left"></i> Προειδοποίηση</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-dismiss="modal">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="modal modal-danger fade" id="generic-warning-red" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><i class="fas fa-exclamation-triangle fa-left"></i> Προειδοποίηση</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="modal modal-danger fade" id="generic-error" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    <i class="fas fa-exclamation-circle"></i>Σφάλμα
+                </h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="modal modal-warning fade" id="modal-wait" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    <i class="fas fa-hourglass-half"></i>Επεξεργαζόμαστε το αίτημά σας
+                </h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-exclamation-triangle text-warning"></i>Παρακαλούμε μην κλείσετε το παράθυρο όσο διαρκεί η διαδικασία ελέγχου
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-warning" data-dismiss="modal">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</div>
+        
+        <div class="modal modal-info fade" id="edit-generic" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    <i class="fas fa-edit fa-left"></i>Επεξεργασία
+                </h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                [X]
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="modal modal-danger fade" id="delete-generic" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Επιβεβαίωση Διαγραφής</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                Είστε σίγουρος;            </div>
+            <div class="modal-footer">
+                <a class="btn btn-danger execute jquery-postback"><i class="fas fa-trash" aria-hidden="true"></i>Διαγραφή</a>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="modal fade" id="popUpModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" style="color: black">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                <a target="_blank" href="https://www.tiktok.com/@hellenic_bf?utm_source=popup&utm_medium=registryhbf&utm_campaign=giveaway" onclick="closeModal()">
+                    <img src="https://apps.basket.gr/images/mitoglou.jpg" alt="mitoglou">
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<!-- Scripts -->
+
+
+
+
+
+<script src="https://apps.basket.gr/js/jquery-3.4.1.min.js"></script>
+
+<script src="https://apps.basket.gr/js/jquery-ui.min.js"></script>
+
+<script src="https://apps.basket.gr/js/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+
+<script src="https://apps.basket.gr/js/bootstrap.min.js"></script>
+
+<!-- Validate -->
+<script type="text/javascript" src="https://apps.basket.gr/js/jquery.validate.js"></script>
+
+<script type="text/javascript" src="https://apps.basket.gr/js/additional-methods.js"></script>
+
+<script src="https://apps.basket.gr/js/select2.full.js"></script>
+<!-- jQuery Custom Scroller CDN -->
+<script src="https://apps.basket.gr/js/jquery.mCustomScrollbar.concat.min.js"></script>
+
+<script src="https://apps.basket.gr/js/jquery.steps.min.js"></script>
+
+<script src="https://apps.basket.gr/js/bootstrap4-toggle.min.js"></script>
+
+<script src="https://apps.basket.gr/js/dropzone.js"></script>
+
+<script src="https://apps.basket.gr/js/sweetalert.min.js"></script>
+
+<script src="https://apps.basket.gr/js/pace.min.js"></script>
+
+<script src="https://apps.basket.gr/js/datepicker-el.js "></script>
+
+
+
+
+
+
+<script>
+    let absoluteUrlPrefix = "";
+</script>
+
+
+<!--Custom-js-->
+<script src="https://apps.basket.gr/js/timepicki.js"></script>
+<script src="https://apps.basket.gr/js/es-jQuery.js"></script>
+<script src="https://apps.basket.gr/js/project.js"></script>
+<script src="https://apps.basket.gr/js/pdfobject.js"></script>
+<script src="https://apps.basket.gr/js/jquery.dotdotdot.js"></script>
+<script src="https://apps.basket.gr/js/notify.min.js"></script>
+<script src="https://apps.basket.gr/js/printPage.js"></script>
+
+<script>
+    /*
+     * jQuery plugin to prevent double submission of forms
+     */
+    jQuery.fn.preventDoubleSubmission = function () {
+        $(this).on('submit', function (e) {
+            var $form = $(this);
+
+            if ($form.data('submitted') === true) {
+                // Previously submitted - don't submit again
+                e.preventDefault();
+            } else {
+                // Mark it so that the next submit can be ignored
+                $form.data('submitted', true);
+            }
+        });
+
+        // Keep chainability
+        return this;
+    };
+
+    /*
+     * Override default jQuery messages Like A Boss XD
+     */
+    $.extend(jQuery.validator.messages, {
+        required: "Αυτό το πεδίο είναι απαραίτητο.",
+        email: "Παρακαλώ εισάγετε μία έγκυρη διεύθυνση email",
+        url: "Παρακαλώ εισάγετε ένα έγκυρο URL (http[s]://...)",
+        date: "Παρακαλώ εισάγετε μία έγκυρη ημερομηνία",
+        number: "Παρακαλώ εισάγετε έναν έγκυρο αριθμό",
+        digits: "Παρακαλώ εισάγετε μόνο ψηφία",
+        accept: "Παρακαλώ επιλέξτε ένα συμβατό αρχείο",
+        extension: "Please enter a compatible file (pdf, zip, rar)",
+        maxlength: jQuery.validator.format("Παρακαλώ μην εισάγετε παραπάνω από {0} χαρακτήρες."),
+        minlength: jQuery.validator.format("Παρακαλώ εισάγετε τουλάχιστον {0} χαρακτήρες."),
+        rangelength: jQuery.validator.format("Παρακαλώ εισάγετε μια τιμή απο {0} μέχρι {1} χαρακτήρες."),
+        range: jQuery.validator.format("Παρακαλώ εισάγετε μια τιμή απο {0} μέχρι {1}."),
+        max: jQuery.validator.format("Παρακαλώ εισάγετε μια τιμή μικρότερη ή ίση με {0}."),
+        min: jQuery.validator.format("Ο αριθμός που δώσατε δεν είναι έγκυρος.")
+    });
+
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+
+    $.validator.addMethod(
+        "regex",
+        function (value, element, regexp) {
+            if (regexp.constructor != RegExp)
+                regexp = new RegExp(regexp);
+            else if (regexp.global)
+                regexp.lastIndex = 0;
+            return this.optional(element) || regexp.test(value);
+        },
+        "Please check your input's format."
+    );
+
+    $.validator.addMethod("url_slug", function (value, element) {
+        return this.optional(element) || /^[a-zA-Z0-9]+(?:[-\|_][a-zA-Z0-9]+)*$/.test(value);
+    }, "Το URL αναγνωριστικό της εκδήλωσης πρέπει να αποτελείται αποκλειστικά από αλφαριθμητικά χωρισμένα με παύλα π.χ. retail-awards-2018");
+
+    $.validator.addClassRules('url-input', {
+        url: true
+    });
+
+    /*
+     * Select2 greek translation [+language: 'el']
+     */
+    $.fn.select2.amd.define('select2/i18n/el', [], function () {
+        return {
+            errorLoading: function () {
+                return 'Τα αποτελέσματα δεν μπόρεσαν να φορτώσουν.';
+            },
+            inputTooLong: function (args) {
+                var overChars = args.input.length - args.maximum;
+
+                var message = 'Παρακαλώ διαγράψτε ' + overChars + ' χαρακτήρ';
+
+                if (overChars == 1) {
+                    message += 'α';
+                }
+                if (overChars != 1) {
+                    message += 'ες';
+                }
+
+                return message;
+            },
+            inputTooShort: function (args) {
+                var remainingChars = args.minimum - args.input.length;
+
+                var message = 'Παρακαλώ συμπληρώστε ' + remainingChars +
+                    ' ή περισσότερους χαρακτήρες';
+
+                return message;
+            },
+            loadingMore: function () {
+                return 'Φόρτωση περισσότερων αποτελεσμάτων…';
+            },
+            maximumSelected: function (args) {
+                var message = 'Μπορείτε να επιλέξετε μόνο ' + args.maximum + ' επιλογ';
+
+                if (args.maximum == 1) {
+                    message += 'ή';
+                }
+
+                if (args.maximum != 1) {
+                    message += 'ές';
+                }
+
+                return message;
+            },
+            noResults: function () {
+                return 'Δε βρέθηκαν αποτελέσματα';
+            },
+            searching: function () {
+                return 'Αναζήτηση…';
+            }
+        };
+    });
+
+    /*
+     * jQuery steps labels
+     */
+    let jQueryStepsLabels = {
+        current: "Τρέχον βήμα:",
+        pagination: "Σελιδοποίηση",
+        finish: "Τέλος",
+        next: "Επόμενη",
+        previous: "Προηγούμενη",
+        loading: "Φόρτωση ..."
+    };
+
+    $(document).ready(function () {
+        $("#sidebar").mCustomScrollbar({
+            theme: "minimal"
+        });
+
+        $('#sidebarCollapse').on('click', function () {
+            // open or close navbar
+            $('#content').toggleClass('active');
+
+            if ($('#sidebar').hasClass('active')) {
+                $('#sidebar').removeClass('active');
+                sessionStorage.setItem('sidebar-collapse', 'show');
+            } else {
+                $('#sidebar').addClass('active');
+                sessionStorage.setItem('sidebar-collapse', 'hide');
+            }
+
+            // close dropdowns
+            $('.collapse.in').toggleClass('in');
+            // and also adjust aria-expanded attributes we use for the open/closed arrows
+            // in our CSS
+            $('a[aria-expanded=true]').attr('aria-expanded', 'false');
+        });
+        // $('#sidebar').addClass('active');
+
+        /* Enable tooltip visual */
+        $('[data-toggle="tooltip"]').tooltip({});
+    });
+
+    /*
+     * debug
+     */
+    let env_dev = false;
+
+    /*
+     * javascript translation engine
+     */
+    let locale = "el";
+
+    let _lang = {
+        el: {
+            club_unlink_confirmation: 'Είστε σίγουροι ότι θέλετε αφαιρέσετε αυτό το σωματείο από την ΕΠΣ;',
+            count: 'Τόσα :x',
+            edit_past_lessons: 'Δεν μπορείτε νε επεξεργαστείτε μαθήματα απο το παρελθόν.',
+            hello: 'Γειά',
+            select_lesson: 'Πρέπει να επιλέξετε μάθημα πρώτα.',
+            wrong_grades: 'Λάθος βαθμολογίες',
+        },
+        en: {
+            count: 'Count :x',
+            edit_past_lessons: 'Δεν μπορείτε νε επεξεργαστείτε μαθήματα απο το παρελθόν',
+            hello: 'hello',
+            select_lesson: 'Πρέπει να επιλέξετε μάθημα πρώτα.',
+            wrong_grades: 'Wrong grades',
+        }
+    };
+
+    function lang(key, param) {
+        if (param !== undefined) {
+            return _lang[locale][key].replace(':x', param);
+        } else {
+            return _lang[locale][key];
+        }
+    }
+
+    $(function () {
+            });
+
+    $(".select2").select2({
+        placeholder: '',
+        allowClear: true
+    });
+
+    /* draggable modals */
+    $('.modal.draggable>.modal-dialog').draggable({
+        cursor: 'move',
+        handle: '.modal-header'
+    });
+    $('.modal.draggable>.modal-dialog>.modal-content>.modal-header').css('cursor', 'move');
+
+    $(document).ready(function () {
+        $('.copy-button').click(function () {
+            var $this = $(this);
+            var textToCopy = $this.data('text');
+            var tempTextarea = $('<textarea>');
+            $('body').append(tempTextarea);
+            tempTextarea.val(textToCopy).select();
+            document.execCommand('copy');
+            tempTextarea.remove();
+            $.notify(
+                'Copied!',
+                {
+                    position: 'bottom right',
+                    className: 'success'
+                }
+            );
+        });
+    });
+
+    function initHomeGrown() {
+        const $citizenships = $('#citizenships');
+        const $homeGrown = $('#home_grown');
+
+        if (!$citizenships.length || !$homeGrown.length) {
+            return;
+        }
+
+        const greekCitizenshipId = String($citizenships.data('greek-id'));
+        const cypriotCitizenshipId = String($citizenships.data('cypriot-id'));
+
+        $citizenships.on('change', function () {
+            const selected = $(this).val() || [];
+
+            const isGreekOrCypriot =
+                selected.includes(greekCitizenshipId) ||
+                selected.includes(cypriotCitizenshipId);
+
+            if (!isGreekOrCypriot) {
+                $homeGrown.val('0').trigger('change');
+            } else if ($homeGrown.val() === '0') {
+                $homeGrown.val('').trigger('change');
+            }
+        });
+    }
+</script>
+
+
+
+    <script>
+            function alertRegisteredUser(){
+                Swal.fire({
+                    title: 'Προσοχή!',
+                    html: '<span>Η λειτουργικότητα για εγγραφή με email προσφέρεται για αυτούς που εκ του νόμου δεν ' +
+                        'έχουν τη δυνατότητα έκδοσης κωδικών taxisnet. Αν πρόκειται για ανήλικο αθλητή, εγγράφονται ' +
+                        'οι γονείς όπως περιγράφεται στις </span><a href="https://apps.basket.gr/documentation">οδηγίες.</a>',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#dc3545',
+                    confirmButtonText: 'Συνέχιση',
+                    cancelButtonText: 'Απόρριψη'
+                }).then((result) => {
+                    if (result.value) {
+                        window.location.href = 'https://apps.basket.gr/login?login=true';
+                    } else {
+                        return false;
+                    }
+                });
+            }
+    </script>
+    <script>
+        $(function(){
+                    });
+
+        function closeModal(){
+            $('#popUpModal').modal('hide');
+        }
+
+        function showMore(){
+            $('#scholarshipButton').addClass('d-none');
+            $('#scholarshipText').removeClass('d-none');
+        }
+    </script>
+</body>
+</html>
