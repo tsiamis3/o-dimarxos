@@ -167,9 +167,9 @@ class EspnOdds:
                 print(pd.DataFrame(rows).to_string())
                 continue
             new = pd.DataFrame(rows, columns=COLS)
-            # τρέχουσες γραμμές: κρατάμε μόνο την πιο πρόσφατη ανά (αγώνα, πάροχο)
-            keep = old[~((old.kind == "current") & old.gameCode.isin(new.gameCode))] if len(old) else old
-            out = pd.concat([keep, new], ignore_index=True) if len(keep) else new
+            # τρέχουσες γραμμές: κρατάμε μόνο την πιο πρόσφατη ανά (αγώνα, πάροχο, είδος)·
+            # γραμμές άλλων παρόχων (π.χ. odds_api.py) μένουν ως έχουν
+            out = pd.concat([old, new], ignore_index=True) if len(old) else new
             out = out.drop_duplicates(["gameCode", "provider", "kind"], keep="last").sort_values(["gameCode", "kind"])
             out.to_csv(path, index=False)
             n_ml = out.ml_home.notna().sum() if len(out) else 0
