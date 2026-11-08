@@ -200,6 +200,8 @@ class GameFeatureBuilder:
         for c in side_cols:
             out["h_" + c] = h["t_" + c]
             out["a_" + c] = a["t_" + c]
+        for k in num:                 # μέσοι λίγκας των four factors (όχι features εδώ· τα χρησιμοποιεί το master_model.py)
+            out["ref_" + k] = h["lg_" + k]
         if not self.has_box:          # χωρίς box scores ο ρυθμός είναι σταθερός -> δεν είναι feature
             out = out.drop(columns=["h_pace", "a_pace", "lg_pace"])
         self.feature_cols = [c for c in out.columns if c.startswith(("h_", "a_", "lg_"))]

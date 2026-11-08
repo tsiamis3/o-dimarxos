@@ -103,6 +103,7 @@ class SiteBuilder:
         have = {c["code"] for c in self.manifest["competitions"]}
         self.manifest["sections"] = [{"key": k, "name": n, "comps": [c for c in cs if c in have]}
                                      for k, (n, cs) in SECTIONS.items() if any(c in have for c in cs)]
+        self.manifest["master"] = (SITE_DATA / "master.json").exists()     # master νευρωνικό (master_model.py)
         (SITE_DATA / "manifest.json").write_text(json.dumps(self.manifest, indent=1))
         print("  manifest.json written")
 

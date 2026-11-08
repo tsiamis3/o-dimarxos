@@ -61,6 +61,10 @@ jobs:
       - name: Train game model (Keras) and compare with Monte Carlo
         run: python scripts/game_model.py
 
+      # Ένα master δίκτυο για όλες τις λίγκες (εκτός Α2 γυναικών), δίπλα στα δίκτυα λίγκας και στο Monte Carlo
+      - name: Train master game model (all leagues)
+        run: python scripts/master_model.py
+
       - name: Build site database
         run: python scripts/build_site.py
 

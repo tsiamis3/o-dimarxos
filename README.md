@@ -24,6 +24,7 @@ scripts/
   train_model.py     feed-forward δίκτυο Keras -> models/ + site/data/predictions_*.json
   evaluate.py        αρχείο προβλέψεων, ζωντανή αξιολόγηση, backtest προσομοίωσης -> site/data/eval_*.json
   game_model.py      νευρωνικό αγώνων Keras (δίπλα στο Monte Carlo) -> site/data/gamenn_*.json
+  master_model.py    ένα νευρωνικό αγώνων για όλες τις λίγκες -> site/data/master.json
   build_site.py      JSON βάση για το site -> site/data/
   make_demo_data.py  συνθετικά δεδομένα για τοπικό test χωρίς internet
 site/                index.html, style.css, app.js (στατικό, χωρίς build step)
@@ -86,3 +87,12 @@ negative log-likelihood. Πιθανότητα νίκης = P(διαφορά > 0)
 ```bash
 python scripts/game_model.py --comp E --arch mlp_wide --seeds 5   # αρχιτεκτονικές: GARCHS (linear, mlp_small, mlp_wide)
 ```
+
+### Master δίκτυο (όλες οι λίγκες)
+
+`scripts/master_model.py`: ένα δίκτυο για EuroLeague, EuroCup, GBL και NBA (η Α2 γυναικών δεν μπαίνει), ώστε να
+εκπαιδεύεται σε περισσότερους αγώνες. Ίδια features με το δίκτυο λίγκας, αλλά σχετικά με τη λίγκα ως εκείνη την
+ημέρα (ratings/φόρμα = πόντοι ανά 100 κατοχές πάνω από τον μέσο όρο, ρυθμός ως λόγος, four factors ως διαφορά)
++ one-hot διοργάνωσης. Στόχος: πόντοι / αναμενόμενοι πόντοι λίγκας. Εκπαίδευση σε όλες τις προηγούμενες σεζόν,
+test = τα φετινά ματς κάθε λίγκας, όπου συγκρίνεται με δίκτυο μόνο της λίγκας (ίδιο split) και με το Monte Carlo.
+Μετά ξαναεκπαιδεύεται σε όλα και προβλέπει τα επερχόμενα φετινά ματς. Ζωντανά: `data/predictions/{C}_games_master.csv`.
