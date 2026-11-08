@@ -10,6 +10,7 @@ RAW_DIR = ROOT / "data" / "raw"          # ακατέργαστα CSV από τ�
 SITE_DIR = ROOT / "site"                 # ό,τι ανεβαίνει στο GitHub Pages
 SITE_DATA = SITE_DIR / "data"            # JSON βάση που διαβάζει το site
 MODEL_DIR = ROOT / "models"              # αποθηκευμένο Keras μοντέλο + scalers
+PRED_DIR = ROOT / "data" / "predictions"  # αρχείο προβλέψεων + ιστορικό (για ζωντανή αξιολόγηση)
 
 # Όλες οι διοργανώσεις του site (κωδικός -> όνομα). Τα αρχεία είναι data/raw/{κωδικός}{σεζόν}_*.csv
 COMPETITIONS = {

@@ -276,7 +276,8 @@ class Trainer:
             Pn = model.predict(nxt)
             for (_, row), p in zip(nxt.iterrows(), Pn):
                 next_rows.append([row.pid, row.team, row.opp, int(row.home), int(row.gameCode),
-                                  row.date.strftime("%Y-%m-%d"), *r(p)])
+                                  row.date.strftime("%Y-%m-%d"), *r(p),
+                                  *r([row[f"{t}_r10"] for t in TARGETS])])   # baseline: μέσος 10 αγώνων
 
         bt = test.assign(**{f"p_{t}": P[:, i] for i, t in enumerate(TARGETS)})
         bt = bt[bt.season == bt.season.max()]
@@ -292,7 +293,8 @@ class Trainer:
             "n_features": len(model.feature_cols), "metrics": metrics,
             "loss": {"train": [round(float(v), 4) for v in h["loss"]],
                      "val": [round(float(v), 4) for v in h["val_loss"]]} if h else None,
-            "next": {"cols": ["pid", "team", "opp", "home", "gameCode", "date", *TARGETS],
+            "next": {"cols": ["pid", "team", "opp", "home", "gameCode", "date", *TARGETS,
+                              *[f"b_{t}" for t in TARGETS]],
                      "rows": next_rows},
             "backtest": {"cols": ["pid", "season", "gameCode", "date", "opp",
                                   *TARGETS, *[f"p_{t}" for t in TARGETS]],

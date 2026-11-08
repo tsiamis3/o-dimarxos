@@ -349,6 +349,20 @@ const Charts = {
     return s + "</svg>";
   },
 
+  /** Βαθμονόμηση: bins [{pred, obs, n}] — κύκλοι με εμβαδό ανάλογο του n, διαγώνιος = τέλεια. */
+  calibration(bins, W = Charts.W(520)) {
+    if (!bins.length) return `<div class="empty">Δεν υπάρχουν δεδομένα</div>`;
+    const H = Math.round(W * 0.8), L = 64, R = 14, T = 12, B = 40;
+    const X = this.scale(0, 1, L, W - R), Y = this.scale(0, 1, H - B, T), mx = Math.max(...bins.map((b) => b.n));
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Βαθμονόμηση πιθανοτήτων">`;
+    [0, 0.25, 0.5, 0.75, 1].forEach((g) => (s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(g)}" y2="${Y(g)}"/><text x="${L - 6}" y="${Y(g) + 4}" text-anchor="end">${g * 100}%</text><text x="${X(g)}" y="${H - 22}" text-anchor="middle">${g * 100}%</text>`));
+    s += `<line class="axis" x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke-dasharray="4 4"/>`;
+    bins.forEach((b) => (s += `<circle class="k1" cx="${X(b.pred)}" cy="${Y(b.obs)}" r="${(4 + 14 * Math.sqrt(b.n / mx)).toFixed(1)}" style="opacity:.55"><title>${fmtPct(b.pred)} προβλ. → ${fmtPct(b.obs)} πραγμ. (${b.n} ματς)</title></circle>`));
+    s += `<text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">Πρόβλεψη νίκης γηπεδούχου</text>`;
+    s += `<text x="12" y="${(T + H - B) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(T + H - B) / 2})">Πραγματικό ποσοστό</text>`;
+    return s + "</svg>";
+  },
+
   scatter({ pts, xLabel, yLabel, W = Charts.W(600), H = 0 }) {
     H = H || Math.round(W * 0.7);
     if (!pts.length) return `<div class="empty">Δεν υπάρχουν δεδομένα</div>`;
@@ -427,6 +441,7 @@ const App = {
   manifest: null, section: "europe", comp: "E", season: null,
   cache: new Map(),       // "E2026" -> Season
   preds: new Map(),       // "E" -> predictions json | null
+  evals: new Map(),       // "E" -> eval json (ζωντανή αξιολόγηση) | null
   ui: {
     team: null, team2: "", players: [], pstat: "PTS",
     ex: { level: "players", all: false, mode: "avg", team: "", minGP: 1, minMIN: 0, q: "", cs: "PTS", co: ">=", cv: "",
@@ -452,6 +467,13 @@ const App = {
       this.preds.set(comp, c?.predictions ? await this.json(`data/predictions_${comp}.json`).catch(() => null) : null);
     }
     return this.preds.get(comp);
+  },
+  async loadEval(comp) {
+    if (!this.evals.has(comp)) {
+      const c = this.compInfo(comp);
+      this.evals.set(comp, c?.evaluation ? await this.json(`data/eval_${comp}.json`).catch(() => null) : null);
+    }
+    return this.evals.get(comp);
   },
   compInfo(comp = this.comp) { return this.manifest.competitions.find((c) => c.code === comp); },
   latestSeason(comp = this.comp) { return Math.max(...this.compInfo(comp).seasons); },
@@ -519,7 +541,7 @@ const App = {
 
   async render() {
     const info = this.compInfo();
-    const off = { players: info.hasBox === false, predictions: !info.predictions };
+    const off = { players: info.hasBox === false, predictions: !info.predictions && !info.evaluation };
     $$("#tabs a").forEach((a) => (a.hidden = !!off[a.getAttribute("href").slice(1)]));
     if (off[this.route()]) { location.hash = "home"; return; }
     const v = this.route();
@@ -528,7 +550,8 @@ const App = {
     try {
       await this.loadSeason(this.comp, this.season);
       await this.loadPreds(this.comp);
-      if (this.preds.get(this.comp)) await this.loadSeason(this.comp, this.latestSeason());
+      if (v === "predictions") await this.loadEval(this.comp);
+      if (this.preds.get(this.comp) || v === "predictions") await this.loadSeason(this.comp, this.latestSeason());
       await Views[v](view, this.S);
     } catch (e) {
       console.error(e);
@@ -914,52 +937,154 @@ const Views = {
     };
   },
 
-  /* ---------------- Προβλέψεις μοντέλου ---------------- */
+  /* ---------------- Μοντέλα: προβλέψεις + αξιολόγηση ---------------- */
   predictions(el) {
-    const P = App.preds.get(App.comp);
-    if (!P) { el.innerHTML = `<div class="empty">Δεν υπάρχει εκπαιδευμένο μοντέλο για αυτή τη διοργάνωση ακόμα. Τρέξε το scripts/train_model.py (το κάνει αυτόματα το GitHub Action).</div>`; return; }
+    const P = App.preds.get(App.comp), E = App.evals.get(App.comp);
+    if (!P && !E) { el.innerHTML = `<div class="empty">Δεν υπάρχουν ακόμα μοντέλα για αυτή τη διοργάνωση. Δημιουργούνται αυτόματα στο επόμενο ημερήσιο run.</div>`; return; }
     const L = App.cache.get(App.comp + App.latestSeason());
-    const next = rowsToObjs(P.next).map((r) => ({ ...r, player: L.playerName(r.pid), match: r.gameCode }));
-    const games = [...new Map(next.map((r) => [r.gameCode, r])).values()]
-      .map((r) => ({ gc: r.gameCode, date: r.date, h: r.home ? r.team : r.opp, a: r.home ? r.opp : r.team }))
-      .filter((g, i, arr) => arr.findIndex((x) => x.gc === g.gc) === i).sort((a, b) => a.date.localeCompare(b.date) || a.gc - b.gc);
-    if (!P.targets.includes(App.ui.predTarget)) App.ui.predTarget = P.targets[0];
+    const TG = P ? P.targets : ["PTS", "REB", "AST", "PIR", "MIN"];
+    if (!TG.includes(App.ui.predTarget)) App.ui.predTarget = TG.includes("PIR") ? "PIR" : TG[0];
     const t = App.ui.predTarget;
-    const bt = rowsToObjs(P.backtest);
-    const imp = (m) => (m.last10 ? (100 * (m.last10 - m.model)) / m.last10 : NaN);
+    const tSelect = (id) => `<label class="muted" style="font-size:12px">Στατιστικό <select id="${id}">${TG.map((x) => `<option value="${x}" ${x === t ? "selected" : ""}>${STAT[x].name}</option>`).join("")}</select></label>`;
+    const pctImp = (m, b) => (isNum(m) && isNum(b) && b ? (100 * (b - m)) / b : NaN);
+    const impCell = (i) => `<td class="n ${i > 0 ? "better" : ""}">${isNum(i) ? (i > 0 ? "+" : "") + fmt(i) + "%" : "–"}</td>`;
+    const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+    const sections = [];
 
-    el.innerHTML = `
-      <section><div class="sec-head"><h2>Μοντέλο πρόβλεψης παίκτη</h2><span class="muted">εκπαίδευση ${esc(P.trained)}</span></div>
-        <p style="margin:0;max-width:70ch">Feed-forward νευρωνικό δίκτυο (Keras, <span class="num">${esc(P.arch)}</span>) που προβλέπει τα ${P.targets.map((x) => STAT[x].label).join(", ")} του επόμενου αγώνα από ${P.n_features} χαρακτηριστικά: κυλιόμενους μέσους 3/5/10 αγώνων, εκθετικό μέσο, μέσο σεζόν, ξεκούραση, έδρα και την αμυντική απόδοση του αντιπάλου. Αξιολογείται σε αγώνες που δεν είδε στην εκπαίδευση (τελευταίο ${Math.round(100 * P.n_test / (P.n_test + P.n_train))}% χρονικά).</p>
+    // ---- 1. Μοντέλο παικτών (αξιολόγηση στην εκπαίδευση) ----
+    if (P) {
+      sections.push(`
+      <section><div class="sec-head"><h2>Μοντέλο παικτών</h2><span class="muted">εκπαίδευση ${esc(P.trained)}</span></div>
+        <p style="margin:0;max-width:70ch">Feed-forward νευρωνικό δίκτυο (Keras, <span class="num">${esc(P.arch)}</span>) που προβλέπει ${TG.map((x) => STAT[x].label).join(", ")} του επόμενου αγώνα από ${P.n_features} χαρακτηριστικά (κυλιόμενοι μέσοι, φόρμα, έδρα, ξεκούραση, αντίπαλος). Ο πίνακας μετρά το σφάλμα στο τελευταίο ${Math.round(100 * P.n_test / (P.n_test + P.n_train))}% των αγώνων, που το μοντέλο δεν είδε στην εκπαίδευση.</p>
         <div class="grid2">
           <div class="tbl-wrap"><table><thead><tr><th>Στατιστικό</th><th class="n">MAE μοντέλου</th><th class="n">Μ.Ο. 10</th><th class="n">Μ.Ο. σεζόν</th><th class="n">Βελτίωση</th></tr></thead><tbody>
-            ${P.targets.map((x) => { const m = P.metrics[x]; const i = imp(m); return `<tr><td>${STAT[x].name}</td><td class="n"><b>${fmt(m.model, 2)}</b></td><td class="n">${fmt(m.last10, 2)}</td><td class="n">${fmt(m.season, 2)}</td><td class="n ${i > 0 ? "better" : ""}">${i > 0 ? "+" : ""}${fmt(i)}%</td></tr>`; }).join("")}
+            ${TG.map((x) => { const m = P.metrics[x]; return `<tr><td>${STAT[x].name}</td><td class="n"><b>${fmt(m.model, 2)}</b></td><td class="n">${fmt(m.last10, 2)}</td><td class="n">${fmt(m.season, 2)}</td>${impCell(pctImp(m.model, m.last10))}</tr>`; }).join("")}
           </tbody></table></div>
           <div><div class="legend"><span><i class="c1bg"></i>Training loss</span><span><i class="c2bg"></i>Validation loss</span></div>
             <div class="chart">${P.loss ? Charts.line({ series: [{ k: "k1", pts: P.loss.train.map((v, i) => [i + 1, v]) }, { k: "k2", pts: P.loss.val.map((v, i) => [i + 1, v]) }], xLabel: (x) => "ep " + x, yFmt: (v) => v.toFixed(2), H: 200 }) : ""}</div></div>
         </div>
-        <p class="muted" style="margin:0;font-size:13px">MAE = μέσο απόλυτο σφάλμα (μικρότερο = καλύτερο). «Βελτίωση» = σε σχέση με τον απλό μέσο όρο των 10 τελευταίων αγώνων.</p>
-      </section>
+        <p class="muted" style="margin:0;font-size:13px">MAE = μέσο απόλυτο σφάλμα (μικρότερο = καλύτερο). «Βελτίωση» = σε σχέση με τον μέσο όρο των 10 τελευταίων αγώνων.</p>
+      </section>`);
+    }
+
+    // ---- 2. Ζωντανή αξιολόγηση παικτών (προβλέψεις πριν το ματς vs αποτέλεσμα) ----
+    const LP = E?.players;
+    if (P || LP) {
+      if (!LP || !LP.n) {
+        sections.push(`<section><div class="sec-head"><h2>Ζωντανή αξιολόγηση παικτών</h2></div>
+          <div class="empty">Κάθε μέρα αποθηκεύονται οι προβλέψεις πριν από τα ματς. Μόλις παιχτούν, εμφανίζεται εδώ η σύγκριση με το πραγματικό αποτέλεσμα.</div></section>`);
+      } else {
+        const bd = LP.by_date || [];
+        sections.push(`
+        <section><div class="sec-head"><h2>Ζωντανή αξιολόγηση παικτών</h2>${tSelect("lt")}</div>
+          <p class="muted" style="margin:0;font-size:13px">Προβλέψεις που έγιναν πριν από κάθε ματς, συγκριμένες με το τι έγινε. ${LP.n} προβλέψεις σε ${LP.games} αγώνες.</p>
+          <div class="grid2">
+            <div class="tbl-wrap"><table><thead><tr><th>Στατιστικό</th><th class="n">MAE μοντέλου</th><th class="n">MAE Μ.Ο. 10</th><th class="n">Βελτίωση</th><th class="n" title="Μέση (πρόβλεψη − πραγματικό): θετικό = υπερεκτιμά">Τάση</th></tr></thead><tbody>
+              ${TG.map((x) => { const m = LP.metrics[x] || {}; return `<tr><td>${STAT[x].name}</td><td class="n"><b>${fmt(m.model, 2)}</b></td><td class="n">${fmt(m.base, 2)}</td>${impCell(pctImp(m.model, m.base))}<td class="n">${isNum(m.bias) ? (m.bias > 0 ? "+" : "") + fmt(m.bias, 2) : "–"}</td></tr>`; }).join("")}
+            </tbody></table></div>
+            <div><div class="legend"><span><i class="c1bg"></i>Μοντέλο</span><span><i class="c2bg"></i>Μ.Ο. 10 αγώνων</span></div>
+              <div class="chart">${bd.length > 1 ? Charts.line({ series: [{ k: "k1", dots: true, pts: bd.map((r, i) => [i + 1, r[t]]) }, { k: "k2", dots: true, pts: bd.map((r, i) => [i + 1, r["b_" + t]]) }], xLabel: (x) => fmtDate(bd[x - 1]?.date).slice(0, 5), yFmt: (v) => v.toFixed(1), H: 200, yZero: true }) : `<div class="empty">Το γράφημα εμφανίζεται από τη 2η ημέρα αγώνων.</div>`}</div>
+              <p class="muted" style="margin:0;font-size:13px">MAE ${STAT[t].label} ανά ημέρα αγώνων.</p></div>
+          </div>
+          <h3>Τελευταίες προβλέψεις</h3><div id="live-tab"></div>
+        </section>`);
+      }
+    }
+
+    // ---- 3. Ιστορικό εκπαιδεύσεων ----
+    const H = E?.history ? rowsToObjs(E.history) : [];
+    if (P) {
+      sections.push(`<section><div class="sec-head"><h2>Ιστορικό εκπαιδεύσεων</h2>${tSelect("ht")}</div>
+        ${H.length > 1 ? `<div class="legend"><span><i class="c1bg"></i>Μοντέλο (test MAE)</span><span><i class="c2bg"></i>Μ.Ο. 10 αγώνων</span></div>
+          <div class="chart">${Charts.line({ series: [{ k: "k1", dots: true, pts: H.map((r, i) => [i + 1, r[t + "_model"]]) }, { k: "k2", dots: true, pts: H.map((r, i) => [i + 1, r[t + "_last10"]]) }], xLabel: (x) => (H[x - 1]?.trained || "").slice(5, 10), yFmt: (v) => v.toFixed(2), H: 200 })}</div>
+          <p class="muted" style="margin:0;font-size:13px">Κάθε σημείο είναι μία εκπαίδευση (μία ανά ημέρα). Αν η μπλε γραμμή ανεβαίνει, το μοντέλο χειροτερεύει.</p>`
+        : `<div class="empty">${H.length ? "Μία εκπαίδευση μέχρι στιγμής" : "Δεν υπάρχει ακόμα ιστορικό"}. Από την επόμενη ημέρα εμφανίζεται εδώ η πορεία του σφάλματος ανά εκπαίδευση.</div>`}
+      </section>`);
+    }
+
+    // ---- 4. Προβλέψεις επόμενου αγώνα + scatter ----
+    let next = [], games = [], bt = [];
+    if (P) {
+      next = rowsToObjs(P.next).map((r) => ({ ...r, player: L.playerName(r.pid) }));
+      games = [...new Map(next.map((r) => [r.gameCode, r])).values()]
+        .map((r) => ({ gc: r.gameCode, date: r.date, h: r.home ? r.team : r.opp, a: r.home ? r.opp : r.team }))
+        .sort((a, b) => a.date.localeCompare(b.date) || a.gc - b.gc);
+      bt = rowsToObjs(P.backtest);
+      sections.push(`
       <section><div class="sec-head"><h2>Προβλέψεις επόμενου αγώνα</h2>
           <label class="muted" style="font-size:12px">Αγώνας <select id="pg"><option value="">Όλοι (${games.length})</option>${games.map((g) => `<option value="${g.gc}" ${String(g.gc) === String(App.ui.predGame) ? "selected" : ""}>${fmtDate(g.date)} ${esc(L.teamName(g.h))} – ${esc(L.teamName(g.a))}</option>`).join("")}</select></label></div>
         ${next.length ? `<div id="ptab"></div>` : `<div class="empty">Δεν υπάρχουν προγραμματισμένα ματς για νέες προβλέψεις.</div>`}
       </section>
-      <section><div class="sec-head"><h2>Πρόβλεψη vs πραγματικό</h2>
-          <label class="muted" style="font-size:12px">Στατιστικό <select id="pt">${P.targets.map((x) => `<option value="${x}" ${x === t ? "selected" : ""}>${STAT[x].name}</option>`).join("")}</select></label></div>
+      <section><div class="sec-head"><h2>Πρόβλεψη vs πραγματικό (test)</h2>${tSelect("pt")}</div>
         <p class="muted" style="margin:0;font-size:13px">${bt.length} αγώνες της τρέχουσας σεζόν εκτός training. Όσο πιο κοντά στη διαγώνιο, τόσο καλύτερα.</p>
         <div class="chart" style="max-width:620px">${Charts.scatter({ pts: bt.map((r) => [r["p_" + t], r[t]]), xLabel: "Πρόβλεψη " + STAT[t].label, yLabel: "Πραγματικό " + STAT[t].label })}</div>
-      </section>`;
+      </section>`);
+    }
 
+    // ---- 5. Προσομοίωση αγώνων ----
+    const SM = E?.sim;
+    if (SM) {
+      const b = SM.backtest || {}, bc = SM.backtest_current || {}, lv = SM.live || {};
+      const pc = (v) => (isNum(v) ? (100 * v).toFixed(1) + "%" : "–");
+      sections.push(`
+      <section><div class="sec-head"><h2>Προσομοίωση αγώνων</h2><span class="muted">πλεονέκτημα έδρας ${SM.params?.hca} π. · σ = ${SM.params?.sd}</span></div>
+        <p style="margin:0;max-width:70ch">Backtest: για κάθε ματς των σεζόν που υπάρχουν, η πιθανότητα νίκης υπολογίστηκε μόνο με τα ματς που είχαν παιχτεί πριν από αυτό, με τον ίδιο τύπο που χρησιμοποιεί η αρχική σελίδα.</p>
+        ${b.n ? `<div class="tiles">
+          ${tile(pc(b.acc), `Σωστός νικητής (${b.n} ματς)`)}
+          ${tile(pc(b.home_rate), "Αν έλεγε πάντα «γηπεδούχος»")}
+          ${tile(fmt(b.brier, 3), "Brier score (0.250 = κορώνα-γράμματα)")}
+          ${tile(fmt(b.mae_margin, 1), "Μέσο σφάλμα διαφοράς (π.)")}
+          ${tile(fmt(b.mae_total, 1), "Μέσο σφάλμα συνόλου (π.)")}
+          ${tile(pc(bc.acc), `Τρέχουσα σεζόν (${bc.n || 0} ματς)`)}
+        </div>
+        <div class="grid2">
+          <div><h3>Βαθμονόμηση</h3>
+            <div class="chart" style="max-width:520px">${Charts.calibration(b.calibration || [])}</div>
+            <p class="muted" style="margin:0;font-size:13px">Οριζόντια: η πιθανότητα που έδωσε για νίκη γηπεδούχου. Κάθετα: πόσο συχνά κέρδισε πράγματι. Πάνω από τη διαγώνιο = το μοντέλο υποτιμά τον γηπεδούχο. Το μέγεθος του κύκλου δείχνει πόσα ματς έχει κάθε ομάδα.</p></div>
+          <div><h3>Ζωντανά (προβλέψεις πριν το ματς)</h3>
+            ${lv.n ? `<div class="tiles">${tile(pc(lv.acc), `Σωστός νικητής (${lv.n} ματς)`)}${tile(fmt(lv.brier, 3), "Brier score")}${tile(fmt(lv.mae_margin, 1), "Σφάλμα διαφοράς (π.)")}</div><div id="sim-live" style="margin-top:10px"></div>`
+              : `<div class="empty">Κάθε μέρα αποθηκεύονται οι πιθανότητες για τα ματς των επόμενων 10 ημερών. Μόλις παιχτούν, εμφανίζονται εδώ.</div>`}
+          </div>
+        </div>` : `<div class="empty">Δεν υπάρχουν ακόμα αρκετά ματς για αξιολόγηση.</div>`}
+      </section>`);
+    }
+
+    el.innerHTML = sections.join("");
+
+    // ---- πίνακες / events ----
+    if (LP?.n) {
+      const rec = rowsToObjs(LP.recent).map((r) => ({ ...r, player: niceName(r.player) || L.playerName(r.pid), err: Math.abs(r[t + "_p"] - r[t]) }));
+      new SortTable($("#live-tab", el), {
+        cols: [{ key: "date", label: "Ημ/νία", fmt: fmtDate }, { key: "player", label: "Παίκτης", html: (r) => App.playerLink(r.pid, r.player) },
+          { key: "opp", label: "Αντίπ.", fmt: (v, r) => (r.home ? "vs " : "@ ") + esc(L.teamName(v)) },
+          { key: t + "_p", label: `${STAT[t].label} πρόβλ.`, n: true, fmt: (v) => fmt(v) },
+          { key: t, label: `${STAT[t].label} πραγμ.`, n: true, fmt: (v) => fmt(v, 0) },
+          { key: "err", label: "Σφάλμα", n: true, fmt: (v) => fmt(v) }],
+        rows: rec, sortKey: "date", sortDir: -1, pageSize: 25,
+      });
+    }
+    if (SM?.live?.n) {
+      const rows = (SM.recent || []).map(([date, h, a, p, mh, ma, hs, as]) => ({ date, h, a, p, mh, ma, hs, as, ok: (p > 0.5) === (hs > as) }));
+      new SortTable($("#sim-live", el), {
+        cols: [{ key: "date", label: "Ημ/νία", fmt: fmtDate },
+          { key: "h", label: "Αγώνας", html: (r) => `${esc(L.teamName(r.h))} – ${esc(L.teamName(r.a))}` },
+          { key: "p", label: "Νίκη γηπ.", n: true, fmt: (v) => fmtPct(v) },
+          { key: "mh", label: "Πρόβλ.", fmt: (v, r) => `${Math.round(r.mh)}–${Math.round(r.ma)}` },
+          { key: "hs", label: "Τελικό", fmt: (v, r) => `${r.hs}–${r.as}` },
+          { key: "ok", label: "", html: (r) => `<span class="pill ${r.ok ? "w" : "l"}">${r.ok ? "✓" : "✗"}</span>` }],
+        rows, sortKey: "date", sortDir: -1, pageSize: 15,
+      });
+    }
     if (next.length) {
       const tab = new SortTable($("#ptab", el), {
         cols: [{ key: "player", label: "Παίκτης", html: (r) => App.playerLink(r.pid, r.player) }, { key: "team", label: "Ομάδα" },
           { key: "opp", label: "Αντίπ.", fmt: (v, r) => (r.home ? "vs " : "@ ") + esc(v) }, { key: "date", label: "Ημ/νία", fmt: fmtDate },
-          ...P.targets.map(statCol)],
+          ...TG.map(statCol)],
         rows: next.filter((r) => !App.ui.predGame || String(r.gameCode) === String(App.ui.predGame)), sortKey: "PIR", pageSize: 40,
       });
       $("#pg", el).onchange = (e) => { App.ui.predGame = e.target.value; tab.setRows(next.filter((r) => !App.ui.predGame || String(r.gameCode) === App.ui.predGame)); };
     }
-    $("#pt", el).onchange = (e) => { App.ui.predTarget = e.target.value; Views.predictions(el); };
+    ["pt", "lt", "ht"].forEach((id) => { const x = $("#" + id, el); if (x) x.onchange = (e) => { App.ui.predTarget = e.target.value; Views.predictions(el); }; });
   },
 };
 
