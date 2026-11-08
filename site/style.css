@@ -166,3 +166,15 @@ footer.wrap { padding-block: 0 30px; color: var(--muted); font-size: 12px; }
 @media (prefers-reduced-motion: no-preference) {
   .probbar i { transition: width .4s ease; }
 }
+
+/* ---------- κατατάξεις ---------- */
+.rank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.rank-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; min-width: 0; }
+.rank-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.rank-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.rank-list li { display: grid; grid-template-columns: 22px 1fr auto; grid-template-rows: auto 3px; column-gap: 8px; align-items: center; font-size: 13px; }
+.rank-n { color: var(--muted); text-align: right; }
+.rank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.rank-val { font-weight: 600; }
+.rank-bar { grid-column: 2 / 4; height: 3px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.rank-bar i { display: block; height: 100%; background: var(--accent); opacity: .6; }

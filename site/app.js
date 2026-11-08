@@ -74,6 +74,30 @@ const PLAYER_COLS = ["GP", "GS", "MIN", "PTS", "REB", "OREB", "DREB", "AST", "ST
 const TEAM_COLS = ["GP", "W", "L", "WPCT", "PTS", "OPP", "DIFF", "PACE", "ORTG", "DRTG", "NET", "EFG", "OEFG", "TOVP",
   "OREBP", "FTR", "FG2P", "FG3P", "FTP", "REB", "AST", "STL", "BLK", "TOV", "PIR", "OPIR"];
 const TEAM_BASIC = ["GP", "W", "L", "WPCT", "PTS", "OPP", "DIFF"];   // όταν δεν υπάρχουν box scores
+/* Κατηγορίες για τις κατατάξεις. qual = ελάχιστος όγκος για να μετράει ένα ποσοστό. */
+const RANK_CATS = {
+  players: [
+    { name: "Σκοράρισμα", stats: ["PTS", "PTS36", "FG3M", "FTM"] },
+    { name: "Αποδοτικότητα", stats: ["TS", "EFG", "FG2P", "FG3P", "FTP"] },
+    { name: "Δημιουργία", stats: ["AST", "TOV"] },
+    { name: "Ριμπάουντ", stats: ["REB", "OREB", "DREB"] },
+    { name: "Άμυνα", stats: ["STL", "BLK", "PF"] },
+    { name: "Συνολικά", stats: ["PIR", "PIR36", "PM", "MIN"] },
+  ],
+  teams: [
+    { name: "Επίθεση", stats: ["PTS", "ORTG", "EFG", "FG3P", "AST"] },
+    { name: "Άμυνα", stats: ["OPP", "DRTG", "OEFG", "STL", "BLK"] },
+    { name: "Συνολικά", stats: ["NET", "DIFF", "WPCT", "PACE", "PIR"] },
+    { name: "Ριμπάουντ & λάθη", stats: ["REB", "OREBP", "TOVP", "FTR"] },
+  ],
+};
+const RANK_QUAL = {
+  TS: (r) => r.FG2A + r.FG3A >= 4, EFG: (r) => r.FG2A + r.FG3A >= 4, FG2P: (r) => r.FG2A >= 2,
+  FG3P: (r) => r.FG3A >= 1.5, FTP: (r) => r.FTA >= 1.5,
+};
+/** Σύντομη ετικέτα ομάδας για γραφήματα: ο κωδικός αν είναι "ανθρώπινος" (OLY, BOS), αλλιώς η 1η λέξη. */
+const teamShort = (S, code) => (/^[A-Z]{2,4}$/.test(code) ? code : (S.teamName(code).split(/\s+/)[0] || code).slice(0, 9));
+
 const LOG_STATS = ["MIN", "PTS", "REB", "OREB", "DREB", "AST", "STL", "BLK", "TOV", "PF", "FD", "PIR", "PM",
   "FG2M", "FG2A", "FG3M", "FG3A", "FTM", "FTA"];
 
@@ -349,6 +373,36 @@ const Charts = {
     return s + "</svg>";
   },
 
+  /** Bubble scatter: pts [{x, y, r(0..1), label, team?, pid?, hi}] — median γραμμές, κλικ = άνοιγμα ομάδας/παίκτη. */
+  bubble({ pts, xKey, yKey, W = Charts.W(900) }) {
+    const ok = pts.filter((p) => isNum(p.x) && isNum(p.y));
+    if (!ok.length) return `<div class="empty">Δεν υπάρχουν δεδομένα για αυτόν τον συνδυασμό.</div>`;
+    const H = Math.round(Math.min(560, Math.max(320, W * 0.7))), L = 64, R = 24, T = 18, B = 44;
+    const xs = ok.map((p) => p.x), ys = ok.map((p) => p.y);
+    const pad = (a) => { const lo = Math.min(...a), hi = Math.max(...a), d = (hi - lo) * 0.08 || 1; return [lo - d, hi + d]; };
+    const [x0, x1] = pad(xs), [y0, y1] = pad(ys);
+    const xt = this.ticks(x0, x1, 6).filter((v) => v >= x0 && v <= x1), yt = this.ticks(y0, y1, 6).filter((v) => v >= y0 && v <= y1);
+    const X = this.scale(x0, x1, L, W - R), Y = this.scale(y0, y1, H - B, T);
+    const f = (k) => (v) => (STAT[k]?.pct ? (100 * v).toFixed(0) + "%" : +v.toFixed(2));
+    const med = (a) => { const b = [...a].sort((p, q) => p - q); return b[Math.floor(b.length / 2)]; };
+    const many = ok.length > 40;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(STAT[yKey]?.name)} ως προς ${esc(STAT[xKey]?.name)}">`;
+    xt.forEach((v) => (s += `<line class="grid" x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${H - B}"/><text x="${X(v)}" y="${H - B + 16}" text-anchor="middle">${f(xKey)(v)}</text>`));
+    yt.forEach((v) => (s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${f(yKey)(v)}</text>`));
+    s += `<line class="axis" x1="${X(med(xs))}" x2="${X(med(xs))}" y1="${T}" y2="${H - B}" stroke-dasharray="4 4"/>`;
+    s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${Y(med(ys))}" y2="${Y(med(ys))}" stroke-dasharray="4 4"/>`;
+    for (const p of [...ok].sort((a, b) => (a.hi ? 1 : 0) - (b.hi ? 1 : 0) || b.r - a.r)) {
+      const rad = many ? 3 + 7 * (p.r ?? 0.3) : 8 + 16 * (p.r ?? 0.5);
+      const attr = p.team ? `data-team="${esc(p.team)}"` : p.pid ? `data-pid="${esc(p.pid)}"` : "";
+      s += `<g ${attr} style="cursor:pointer"><circle class="${p.hi ? "k2" : "k1"}" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="${rad.toFixed(1)}" style="opacity:${p.hi ? 0.85 : many ? 0.45 : 0.55}"><title>${esc(p.name || p.label)}: ${STAT[xKey]?.label} ${fmtStat(xKey, p.x)}, ${STAT[yKey]?.label} ${fmtStat(yKey, p.y)}</title></circle>`;
+      if (!many || p.hi) s += `<text x="${X(p.x).toFixed(1)}" y="${(Y(p.y) - rad - 4).toFixed(1)}" text-anchor="middle" style="font-size:12px;fill:var(--fg)">${esc(p.label)}</text>`;
+      s += `</g>`;
+    }
+    s += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle">${esc(STAT[xKey]?.name || xKey)}</text>`;
+    s += `<text x="14" y="${(T + H - B) / 2}" text-anchor="middle" transform="rotate(-90 14 ${(T + H - B) / 2})">${esc(STAT[yKey]?.name || yKey)}</text>`;
+    return s + "</svg>";
+  },
+
   /** Βαθμονόμηση: bins [{pred, obs, n}] — κύκλοι με εμβαδό ανάλογο του n, διαγώνιος = τέλεια. */
   calibration(bins, W = Charts.W(520)) {
     if (!bins.length) return `<div class="empty">Δεν υπάρχουν δεδομένα</div>`;
@@ -435,7 +489,7 @@ const logCol = (k) => ({ key: k, label: STAT[k]?.label || k, n: true, fmt: (v) =
 /* =========================================================================
  * 7. Εφαρμογή: κατάσταση, φόρτωση δεδομένων, routing
  * ========================================================================= */
-const VIEWS = ["home", "teams", "players", "explorer", "predictions"];
+const VIEWS = ["home", "teams", "players", "analysis", "explorer", "predictions"];
 
 const App = {
   manifest: null, section: "europe", comp: "E", season: null,
@@ -444,6 +498,7 @@ const App = {
   evals: new Map(),       // "E" -> eval json (ζωντανή αξιολόγηση) | null
   ui: {
     team: null, team2: "", players: [], pstat: "PTS",
+    an: { level: "teams", cat: "", n: 10, minGP: null, minMIN: 10, team: "", sx: "", sy: "", ss: "GP", slevel: "teams" },
     ex: { level: "players", all: false, mode: "avg", team: "", minGP: 1, minMIN: 0, q: "", cs: "PTS", co: ">=", cv: "",
           cols: { players: ["GP", "MIN", "PTS", "REB", "AST", "STL", "BLK", "TOV", "PIR", "FG3P", "TS"],
                   teams: ["GP", "W", "L", "PTS", "OPP", "NET", "PACE", "ORTG", "DRTG", "EFG", "TOVP", "OREBP"],
@@ -935,6 +990,117 @@ const Views = {
       a.href = URL.createObjectURL(blob); a.download = `${App.comp}_${ex.level}_${ex.all ? "all" : S.season}.csv`;
       document.body.appendChild(a); a.click(); a.remove();
     };
+  },
+
+  /* ---------------- Ανάλυση: κατατάξεις ανά κατηγορία + scatter ---------------- */
+  analysis(el, S) {
+    const an = App.ui.an;
+    if (!S.hasBox) { an.level = "teams"; an.slevel = "teams"; }
+    const teams = [...S.teamAgg.values()];
+    const players = S.playerAgg;
+    if (!teams.length) { el.innerHTML = `<div class="empty">Δεν έχουν παιχτεί ακόμα ματς σε αυτή τη σεζόν.</div>`; return; }
+    const maxGP = Math.max(1, ...players.map((p) => p.GP));
+    if (an.minGP == null) an.minGP = Math.max(1, Math.round(0.3 * maxGP));
+    const teamOpts = [...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => `<option value="${t.code}">${esc(t.name)}</option>`).join("");
+    const statsFor = (lvl) => (lvl === "teams" ? (S.hasBox ? TEAM_COLS : TEAM_BASIC) : PLAYER_COLS).filter((k) => k !== "GP" || lvl === "teams");
+    const opt = (list, sel) => list.map((k) => `<option value="${k}" ${k === sel ? "selected" : ""}>${esc(STAT[k]?.name || k)}</option>`).join("");
+
+    el.innerHTML = `
+      <section><div class="sec-head"><h2>Κατατάξεις</h2></div>
+        <div class="filters">
+          ${S.hasBox ? `<label>Επίπεδο<select id="an-level"><option value="teams">Ομάδες</option><option value="players">Παίκτες</option></select></label>` : ""}
+          <label>Κατηγορία<select id="an-cat"></select></label>
+          <label>Πόσοι<select id="an-n"><option>5</option><option>10</option><option>20</option></select></label>
+          <span id="an-pf" class="filters" style="gap:10px">
+            <label>Ομάδα<select id="an-team"><option value="">Όλες</option>${teamOpts}</select></label>
+            <label>Ελάχ. αγώνες<input type="number" id="an-gp" min="1" style="width:70px"></label>
+            <label>Ελάχ. λεπτά<input type="number" id="an-min" min="0" style="width:70px"></label>
+          </span>
+        </div>
+        <div id="an-ranks"></div>
+      </section>
+      <section><div class="sec-head"><h2>Σύγκριση δύο μεταβλητών</h2></div>
+        <div class="filters">
+          ${S.hasBox ? `<label>Σημεία<select id="sc-level"><option value="teams">Ομάδες</option><option value="players">Παίκτες</option></select></label>` : ""}
+          <label>Οριζόντιος άξονας<select id="sc-x"></select></label>
+          <label>Κάθετος άξονας<select id="sc-y"></select></label>
+          <label>Μέγεθος<select id="sc-s"></select></label>
+          <label>Επισήμανση<select id="sc-hi"><option value="">—</option>${teamOpts}</select></label>
+        </div>
+        <div class="chart" id="sc-chart"></div>
+        <p class="muted" style="margin:0;font-size:13px" id="sc-note"></p>
+      </section>`;
+    const v = (id) => $("#" + id, el);
+    if (v("an-level")) v("an-level").value = an.level;
+    if (v("sc-level")) v("sc-level").value = an.slevel;
+    v("an-n").value = String(an.n); v("an-team").value = an.team; v("an-gp").value = an.minGP; v("an-min").value = an.minMIN;
+    v("sc-hi").value = an.hi || "";
+
+    // ---------- κατατάξεις ----------
+    const drawRanks = () => {
+      const lvl = an.level, cats = RANK_CATS[lvl];
+      const avail = new Set(statsFor(lvl));
+      v("an-cat").innerHTML = `<option value="">Όλες</option>` + cats.map((c, i) => `<option value="${i}">${esc(c.name)}</option>`).join("");
+      v("an-cat").value = an.cat;
+      v("an-pf").hidden = lvl !== "players";
+      let rows = lvl === "teams" ? teams : players.filter((p) => p.GP >= an.minGP && p.MIN >= an.minMIN && (!an.team || p.team === an.team));
+      const shown = (an.cat === "" ? cats : [cats[+an.cat]]).filter(Boolean);
+      const card = (k) => {
+        const low = STAT[k]?.low, q = RANK_QUAL[k];
+        const list = rows.filter((r) => isNum(r[k]) && (lvl === "teams" || !q || q(r)))
+          .sort((a, b) => (low ? a[k] - b[k] : b[k] - a[k])).slice(0, an.n);
+        if (!list.length) return "";
+        const vals = list.map((r) => Math.abs(r[k])), mx = Math.max(...vals) || 1;
+        return `<div class="rank-card"><div class="rank-title">${esc(STAT[k].name)}${low ? ' <span class="muted">(λιγότερα = καλύτερα)</span>' : ""}</div>
+          <ol class="rank-list">${list.map((r, i) => `<li><span class="rank-n num">${i + 1}</span>
+            <span class="rank-name">${lvl === "teams" ? App.teamLink(r.code, S) : App.playerLink(r.pid, r.player)}${lvl === "players" ? ` <span class="muted">${esc(teamShort(S, r.team))}</span>` : ""}</span>
+            <span class="rank-val num">${fmtStat(k, r[k])}</span>
+            <span class="rank-bar"><i style="width:${(100 * Math.abs(r[k]) / mx).toFixed(0)}%"></i></span></li>`).join("")}</ol></div>`;
+      };
+      v("an-ranks").innerHTML = shown.map((c) => {
+        const cards = c.stats.filter((k) => avail.has(k)).map(card).join("");
+        return cards ? `<h3 style="margin-top:6px">${esc(c.name)}</h3><div class="rank-grid">${cards}</div>` : "";
+      }).join("") || `<div class="empty">Κανένας παίκτης με αυτά τα φίλτρα.</div>`;
+    };
+
+    // ---------- scatter ----------
+    const drawScatter = () => {
+      const lvl = an.slevel, list = statsFor(lvl);
+      const defX = lvl === "teams" ? (S.hasBox ? "ORTG" : "PTS") : "MIN", defY = lvl === "teams" ? (S.hasBox ? "DRTG" : "OPP") : "PIR";
+      if (!list.includes(an.sx)) an.sx = defX;
+      if (!list.includes(an.sy)) an.sy = defY;
+      const sizes = ["GP", ...list.filter((k) => !STAT[k]?.pct && k !== "GP")];
+      if (!sizes.includes(an.ss)) an.ss = "GP";
+      v("sc-x").innerHTML = opt(list, an.sx); v("sc-y").innerHTML = opt(list, an.sy); v("sc-s").innerHTML = opt(sizes, an.ss);
+      const src = lvl === "teams" ? teams : players.filter((p) => p.GP >= an.minGP && p.MIN >= an.minMIN);
+      const sv = src.map((r) => r[an.ss]).filter(isNum), lo = Math.min(...sv), hi = Math.max(...sv);
+      const pts = src.map((r) => ({
+        x: r[an.sx], y: r[an.sy], r: hi > lo ? (r[an.ss] - lo) / (hi - lo) : 0.5,
+        label: lvl === "teams" ? teamShort(S, r.code) : r.player.split(" ").at(-1),
+        name: lvl === "teams" ? r.name : `${r.player} (${teamShort(S, r.team)})`,
+        team: lvl === "teams" ? r.code : null, pid: lvl === "players" ? r.pid : null,
+        hi: !!an.hi && (lvl === "teams" ? r.code === an.hi : r.team === an.hi),
+      }));
+      v("sc-chart").innerHTML = Charts.bubble({ pts, xKey: an.sx, yKey: an.sy });
+      const lowNote = [an.sx, an.sy].filter((k) => STAT[k]?.low).map((k) => STAT[k].label);
+      v("sc-note").textContent = `Οι διακεκομμένες γραμμές είναι οι διάμεσοι. Το μέγεθος δείχνει «${STAT[an.ss]?.name}». ` +
+        (lvl === "players" ? `Παίκτες με ≥${an.minGP} αγώνες και ≥${an.minMIN}' (φίλτρα της κατάταξης). ` : "") +
+        (lowNote.length ? `Για ${lowNote.join(", ")} μικρότερη τιμή = καλύτερα. ` : "") + "Πάτα σε μπάλα για λεπτομέρειες.";
+    };
+
+    drawRanks(); drawScatter();
+    const on = (id, fn) => { const x = v(id); if (x) x.onchange = x.oninput = fn; };
+    on("an-level", (e) => { an.level = e.target.value; an.cat = ""; drawRanks(); });
+    on("an-cat", (e) => { an.cat = e.target.value; drawRanks(); });
+    on("an-n", (e) => { an.n = +e.target.value; drawRanks(); });
+    on("an-team", (e) => { an.team = e.target.value; drawRanks(); });
+    on("an-gp", (e) => { an.minGP = +e.target.value || 1; drawRanks(); drawScatter(); });
+    on("an-min", (e) => { an.minMIN = +e.target.value || 0; drawRanks(); drawScatter(); });
+    on("sc-level", (e) => { an.slevel = e.target.value; drawScatter(); });
+    on("sc-x", (e) => { an.sx = e.target.value; drawScatter(); });
+    on("sc-y", (e) => { an.sy = e.target.value; drawScatter(); });
+    on("sc-s", (e) => { an.ss = e.target.value; drawScatter(); });
+    on("sc-hi", (e) => { an.hi = e.target.value; drawScatter(); });
   },
 
   /* ---------------- Μοντέλα: προβλέψεις + αξιολόγηση ---------------- */
