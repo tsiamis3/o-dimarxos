@@ -33,10 +33,23 @@ jobs:
           cache: pip
 
       - name: Install
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt requests
 
       - name: Fetch new games (incremental)
         run: python scripts/fetch_data.py
+
+      # Τα υπόλοιπα πρωταθλήματα: αν κάποιο site δεν απαντήσει, το site ανεβαίνει κανονικά με τα υπόλοιπα
+      - name: Greek Basket League (esake.gr)
+        continue-on-error: true
+        run: python scripts/scrapers/esake.py
+
+      - name: NBA (ESPN)
+        continue-on-error: true
+        run: python scripts/scrapers/nba_espn.py
+
+      - name: Α2 γυναικών (apps.basket.gr)
+        continue-on-error: true
+        run: python scripts/scrapers/eok_apps.py --comp 5 --code WBL2
 
       - name: Train player-form model (Keras)
         run: python scripts/train_model.py

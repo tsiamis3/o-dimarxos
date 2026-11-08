@@ -73,6 +73,7 @@ const PLAYER_COLS = ["GP", "GS", "MIN", "PTS", "REB", "OREB", "DREB", "AST", "ST
   "FG2M", "FG2A", "FG2P", "FG3M", "FG3A", "FG3P", "FTM", "FTA", "FTP", "EFG", "TS", "PTS36", "PIR36"];
 const TEAM_COLS = ["GP", "W", "L", "WPCT", "PTS", "OPP", "DIFF", "PACE", "ORTG", "DRTG", "NET", "EFG", "OEFG", "TOVP",
   "OREBP", "FTR", "FG2P", "FG3P", "FTP", "REB", "AST", "STL", "BLK", "TOV", "PIR", "OPIR"];
+const TEAM_BASIC = ["GP", "W", "L", "WPCT", "PTS", "OPP", "DIFF"];   // όταν δεν υπάρχουν box scores
 const LOG_STATS = ["MIN", "PTS", "REB", "OREB", "DREB", "AST", "STL", "BLK", "TOV", "PF", "FD", "PIR", "PM",
   "FG2M", "FG2A", "FG3M", "FG3A", "FTM", "FTA"];
 
@@ -103,6 +104,7 @@ class Season {
       r.player = this.playerNames[r.pid];
       return r;
     });
+    this.hasBox = this.logs.length > 0;   // false = διοργάνωση μόνο με αποτελέσματα (π.χ. Α2 γυναικών)
     this._tg = null; this._ta = null; this._pa = null;
   }
   teamName(c) { return this.teams[c] || c || "?"; }
@@ -111,6 +113,7 @@ class Season {
   /** Σύνολα ομάδας ανά ματς + αντίπαλος + κατοχές. */
   get teamGames() {
     if (this._tg) return this._tg;
+    if (!this.hasBox) return (this._tg = this.teamGamesFromScores());
     const m = new Map();
     for (const r of this.logs) {
       const k = r.gameCode + "|" + r.team;
@@ -132,6 +135,24 @@ class Season {
     }
     this._tg = [...m.values()].filter((t) => t.o).sort((a, b) => (a.date || "").localeCompare(b.date || "") || a.gameCode - b.gameCode);
     return this._tg;
+  }
+
+  /** Χωρίς box scores: κάθε αγώνας μετρά ως 100 "κατοχές", άρα τα ratings = πόντοι ανά αγώνα
+   *  και η προσομοίωση δουλεύει με πόντους υπέρ/κατά. */
+  teamGamesFromScores() {
+    const out = [];
+    for (const g of this.games) {
+      if (!isNum(g.hs) || !isNum(g.as)) continue;
+      const mk = (code, opp, pts, home) => {
+        const t = { code, opp, gameCode: g.gameCode, date: g.date, round: g.round, home, POSS: 100 };
+        SUM_STATS.forEach((k) => (t[k] = 0)); t.PTS = pts;
+        return t;
+      };
+      const h = mk(g.home, g.away, g.hs, 1), a = mk(g.away, g.home, g.as, 0);
+      h.o = a; a.o = h; h.win = g.hs > g.as; a.win = g.as > g.hs;
+      out.push(h, a);
+    }
+    return out.sort((a, b) => (a.date || "").localeCompare(b.date || "") || a.gameCode - b.gameCode);
   }
 
   /** Μέσοι όροι / ratings ανά ομάδα. */
@@ -403,7 +424,7 @@ const logCol = (k) => ({ key: k, label: STAT[k]?.label || k, n: true, fmt: (v) =
 const VIEWS = ["home", "teams", "players", "explorer", "predictions"];
 
 const App = {
-  manifest: null, comp: "E", season: null,
+  manifest: null, section: "europe", comp: "E", season: null,
   cache: new Map(),       // "E2026" -> Season
   preds: new Map(),       // "E" -> predictions json | null
   ui: {
@@ -446,16 +467,39 @@ const App = {
     if (!this.manifest.competitions.length) { $("#view").innerHTML = `<div class="empty">Η βάση είναι άδεια.</div>`; return; }
     $("#updated").textContent = "ενημέρωση " + this.manifest.updated;
     $("#demo-banner").hidden = !this.manifest.demo;
+    const secs = this.sections();
+    const savedSec = store.get("section");
+    this.section = secs.some((x) => x.key === savedSec) ? savedSec : secs[0].key;
     const saved = store.get("comp");
-    this.comp = this.manifest.competitions.some((c) => c.code === saved) ? saved : this.manifest.competitions[0].code;
+    const inSec = this.sectionInfo().comps;
+    this.comp = inSec.includes(saved) ? saved : inSec[0];
     this.season = this.latestSeason();
     this.renderControls();
     window.addEventListener("hashchange", () => this.render());
     await this.render();
   },
 
+  /** Ενότητες (σελίδες) του site: Ευρώπη / Ελλάδα / NBA. Παλιό manifest χωρίς sections -> μία ενότητα. */
+  sections() {
+    return this.manifest.sections?.length ? this.manifest.sections
+      : [{ key: "europe", name: "Ευρώπη", comps: this.manifest.competitions.map((c) => c.code) }];
+  },
+  sectionInfo() { return this.sections().find((x) => x.key === this.section) || this.sections()[0]; },
+
   renderControls() {
-    $("#comp-seg").innerHTML = this.manifest.competitions.map((c) =>
+    const secs = this.sections();
+    $("#section-seg").hidden = secs.length < 2;
+    $("#section-seg").innerHTML = secs.map((x) =>
+      `<button data-sec="${x.key}" aria-pressed="${x.key === this.section}">${esc(x.name)}</button>`).join("");
+    $("#section-seg").onclick = (e) => {
+      const b = e.target.closest("[data-sec]"); if (!b || b.dataset.sec === this.section) return;
+      this.section = b.dataset.sec; store.set("section", this.section);
+      this.comp = this.sectionInfo().comps[0]; store.set("comp", this.comp);
+      this.season = this.latestSeason(); this.resetSelections(); this.renderControls(); this.render();
+    };
+    const comps = this.sectionInfo().comps.map((c) => this.compInfo(c)).filter(Boolean);
+    $("#comp-seg").hidden = comps.length < 2;
+    $("#comp-seg").innerHTML = comps.map((c) =>
       `<button data-comp="${c.code}" aria-pressed="${c.code === this.comp}">${esc(c.name)}</button>`).join("");
     $("#comp-seg").onclick = (e) => {
       const b = e.target.closest("[data-comp]"); if (!b || b.dataset.comp === this.comp) return;
@@ -474,6 +518,10 @@ const App = {
   goTeam(code) { this.ui.team = code; this.ui.team2 = ""; this.go("teams"); },
 
   async render() {
+    const info = this.compInfo();
+    const off = { players: info.hasBox === false, predictions: !info.predictions };
+    $$("#tabs a").forEach((a) => (a.hidden = !!off[a.getAttribute("href").slice(1)]));
+    if (off[this.route()]) { location.hash = "home"; return; }
     const v = this.route();
     $$("#tabs a").forEach((a) => a.setAttribute("aria-current", a.getAttribute("href") === "#" + v ? "page" : "false"));
     const view = $("#view");
@@ -540,8 +588,8 @@ const Views = {
     el.innerHTML = `
       <section>
         <div class="sec-head"><h2>${nextRound != null ? `Επόμενη αγωνιστική · ${nextRound}η` : "Δεν υπάρχουν επερχόμενα ματς"}</h2>
-          <span class="muted">${S.comp === "E" ? "EuroLeague" : "EuroCup"} ${seasonLabel(S.season)}</span></div>
-        ${upcoming.length ? `<p class="muted" style="margin:0">Οι αριθμοί δίπλα στις ομάδες είναι το αναμενόμενο σκορ από ratings επίθεσης/άμυνας και ρυθμού, με +${MatchSim.HCA} πόντους έδρα.</p>
+          <span class="muted">${esc(App.compInfo().name)} ${seasonLabel(S.season)}</span></div>
+        ${upcoming.length ? `<p class="muted" style="margin:0">Οι αριθμοί δίπλα στις ομάδες είναι το αναμενόμενο σκορ ${S.hasBox ? "από ratings επίθεσης/άμυνας και ρυθμού" : "από τους πόντους υπέρ/κατά κάθε ομάδας"}, με +${MatchSim.HCA} πόντους έδρα.</p>
         <div class="games" id="up">${upcoming.map(gameCard).join("")}</div>` : `<div class="empty">Η σεζόν ${seasonLabel(S.season)} δεν έχει άλλα προγραμματισμένα ματς.</div>`}
       </section>
       ${results.length ? `<section><div class="sec-head"><h2>Αποτελέσματα · ${lastRound}η αγωνιστική</h2></div>
@@ -551,7 +599,7 @@ const Views = {
     const st = S.standings().map((t, i) => ({ ...t, pos: i + 1 }));
     new SortTable($("#standings", el), {
       cols: [{ key: "pos", label: "#", n: true }, { key: "name", label: "Ομάδα", html: (r) => App.teamLink(r.code, S) },
-        statCol("GP"), statCol("W"), statCol("L"), statCol("PTS"), statCol("OPP"), statCol("DIFF"), statCol("NET")],
+        statCol("GP"), statCol("W"), statCol("L"), statCol("PTS"), statCol("OPP"), statCol("DIFF"), ...(S.hasBox ? [statCol("NET")] : [])],
       rows: st, sortKey: "pos", sortDir: 1,
     });
 
@@ -610,16 +658,16 @@ const Views = {
       const gs = A.games;
       tv.innerHTML = `
         <section><div class="sec-head"><h2>${esc(A.name)}</h2><span class="num">${A.W}–${A.L}</span></div>
-          <div class="tiles">${["PTS", "OPP", "NET", "ORTG", "DRTG", "PACE", "EFG", "TOVP"].map((k) => tile(k)).join("")}</div></section>
+          <div class="tiles">${(S.hasBox ? ["PTS", "OPP", "NET", "ORTG", "DRTG", "PACE", "EFG", "TOVP"] : ["PTS", "OPP", "DIFF", "WPCT"]).map((k) => tile(k)).join("")}</div></section>
         <section><h3>Πόντοι ανά αγώνα</h3>
           <div class="legend"><span><i class="c1bg"></i>Πέτυχε</span><span><i class="c2bg"></i>Δέχτηκε</span></div>
           <div class="chart">${Charts.line({ series: [
             { k: "k1", dots: true, pts: gs.map((g, i) => [i + 1, g.PTS]) },
             { k: "k2", dots: true, pts: gs.map((g, i) => [i + 1, g.o.PTS]) }],
             xLabel: (x) => "Αγ." + (gs[x - 1]?.round ?? x) })}</div></section>
-        <section><h3>Ρόστερ (μέσοι όροι)</h3><div id="roster"></div></section>
+        ${S.hasBox ? `<section><h3>Ρόστερ (μέσοι όροι)</h3><div id="roster"></div></section>` : ""}
         <section><h3>Αγώνες</h3><div id="glog"></div></section>`;
-      new SortTable($("#roster", tv), {
+      if (S.hasBox) new SortTable($("#roster", tv), {
         cols: [{ key: "player", label: "Παίκτης", html: (r) => App.playerLink(r.pid, r.player) },
           ...["GP", "MIN", "PTS", "REB", "AST", "STL", "BLK", "TOV", "PIR", "FG2P", "FG3P", "FTP", "TS"].map(statCol)],
         rows: S.playerAgg.filter((p) => p.team === A.code), sortKey: "PIR",
@@ -628,7 +676,7 @@ const Views = {
         cols: [{ key: "round", label: "Αγ.", n: true }, { key: "date", label: "Ημ/νία", fmt: fmtDate },
           { key: "opp", label: "Αντίπαλος", html: (r) => (r.home ? "vs " : "@ ") + App.teamLink(r.opp, S) },
           { key: "res", label: "Αποτ.", html: (r) => `<span class="pill ${r.win ? "w" : "l"}">${r.win ? "Ν" : "Η"}</span> <span class="num">${r.PTS}–${r.o.PTS}</span>` },
-          statCol("PIR"), statCol("AST"), statCol("TOV")],
+          ...(S.hasBox ? [statCol("PIR"), statCol("AST"), statCol("TOV")] : [])],
         rows: gs.map((g) => ({ ...g, res: g.PTS - g.o.PTS })), sortKey: "round", sortDir: -1,
       });
       return;
@@ -642,12 +690,12 @@ const Views = {
     tv.innerHTML = `
       <section><div class="legend"><span><i class="c1bg"></i>${esc(A.name)} (${A.W}–${A.L})</span><span><i class="c2bg"></i>${esc(B.name)} (${B.W}–${B.L})</span></div></section>
       <div class="grid2">
-        <section><h3>Προφίλ (εκατοστημόριο στη λίγκα)</h3>
+        ${!S.hasBox ? "" : `<section><h3>Προφίλ (εκατοστημόριο στη λίγκα)</h3>
           <div class="chart">${Charts.radar({ axes: RADAR.map((k) => STAT[k].label), series: [
             { k: "k1", vals: RADAR.map((k) => pctRank(k, A[k])) }, { k: "k2", vals: RADAR.map((k) => pctRank(k, B[k])) }] })}</div>
-          <p class="muted" style="margin:0;font-size:13px">Πιο έξω = καλύτερο (για DRTG και TOV% έχει αντιστραφεί).</p></section>
+          <p class="muted" style="margin:0;font-size:13px">Πιο έξω = καλύτερο (για DRTG και TOV% έχει αντιστραφεί).</p></section>`}
         <section><h3>Στατιστικά</h3><div class="tbl-wrap"><table><thead><tr><th>Στατιστικό</th><th class="n">${esc(A.code)}</th><th class="n">${esc(B.code)}</th></tr></thead><tbody>
-          ${TEAM_COLS.filter((k) => k !== "GP").map((k) => {
+          ${(S.hasBox ? TEAM_COLS : TEAM_BASIC).filter((k) => k !== "GP").map((k) => {
             const a = A[k], b = B[k], low = STAT[k].low, nt = STAT[k].neutral, ab = !nt && (low ? a < b : a > b), ba = !nt && (low ? b < a : b > a);
             return `<tr><td>${STAT[k].name}</td><td class="n ${ab ? "better" : ""}">${fmtStat(k, a)}</td><td class="n ${ba ? "better" : ""}">${fmtStat(k, b)}</td></tr>`;
           }).join("")}</tbody></table></div></section>
@@ -773,7 +821,9 @@ const Views = {
     const SS = await Promise.all(seasons.map((s) => App.loadSeason(App.comp, s)));
     const teamNames = Object.assign({}, ...SS.map((x) => x.teams));
     const tn = (c) => teamNames[c] || c;
-    const avail = { players: PLAYER_COLS, teams: TEAM_COLS, logs: LOG_STATS }[ex.level];
+    if (!S.hasBox) ex.level = "teams";
+    const avail = { players: PLAYER_COLS, teams: S.hasBox ? TEAM_COLS : TEAM_BASIC, logs: LOG_STATS }[ex.level];
+    if (!S.hasBox && !ex.cols.teams.some((c) => avail.includes(c))) ex.cols.teams = [...TEAM_BASIC];
     ex.cols[ex.level] = ex.cols[ex.level].filter((c) => avail.includes(c));
     if (!avail.includes(ex.cs)) ex.cs = avail.includes("PTS") ? "PTS" : avail[0];
 
@@ -781,7 +831,7 @@ const Views = {
       <section><div class="sec-head"><h2>Βάση δεδομένων</h2><button class="btn" id="csv">Λήψη CSV</button></div>
         <div class="filters">
           <label>Επίπεδο<select id="ex-level">
-            <option value="players">Παίκτες (σεζόν)</option><option value="teams">Ομάδες (σεζόν)</option><option value="logs">Παίκτες ανά αγώνα</option></select></label>
+            ${S.hasBox ? `<option value="players">Παίκτες (σεζόν)</option>` : ""}<option value="teams">Ομάδες (σεζόν)</option>${S.hasBox ? `<option value="logs">Παίκτες ανά αγώνα</option>` : ""}</select></label>
           <label>Σεζόν<select id="ex-all"><option value="0">${seasonLabel(S.season)}</option><option value="1">Όλες (${seasons.length > 1 ? seasons.length : App.compInfo().seasons.length})</option></select></label>
           ${ex.level === "players" ? `<label>Τιμές<select id="ex-mode"><option value="avg">Μέσος όρος</option><option value="tot">Σύνολα</option></select></label>` : ""}
           <label>Ομάδα<select id="ex-team"><option value="">Όλες</option>${Object.keys(teamNames).sort((a, b) => tn(a).localeCompare(tn(b))).map((c) => `<option value="${c}">${esc(tn(c))}</option>`).join("")}</select></label>

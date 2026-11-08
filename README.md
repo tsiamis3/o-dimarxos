@@ -3,6 +3,17 @@
 Στατιστικά EuroLeague / EuroCup σε GitHub Pages, με επερχόμενα ματς, προσομοίωση αγώνων,
 σύγκριση ομάδων/παικτών, πλήρη βάση με φίλτρα και πρόβλεψη απόδοσης παικτών (Keras).
 
+## Ενότητες του site
+
+| Ενότητα | Διοργανώσεις | Πηγή | Στατιστικά παικτών |
+| --- | --- | --- | --- |
+| Ευρώπη | EuroLeague, EuroCup | EuroLeague API | Ναι |
+| Ελλάδα | Stoiximan GBL, Α2 Γυναικών | esake.gr, apps.basket.gr (ΕΟΚ) | GBL ναι, Α2 μόνο αποτελέσματα |
+| NBA | NBA | ESPN API | Ναι |
+
+Νέα διοργάνωση: scraper που γράφει στο ίδιο format (`scripts/scrapers/common.py`) + μια γραμμή στο
+`COMPETITIONS` και στο `SECTIONS` του `scripts/config.py`.
+
 ## Δομή
 
 ```

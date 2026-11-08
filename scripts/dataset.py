@@ -2,6 +2,8 @@
 Φόρτωση raw CSV -> καθαρό "game log" DataFrame (μία γραμμή = παίκτης σε ματς).
 Το χρησιμοποιούν και το build_site.py και το train_model.py.
 """
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -41,9 +43,9 @@ class CompetitionData:
 
     def _load_games(self) -> pd.DataFrame:
         frames = []
-        for p in sorted(RAW_DIR.glob(f"{self.comp}????_games.csv")):
+        for p, season in self._files("games.csv"):
             df = pd.read_csv(p)
-            df["season"] = int(p.name[1:5])
+            df["season"] = season
             frames.append(df)
         if not frames:
             raise FileNotFoundError(f"Δεν βρέθηκαν δεδομένα για {self.comp} στο {RAW_DIR}")
@@ -51,8 +53,20 @@ class CompetitionData:
         g["played"] = g["played"].astype(str).str.lower().isin(["true", "1"])
         return g
 
+    def _files(self, suffix: str) -> list[tuple]:
+        """Αρχεία {κωδικός}{σεζόν}_{suffix} — ο κωδικός μπορεί να έχει πολλά γράμματα (GBL, WBL2)."""
+        pat = re.compile(rf"^{re.escape(self.comp)}(\d{{4}})_{re.escape(suffix)}$")
+        return sorted((p, int(m.group(1))) for p in RAW_DIR.iterdir() if (m := pat.match(p.name)))
+
+    @property
+    def has_box(self) -> bool:
+        return len(self.logs) > 0
+
     def _load_logs(self) -> pd.DataFrame:
-        frames = [pd.read_csv(p) for p in sorted(RAW_DIR.glob(f"{self.comp}????_box.csv.gz"))]
+        frames = [pd.read_csv(p) for p, _ in self._files("box.csv.gz")]
+        cols = ["season", "gameCode", "Round", "date", "pid", "player", "team", "opp", "home", "starter", *STAT_COLS]
+        if not frames:                       # διοργάνωση μόνο με αποτελέσματα (π.χ. Α2 γυναικών)
+            return pd.DataFrame(columns=cols)
         b = pd.concat(frames, ignore_index=True).rename(columns=RENAME)
         b = b.rename(columns={"Season": "season", "Gamecode": "gameCode", "Home": "home",
                               "Player_ID": "pid", "Player": "player", "Team": "team",

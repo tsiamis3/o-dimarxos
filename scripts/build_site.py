@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-from config import COMPETITIONS, RAW_DIR, SITE_DATA
+from config import COMPETITIONS, RAW_DIR, SECTIONS, SITE_DATA
 from dataset import STAT_COLS, CompetitionData
 
 LOG_COLS = ["gameCode", "pid", "team", "opp", "home", "starter", *STAT_COLS]
@@ -47,13 +47,19 @@ class SiteBuilder:
         logs = data.logs[data.logs.season == season]
         games = data.games[(data.games.season == season)]
 
-        # σκορ από τα box scores (πιο αξιόπιστο από το πρόγραμμα)
-        pts = logs.groupby(["gameCode", "home"])["PTS"].sum().unstack("home")
-        played = games[games.gameCode.isin(pts.index)].copy()
-        played["homescore"] = played.gameCode.map(pts.get(1))
-        played["awayscore"] = played.gameCode.map(pts.get(0))
+        if len(logs):
+            # σκορ από τα box scores (πιο αξιόπιστο από το πρόγραμμα)
+            pts = logs.groupby(["gameCode", "home"])["PTS"].sum().unstack("home")
+            done = games.gameCode.isin(pts.index)
+            played = games[done].copy()
+            played["homescore"] = played.gameCode.map(pts.get(1))
+            played["awayscore"] = played.gameCode.map(pts.get(0))
+        else:
+            # διοργάνωση χωρίς box scores: σκορ από το πρόγραμμα
+            done = games.played & games.homescore.notna()
+            played = games[done].copy()
         played = played.sort_values(["date", "gameCode"])
-        upcoming = games[~games.gameCode.isin(pts.index)].sort_values(["date", "gameCode"])
+        upcoming = games[~done & ~games.played].sort_values(["date", "gameCode"])
 
         players = (logs.sort_values("date").drop_duplicates("pid", keep="last")
                        .set_index("pid")["player"].to_dict())
@@ -81,16 +87,20 @@ class SiteBuilder:
         for comp, name in COMPETITIONS.items():
             try:
                 data = CompetitionData(comp)
-            except FileNotFoundError as e:
-                print(f"  ! {e}")
+            except (FileNotFoundError, ValueError) as e:
+                print(f"  ! {comp}: {e}")
                 continue
             seasons = [s for s in data.seasons if (data.logs.season == s).any() or s == max(data.seasons)]
             for s in seasons:
                 self.build_season(data, s)
             self.manifest["competitions"].append({
-                "code": comp, "name": name, "seasons": seasons,
+                "code": comp, "name": name, "seasons": seasons, "hasBox": data.has_box,
+                "section": next(k for k, (_, cs) in SECTIONS.items() if comp in cs),
                 "predictions": (SITE_DATA / f"predictions_{comp}.json").exists(),
             })
+        have = {c["code"] for c in self.manifest["competitions"]}
+        self.manifest["sections"] = [{"key": k, "name": n, "comps": [c for c in cs if c in have]}
+                                     for k, (n, cs) in SECTIONS.items() if any(c in have for c in cs)]
         (SITE_DATA / "manifest.json").write_text(json.dumps(self.manifest, indent=1))
         print("  manifest.json written")
 

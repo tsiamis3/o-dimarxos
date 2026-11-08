@@ -18,7 +18,7 @@ import time
 
 import pandas as pd
 
-from config import COMPETITIONS, RAW_DIR, SEASONS
+from config import COMPETITIONS, EUROLEAGUE_API, RAW_DIR, SEASONS
 
 GAME_COLS = ["gameCode", "Round", "date", "time", "homecode", "hometeam",
              "awaycode", "awayteam", "homescore", "awayscore", "played"]
@@ -131,7 +131,7 @@ class SeasonFetcher:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--comp", choices=list(COMPETITIONS), nargs="*", default=list(COMPETITIONS))
+    ap.add_argument("--comp", choices=EUROLEAGUE_API, nargs="*", default=EUROLEAGUE_API)
     ap.add_argument("--season", type=int, nargs="*", default=SEASONS)
     args = ap.parse_args()
     RAW_DIR.mkdir(parents=True, exist_ok=True)

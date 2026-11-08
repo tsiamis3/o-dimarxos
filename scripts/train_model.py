@@ -241,6 +241,9 @@ class Trainer:
     def run(self):
         print(f"== {COMPETITIONS[self.comp]}: features")
         data = CompetitionData(self.comp)
+        if not data.has_box:
+            print("   ! no box scores for this competition -> skip")
+            return
         fb = FeatureBuilder(data)
         df = fb.build()
         hist = df[df.is_next == 0]
@@ -310,8 +313,8 @@ def main():
     for c in args.comp:
         try:
             Trainer(c, args.arch, args.epochs).run()
-        except FileNotFoundError as e:
-            print(f"  ! {e}")
+        except (FileNotFoundError, ValueError) as e:
+            print(f"  ! {c}: {e}")
 
 
 if __name__ == "__main__":

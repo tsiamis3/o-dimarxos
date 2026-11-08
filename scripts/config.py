@@ -11,7 +11,18 @@ SITE_DIR = ROOT / "site"                 # ό,τι ανεβαίνει στο Git
 SITE_DATA = SITE_DIR / "data"            # JSON βάση που διαβάζει το site
 MODEL_DIR = ROOT / "models"              # αποθηκευμένο Keras μοντέλο + scalers
 
-COMPETITIONS = {"E": "EuroLeague", "U": "EuroCup"}
+# Όλες οι διοργανώσεις του site (κωδικός -> όνομα). Τα αρχεία είναι data/raw/{κωδικός}{σεζόν}_*.csv
+COMPETITIONS = {
+    "E": "EuroLeague", "U": "EuroCup",                 # EuroLeague API (fetch_data.py)
+    "GBL": "Stoiximan GBL", "WBL2": "Α2 Γυναικών",     # scrapers/esake.py, scrapers/eok_apps.py
+    "NBA": "NBA",                                      # scrapers/nba_espn.py
+}
+EUROLEAGUE_API = ["E", "U"]                           # όσες κατεβαίνουν με το euroleague-api
+
+# Ενότητες (σελίδες) του site -> ποιες διοργανώσεις περιέχουν
+SECTIONS = {"europe": ("Ευρώπη", ["E", "U"]),
+            "greece": ("Ελλάδα", ["GBL", "WBL2"]),
+            "nba": ("NBA", ["NBA"])}
 
 
 def current_season(today: date | None = None) -> int:
