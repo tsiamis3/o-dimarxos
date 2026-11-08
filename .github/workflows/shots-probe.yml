@@ -26,7 +26,7 @@ jobs:
           python-version: "3.12"
       - run: pip install pandas requests euroleague-api xmltodict
       - name: Probe (raw samples + coordinate check)
-        run: python scripts/scrapers/shots.py --probe 3
+        run: python scripts/scrapers/shots.py --comp E --probe 1
       - name: Download all shots (E, U, NBA)
         run: python scripts/scrapers/shots.py
       - name: Commit shots to this branch

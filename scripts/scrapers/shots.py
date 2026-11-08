@@ -32,8 +32,9 @@ from config import RAW_DIR, SEASONS  # noqa: E402
 COLS = ["gameCode", "pid", "team", "x", "y", "made", "pts", "zone", "fastbreak", "second_chance", "rx", "ry"]
 # rx, ry: ακατέργαστες συντεταγμένες της πηγής (για επανυπολογισμό αν αλλάξει η κανονικοποίηση)
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
-# ESPN: πόδια, x = 0..50 κατά πλάτος, y = απόσταση από την τελική γραμμή. Καλάθι 5.25 πόδια από την τελική.
-NBA_BASKET_X, NBA_BASKET_Y, FT = 25.0, 5.25, 0.3048
+# ESPN: ακέραια πόδια, x = 0..50 κατά πλάτος, y κατά μήκος· το καλάθι είναι στο (25, ~1)
+# (επαληθευμένο από τα δεδομένα: με y0 = 1 τα τρίποντα αρχίζουν στα 22 πόδια, όσο η γωνία του NBA)
+NBA_BASKET_X, NBA_BASKET_Y, FT = 25.0, 1.0, 0.3048
 
 
 def _played(comp, season):
@@ -97,10 +98,18 @@ def run_euro(comp, seasons, probe=0):
         print(f"== {comp}{s} shots: {len(have)} games cached, {len(todo)} to download")
         rows = []
         for i, gc in enumerate(todo, 1):
-            try:
-                df = api.get_game_shot_data(s, gc)
-            except Exception as e:  # noqa: BLE001
-                print(f"    ! {gc}: {e}")
+            df = None
+            for attempt in range(6):                 # το API κόβει (429) αν πάμε γρήγορα: αναμονή και ξανά
+                try:
+                    df = api.get_game_shot_data(s, gc)
+                    break
+                except Exception as e:  # noqa: BLE001
+                    if "429" in str(e) and attempt < 5:
+                        time.sleep(30 * (attempt + 1))
+                        continue
+                    print(f"    ! {gc}: {e}")
+                    break
+            if df is None:
                 continue
             if probe:
                 print(df.head(3).to_string())
@@ -111,7 +120,7 @@ def run_euro(comp, seasons, probe=0):
                 if not probe:
                     st.append(rows)
                     rows = []
-            time.sleep(0.1)
+            time.sleep(0.6)
         if probe:
             report(pd.DataFrame(rows, columns=COLS), f"{comp}{s}")
         else:
