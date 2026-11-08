@@ -69,6 +69,9 @@ jobs:
           git pull --rebase -X theirs origin main   # αν άλλαξε κώδικας στο μεταξύ, μην αποτύχει το push
           git push
 
+      - name: Cache busting (κάθε deploy φορτώνει αμέσως τα νέα αρχεία)
+        run: sed -i "s/__BUILD__/${GITHUB_RUN_ID}/g" site/index.html
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

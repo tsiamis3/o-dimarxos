@@ -725,6 +725,7 @@ const Views = {
       <section><div class="filters">
         <label>Ομάδα<select id="t1">${opts(App.ui.team)}</select></label>
         <label>Σύγκριση με<select id="t2">${opts(App.ui.team2, true)}</select></label>
+        <a class="btn" href="#analysis" style="text-decoration:none">Scatter όλων των ομάδων →</a>
       </div></section><div id="tv" style="display:flex;flex-direction:column;gap:28px"></div>`;
     $("#t1", el).onchange = (e) => { App.ui.team = e.target.value; Views.teams(el, S); };
     $("#t2", el).onchange = (e) => { App.ui.team2 = e.target.value; Views.teams(el, S); };
