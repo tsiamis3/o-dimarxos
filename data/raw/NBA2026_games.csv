@@ -207,8 +207,8 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401910002,5,2026-11-17,19:30,TOR,Toronto Raptors,NY,New York Knicks,,,False
 401910003,5,2026-11-17,20:00,MIN,Minnesota Timberwolves,POR,Portland Trail Blazers,,,False
 401910004,5,2026-11-17,20:00,SA,San Antonio Spurs,DET,Detroit Pistons,,,False
-401910005,5,2026-11-17,22:00,LAL,Los Angeles Lakers,CHA,Charlotte Hornets,,,False
-401910006,5,2026-11-17,23:00,LAC,LA Clippers,UTAH,Utah Jazz,,,False
+401910005,5,2026-11-17,23:00,LAL,Los Angeles Lakers,CHA,Charlotte Hornets,,,False
+401910006,5,2026-11-17,22:30,LAC,LA Clippers,UTAH,Utah Jazz,,,False
 401910007,5,2026-11-18,19:00,CLE,Cleveland Cavaliers,MEM,Memphis Grizzlies,,,False
 401910008,5,2026-11-18,19:00,IND,Indiana Pacers,HOU,Houston Rockets,,,False
 401910009,5,2026-11-18,19:00,MIA,Miami Heat,MIL,Milwaukee Bucks,,,False
