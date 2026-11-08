@@ -1,0 +1,249 @@
+gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore,played
+401909088,1,2026-10-20,15:00,DET,Detroit Pistons,BOS,Boston Celtics,121.0,113.0,True
+401909089,1,2026-10-20,19:00,NY,New York Knicks,PHI,Philadelphia 76ers,100.0,106.0,True
+401909090,1,2026-10-20,21:50,SA,San Antonio Spurs,OKC,Oklahoma City Thunder,104.0,116.0,True
+401909091,1,2026-10-21,19:30,MIA,Miami Heat,MIN,Minnesota Timberwolves,106.0,131.0,True
+401909092,1,2026-10-21,22:00,LAL,Los Angeles Lakers,GS,Golden State Warriors,127.0,105.0,True
+401909834,1,2026-10-21,19:00,ORL,Orlando Magic,ATL,Atlanta Hawks,125.0,132.0,True
+401909835,1,2026-10-21,19:00,WSH,Washington Wizards,MIL,Milwaukee Bucks,128.0,116.0,True
+401909836,1,2026-10-21,19:30,BKN,Brooklyn Nets,CHA,Charlotte Hornets,103.0,110.0,True
+401909837,1,2026-10-21,19:30,TOR,Toronto Raptors,CHI,Chicago Bulls,135.0,92.0,True
+401909838,1,2026-10-21,20:00,MEM,Memphis Grizzlies,UTAH,Utah Jazz,123.0,103.0,True
+401909839,1,2026-10-21,20:00,NO,New Orleans Pelicans,IND,Indiana Pacers,120.0,123.0,True
+401909840,1,2026-10-21,20:30,HOU,Houston Rockets,DAL,Dallas Mavericks,128.0,110.0,True
+401909841,1,2026-10-21,22:00,POR,Portland Trail Blazers,PHX,Phoenix Suns,124.0,83.0,True
+401909842,1,2026-10-21,22:30,LAC,LA Clippers,SAC,Sacramento Kings,121.0,96.0,True
+401909093,1,2026-10-22,19:00,PHI,Philadelphia 76ers,CLE,Cleveland Cavaliers,114.0,106.0,True
+401909094,1,2026-10-22,21:30,OKC,Oklahoma City Thunder,DEN,Denver Nuggets,96.0,84.0,True
+401909095,1,2026-10-23,19:00,BOS,Boston Celtics,NY,New York Knicks,107.0,103.0,True
+401909096,1,2026-10-23,21:30,SA,San Antonio Spurs,HOU,Houston Rockets,110.0,114.0,True
+401909843,1,2026-10-23,19:00,CHA,Charlotte Hornets,ATL,Atlanta Hawks,81.0,128.0,True
+401909844,1,2026-10-23,19:00,IND,Indiana Pacers,DAL,Dallas Mavericks,105.0,121.0,True
+401909845,1,2026-10-23,19:00,ORL,Orlando Magic,MIN,Minnesota Timberwolves,93.0,115.0,True
+401909846,1,2026-10-23,19:00,WSH,Washington Wizards,TOR,Toronto Raptors,102.0,112.0,True
+401909847,1,2026-10-23,20:00,MIA,Miami Heat,DET,Detroit Pistons,111.0,128.0,True
+401909848,1,2026-10-23,16:00,MIL,Milwaukee Bucks,CHI,Chicago Bulls,125.0,132.0,True
+401909849,1,2026-10-23,21:30,UTAH,Utah Jazz,NO,New Orleans Pelicans,120.0,119.0,True
+401909850,1,2026-10-23,22:00,GS,Golden State Warriors,MEM,Memphis Grizzlies,108.0,111.0,True
+401909851,1,2026-10-23,22:00,LAL,Los Angeles Lakers,LAC,LA Clippers,125.0,117.0,True
+401909852,1,2026-10-23,22:00,SAC,Sacramento Kings,POR,Portland Trail Blazers,120.0,128.0,True
+401909853,1,2026-10-24,18:00,CHA,Charlotte Hornets,MIA,Miami Heat,115.0,110.0,True
+401909854,1,2026-10-24,19:30,CLE,Cleveland Cavaliers,BKN,Brooklyn Nets,125.0,121.0,True
+401909855,1,2026-10-24,19:30,PHI,Philadelphia 76ers,MIL,Milwaukee Bucks,127.0,116.0,True
+401909856,1,2026-10-24,20:30,ATL,Atlanta Hawks,HOU,Houston Rockets,114.0,121.0,True
+401909857,1,2026-10-24,20:00,CHI,Chicago Bulls,WSH,Washington Wizards,120.0,124.0,True
+401909858,1,2026-10-24,20:00,DAL,Dallas Mavericks,SA,San Antonio Spurs,106.0,122.0,True
+401909859,1,2026-10-24,21:00,DEN,Denver Nuggets,NO,New Orleans Pelicans,141.0,135.0,True
+401909860,1,2026-10-24,22:00,PHX,Phoenix Suns,GS,Golden State Warriors,131.0,122.0,True
+401909861,1,2026-10-25,17:00,UTAH,Utah Jazz,LAL,Los Angeles Lakers,123.0,132.0,True
+401909862,1,2026-10-25,18:00,BKN,Brooklyn Nets,IND,Indiana Pacers,109.0,136.0,True
+401909863,1,2026-10-25,19:00,NY,New York Knicks,ORL,Orlando Magic,102.0,111.0,True
+401909864,1,2026-10-25,19:00,MIN,Minnesota Timberwolves,TOR,Toronto Raptors,117.0,94.0,True
+401909865,1,2026-10-25,19:00,OKC,Oklahoma City Thunder,LAC,LA Clippers,108.0,101.0,True
+401909866,1,2026-10-25,19:30,PHI,Philadelphia 76ers,DET,Detroit Pistons,93.0,106.0,True
+401909867,1,2026-10-25,21:00,SAC,Sacramento Kings,MEM,Memphis Grizzlies,112.0,123.0,True
+401909868,1,2026-10-26,19:00,CHA,Charlotte Hornets,WSH,Washington Wizards,110.0,103.0,True
+401909869,1,2026-10-26,19:00,CLE,Cleveland Cavaliers,MIN,Minnesota Timberwolves,127.0,125.0,True
+401909870,1,2026-10-26,19:30,BOS,Boston Celtics,CHI,Chicago Bulls,134.0,99.0,True
+401909871,1,2026-10-26,19:30,MIA,Miami Heat,DAL,Dallas Mavericks,109.0,113.0,True
+401909872,1,2026-10-26,20:00,MIL,Milwaukee Bucks,IND,Indiana Pacers,110.0,102.0,True
+401909873,1,2026-10-26,20:00,OKC,Oklahoma City Thunder,PHX,Phoenix Suns,125.0,114.0,True
+401909874,1,2026-10-26,20:30,HOU,Houston Rockets,ATL,Atlanta Hawks,120.0,110.0,True
+401909875,1,2026-10-26,21:00,UTAH,Utah Jazz,MEM,Memphis Grizzlies,105.0,110.0,True
+401909876,1,2026-10-26,22:00,DEN,Denver Nuggets,GS,Golden State Warriors,114.0,134.0,True
+401909877,2,2026-10-27,19:30,BOS,Boston Celtics,BKN,Brooklyn Nets,125.0,124.0,True
+401909878,2,2026-10-27,20:00,NY,New York Knicks,DET,Detroit Pistons,111.0,97.0,True
+401909879,2,2026-10-27,20:00,SA,San Antonio Spurs,SAC,Sacramento Kings,130.0,103.0,True
+401909880,2,2026-10-27,23:00,LAL,Los Angeles Lakers,POR,Portland Trail Blazers,129.0,136.0,True
+401909881,2,2026-10-28,19:00,ATL,Atlanta Hawks,MIA,Miami Heat,117.0,129.0,True
+401909882,2,2026-10-28,19:00,CLE,Cleveland Cavaliers,WSH,Washington Wizards,121.0,111.0,True
+401909883,2,2026-10-28,19:00,DET,Detroit Pistons,CHA,Charlotte Hornets,97.0,89.0,True
+401909884,2,2026-10-28,19:00,IND,Indiana Pacers,PHI,Philadelphia 76ers,109.0,114.0,True
+401909885,2,2026-10-28,19:30,TOR,Toronto Raptors,ORL,Orlando Magic,129.0,99.0,True
+401909886,2,2026-10-28,20:00,CHI,Chicago Bulls,NY,New York Knicks,127.0,133.0,True
+401909887,2,2026-10-28,20:00,MIL,Milwaukee Bucks,HOU,Houston Rockets,100.0,132.0,True
+401909888,2,2026-10-28,20:00,MIN,Minnesota Timberwolves,GS,Golden State Warriors,114.0,119.0,True
+401909889,2,2026-10-28,20:00,NO,New Orleans Pelicans,DEN,Denver Nuggets,91.0,104.0,True
+401909890,2,2026-10-28,21:00,UTAH,Utah Jazz,SA,San Antonio Spurs,111.0,117.0,True
+401909891,2,2026-10-28,21:30,DAL,Dallas Mavericks,OKC,Oklahoma City Thunder,120.0,96.0,True
+401909892,2,2026-10-28,22:30,LAC,LA Clippers,LAL,Los Angeles Lakers,87.0,103.0,True
+401909893,2,2026-10-29,20:00,ATL,Atlanta Hawks,CLE,Cleveland Cavaliers,114.0,111.0,True
+401909894,2,2026-10-29,20:00,NO,New Orleans Pelicans,SAC,Sacramento Kings,132.0,120.0,True
+401909895,2,2026-10-29,22:00,POR,Portland Trail Blazers,MEM,Memphis Grizzlies,103.0,124.0,True
+401909277,2,2026-10-30,19:00,WSH,Washington Wizards,CHA,Charlotte Hornets,95.0,79.0,True
+401909278,2,2026-10-30,19:30,BOS,Boston Celtics,CHI,Chicago Bulls,125.0,111.0,True
+401909279,2,2026-10-30,19:30,BKN,Brooklyn Nets,DET,Detroit Pistons,94.0,110.0,True
+401909280,2,2026-10-30,19:30,PHI,Philadelphia 76ers,NY,New York Knicks,98.0,93.0,True
+401909281,2,2026-10-30,19:30,TOR,Toronto Raptors,ORL,Orlando Magic,114.0,121.0,True
+401909282,2,2026-10-30,20:00,MIA,Miami Heat,IND,Indiana Pacers,145.0,125.0,True
+401909283,2,2026-10-30,20:00,DAL,Dallas Mavericks,HOU,Houston Rockets,116.0,111.0,True
+401909284,2,2026-10-30,20:00,MIN,Minnesota Timberwolves,LAC,LA Clippers,127.0,101.0,True
+401909285,2,2026-10-30,22:00,GS,Golden State Warriors,LAL,Los Angeles Lakers,112.0,95.0,True
+401909286,2,2026-10-30,22:00,PHX,Phoenix Suns,DEN,Denver Nuggets,120.0,127.0,True
+401909896,2,2026-10-31,15:00,UTAH,Utah Jazz,POR,Portland Trail Blazers,90.0,112.0,True
+401909897,2,2026-10-31,18:00,CHA,Charlotte Hornets,PHI,Philadelphia 76ers,104.0,109.0,True
+401909898,2,2026-10-31,19:00,NO,New Orleans Pelicans,ATL,Atlanta Hawks,121.0,99.0,True
+401909899,2,2026-10-31,20:00,MEM,Memphis Grizzlies,SAC,Sacramento Kings,136.0,105.0,True
+401909900,2,2026-10-31,20:00,MIL,Milwaukee Bucks,CLE,Cleveland Cavaliers,111.0,136.0,True
+401909901,2,2026-10-31,20:00,SA,San Antonio Spurs,MIN,Minnesota Timberwolves,121.0,111.0,True
+401909902,2,2026-10-31,20:30,HOU,Houston Rockets,OKC,Oklahoma City Thunder,119.0,98.0,True
+401909903,2,2026-11-01,15:30,ORL,Orlando Magic,BOS,Boston Celtics,97.0,108.0,True
+401909904,2,2026-11-01,17:00,IND,Indiana Pacers,BKN,Brooklyn Nets,90.0,98.0,True
+401909905,2,2026-11-01,20:30,GS,Golden State Warriors,LAC,LA Clippers,124.0,112.0,True
+401909906,2,2026-11-01,21:00,LAL,Los Angeles Lakers,TOR,Toronto Raptors,131.0,125.0,True
+401909907,2,2026-11-02,19:00,CLE,Cleveland Cavaliers,OKC,Oklahoma City Thunder,112.0,117.0,True
+401909908,2,2026-11-02,19:30,CHA,Charlotte Hornets,DET,Detroit Pistons,91.0,124.0,True
+401909909,2,2026-11-02,19:30,IND,Indiana Pacers,ATL,Atlanta Hawks,104.0,108.0,True
+401909910,2,2026-11-02,19:30,NY,New York Knicks,BKN,Brooklyn Nets,103.0,90.0,True
+401909911,2,2026-11-02,19:30,ORL,Orlando Magic,WSH,Washington Wizards,94.0,103.0,True
+401909912,2,2026-11-02,19:30,PHI,Philadelphia 76ers,CHI,Chicago Bulls,126.0,107.0,True
+401909913,2,2026-11-02,20:00,DAL,Dallas Mavericks,SAC,Sacramento Kings,100.0,115.0,True
+401909914,2,2026-11-02,20:00,MEM,Memphis Grizzlies,NO,New Orleans Pelicans,134.0,135.0,True
+401909915,2,2026-11-02,20:00,MIN,Minnesota Timberwolves,MIL,Milwaukee Bucks,112.0,100.0,True
+401909916,2,2026-11-02,20:30,HOU,Houston Rockets,BOS,Boston Celtics,109.0,93.0,True
+401909917,2,2026-11-02,20:30,SA,San Antonio Spurs,UTAH,Utah Jazz,119.0,97.0,True
+401909918,2,2026-11-02,21:00,DEN,Denver Nuggets,POR,Portland Trail Blazers,110.0,118.0,True
+401909919,2,2026-11-02,22:00,GS,Golden State Warriors,PHX,Phoenix Suns,116.0,113.0,True
+401909920,2,2026-11-02,22:00,LAC,LA Clippers,TOR,Toronto Raptors,118.0,125.0,True
+401909921,2,2026-11-02,22:00,LAL,Los Angeles Lakers,MIA,Miami Heat,138.0,117.0,True
+401909922,3,2026-11-04,19:00,DET,Detroit Pistons,PHI,Philadelphia 76ers,106.0,112.0,True
+401909923,3,2026-11-04,19:00,WSH,Washington Wizards,ATL,Atlanta Hawks,105.0,120.0,True
+401909924,3,2026-11-04,19:30,BOS,Boston Celtics,MIL,Milwaukee Bucks,109.0,102.0,True
+401909925,3,2026-11-04,19:30,BKN,Brooklyn Nets,CHA,Charlotte Hornets,114.0,104.0,True
+401909926,3,2026-11-04,19:30,NY,New York Knicks,CHI,Chicago Bulls,135.0,105.0,True
+401909927,3,2026-11-04,20:00,MEM,Memphis Grizzlies,IND,Indiana Pacers,103.0,107.0,True
+401909928,3,2026-11-04,20:00,NO,New Orleans Pelicans,UTAH,Utah Jazz,120.0,113.0,True
+401909929,3,2026-11-04,20:00,OKC,Oklahoma City Thunder,CLE,Cleveland Cavaliers,124.0,116.0,True
+401909930,3,2026-11-04,20:30,HOU,Houston Rockets,MIN,Minnesota Timberwolves,107.0,117.0,True
+401909931,3,2026-11-04,21:00,DEN,Denver Nuggets,TOR,Toronto Raptors,128.0,109.0,True
+401909932,3,2026-11-04,21:00,PHX,Phoenix Suns,POR,Portland Trail Blazers,119.0,132.0,True
+401909933,3,2026-11-04,21:30,SA,San Antonio Spurs,DAL,Dallas Mavericks,112.0,111.0,True
+401909934,3,2026-11-04,22:00,SAC,Sacramento Kings,LAL,Los Angeles Lakers,103.0,116.0,True
+401909935,3,2026-11-04,22:30,LAC,LA Clippers,MIA,Miami Heat,116.0,117.0,True
+401909936,3,2026-11-05,21:00,PHX,Phoenix Suns,ORL,Orlando Magic,117.0,104.0,True
+401909937,3,2026-11-05,22:00,GS,Golden State Warriors,MIA,Miami Heat,120.0,100.0,True
+401909287,3,2026-11-06,19:00,ATL,Atlanta Hawks,WSH,Washington Wizards,139.0,132.0,True
+401909288,3,2026-11-06,19:00,CHA,Charlotte Hornets,BOS,Boston Celtics,80.0,119.0,True
+401909289,3,2026-11-06,19:30,CLE,Cleveland Cavaliers,PHI,Philadelphia 76ers,119.0,95.0,True
+401909290,3,2026-11-06,20:00,DAL,Dallas Mavericks,UTAH,Utah Jazz,112.0,100.0,True
+401909291,3,2026-11-06,20:00,MEM,Memphis Grizzlies,OKC,Oklahoma City Thunder,97.0,128.0,True
+401909292,3,2026-11-06,20:00,MIL,Milwaukee Bucks,TOR,Toronto Raptors,107.0,121.0,True
+401909293,3,2026-11-06,20:00,NO,New Orleans Pelicans,MIN,Minnesota Timberwolves,109.0,115.0,True
+401909294,3,2026-11-06,22:00,LAL,Los Angeles Lakers,POR,Portland Trail Blazers,124.0,118.0,True
+401909295,3,2026-11-06,22:00,SAC,Sacramento Kings,SA,San Antonio Spurs,109.0,124.0,True
+401909938,3,2026-11-07,17:00,IND,Indiana Pacers,DEN,Denver Nuggets,,,False
+401909939,3,2026-11-07,19:30,ATL,Atlanta Hawks,BKN,Brooklyn Nets,,,False
+401909940,3,2026-11-07,20:00,CLE,Cleveland Cavaliers,NY,New York Knicks,,,False
+401909941,3,2026-11-07,20:00,OKC,Oklahoma City Thunder,WSH,Washington Wizards,,,False
+401909942,3,2026-11-07,20:30,GS,Golden State Warriors,ORL,Orlando Magic,,,False
+401909943,3,2026-11-07,21:00,PHX,Phoenix Suns,HOU,Houston Rockets,,,False
+401909944,3,2026-11-07,22:00,POR,Portland Trail Blazers,SA,San Antonio Spurs,,,False
+401909945,3,2026-11-08,15:30,CHI,Chicago Bulls,PHI,Philadelphia 76ers,,,False
+401909946,3,2026-11-08,18:00,DET,Detroit Pistons,LAL,Los Angeles Lakers,,,False
+401909947,3,2026-11-08,19:00,MIN,Minnesota Timberwolves,UTAH,Utah Jazz,,,False
+401909948,3,2026-11-08,19:30,DAL,Dallas Mavericks,BKN,Brooklyn Nets,,,False
+401909949,3,2026-11-08,20:00,MIL,Milwaukee Bucks,BOS,Boston Celtics,,,False
+401909950,3,2026-11-08,21:00,LAC,LA Clippers,NO,New Orleans Pelicans,,,False
+401909951,3,2026-11-08,21:00,SAC,Sacramento Kings,MIA,Miami Heat,,,False
+401909952,3,2026-11-09,19:00,ATL,Atlanta Hawks,LAL,Los Angeles Lakers,,,False
+401909953,3,2026-11-09,19:00,CHA,Charlotte Hornets,CLE,Cleveland Cavaliers,,,False
+401909954,3,2026-11-09,19:00,DET,Detroit Pistons,WSH,Washington Wizards,,,False
+401909955,3,2026-11-09,19:30,TOR,Toronto Raptors,MEM,Memphis Grizzlies,,,False
+401909956,3,2026-11-09,20:00,DAL,Dallas Mavericks,IND,Indiana Pacers,,,False
+401909957,3,2026-11-09,20:30,HOU,Houston Rockets,DEN,Denver Nuggets,,,False
+401909958,3,2026-11-09,21:00,PHX,Phoenix Suns,SA,San Antonio Spurs,,,False
+401909959,3,2026-11-09,22:00,GS,Golden State Warriors,NO,New Orleans Pelicans,,,False
+401909960,4,2026-11-10,19:30,NY,New York Knicks,MIL,Milwaukee Bucks,,,False
+401909961,4,2026-11-10,20:00,PHI,Philadelphia 76ers,BOS,Boston Celtics,,,False
+401909962,4,2026-11-10,21:00,PHX,Phoenix Suns,LAC,LA Clippers,,,False
+401909963,4,2026-11-10,21:00,UTAH,Utah Jazz,MIA,Miami Heat,,,False
+401909964,4,2026-11-10,22:00,SAC,Sacramento Kings,ORL,Orlando Magic,,,False
+401909965,4,2026-11-10,23:00,POR,Portland Trail Blazers,OKC,Oklahoma City Thunder,,,False
+401909966,4,2026-11-11,19:00,IND,Indiana Pacers,WSH,Washington Wizards,,,False
+401909967,4,2026-11-11,19:00,NY,New York Knicks,CLE,Cleveland Cavaliers,,,False
+401909968,4,2026-11-11,19:00,TOR,Toronto Raptors,BOS,Boston Celtics,,,False
+401909969,4,2026-11-11,20:00,CHI,Chicago Bulls,SA,San Antonio Spurs,,,False
+401909970,4,2026-11-11,20:00,MEM,Memphis Grizzlies,DEN,Denver Nuggets,,,False
+401909971,4,2026-11-11,20:00,MIL,Milwaukee Bucks,LAL,Los Angeles Lakers,,,False
+401909972,4,2026-11-11,20:00,NO,New Orleans Pelicans,BKN,Brooklyn Nets,,,False
+401909973,4,2026-11-11,21:00,UTAH,Utah Jazz,ORL,Orlando Magic,,,False
+401909974,4,2026-11-11,21:30,HOU,Houston Rockets,GS,Golden State Warriors,,,False
+401909975,4,2026-11-11,22:00,POR,Portland Trail Blazers,OKC,Oklahoma City Thunder,,,False
+401909976,4,2026-11-12,19:00,PHI,Philadelphia 76ers,TOR,Toronto Raptors,,,False
+401909977,4,2026-11-12,19:00,WSH,Washington Wizards,DET,Detroit Pistons,,,False
+401909978,4,2026-11-12,20:00,MIN,Minnesota Timberwolves,DAL,Dallas Mavericks,,,False
+401909979,4,2026-11-12,21:00,PHX,Phoenix Suns,CHA,Charlotte Hornets,,,False
+401909296,4,2026-11-13,19:00,IND,Indiana Pacers,NY,New York Knicks,,,False
+401909297,4,2026-11-13,19:00,ORL,Orlando Magic,MIL,Milwaukee Bucks,,,False
+401909298,4,2026-11-13,20:00,MIA,Miami Heat,CLE,Cleveland Cavaliers,,,False
+401909299,4,2026-11-13,20:00,CHI,Chicago Bulls,ATL,Atlanta Hawks,,,False
+401909300,4,2026-11-13,20:00,NO,New Orleans Pelicans,MEM,Memphis Grizzlies,,,False
+401909301,4,2026-11-13,20:30,HOU,Houston Rockets,UTAH,Utah Jazz,,,False
+401909302,4,2026-11-13,21:30,SA,San Antonio Spurs,GS,Golden State Warriors,,,False
+401909303,4,2026-11-13,22:00,SAC,Sacramento Kings,POR,Portland Trail Blazers,,,False
+401909304,4,2026-11-13,22:30,LAC,LA Clippers,OKC,Oklahoma City Thunder,,,False
+401909980,4,2026-11-14,19:00,NO,New Orleans Pelicans,DEN,Denver Nuggets,,,False
+401909981,4,2026-11-14,19:30,CLE,Cleveland Cavaliers,DAL,Dallas Mavericks,,,False
+401909982,4,2026-11-14,20:00,MIA,Miami Heat,DET,Detroit Pistons,,,False
+401909983,4,2026-11-14,20:00,MEM,Memphis Grizzlies,BKN,Brooklyn Nets,,,False
+401909984,4,2026-11-14,20:00,MIN,Minnesota Timberwolves,CHI,Chicago Bulls,,,False
+401909985,4,2026-11-15,13:00,PHI,Philadelphia 76ers,IND,Indiana Pacers,,,False
+401909986,4,2026-11-15,16:00,PHX,Phoenix Suns,LAL,Los Angeles Lakers,,,False
+401909987,4,2026-11-15,16:30,LAC,LA Clippers,CHA,Charlotte Hornets,,,False
+401909988,4,2026-11-15,17:00,UTAH,Utah Jazz,SA,San Antonio Spurs,,,False
+401909989,4,2026-11-15,18:00,BOS,Boston Celtics,DAL,Dallas Mavericks,,,False
+401909990,4,2026-11-15,18:00,TOR,Toronto Raptors,NY,New York Knicks,,,False
+401909991,4,2026-11-15,19:00,WSH,Washington Wizards,HOU,Houston Rockets,,,False
+401909992,4,2026-11-15,20:00,MIL,Milwaukee Bucks,ATL,Atlanta Hawks,,,False
+401909993,4,2026-11-15,21:00,SAC,Sacramento Kings,OKC,Oklahoma City Thunder,,,False
+401909994,4,2026-11-16,19:00,BOS,Boston Celtics,ORL,Orlando Magic,,,False
+401909995,4,2026-11-16,19:00,CLE,Cleveland Cavaliers,CHI,Chicago Bulls,,,False
+401909996,4,2026-11-16,19:00,WSH,Washington Wizards,MEM,Memphis Grizzlies,,,False
+401909997,4,2026-11-16,19:30,BKN,Brooklyn Nets,PHI,Philadelphia 76ers,,,False
+401909998,4,2026-11-16,19:30,MIA,Miami Heat,HOU,Houston Rockets,,,False
+401909999,4,2026-11-16,20:00,MIN,Minnesota Timberwolves,POR,Portland Trail Blazers,,,False
+401910000,4,2026-11-16,20:00,NO,New Orleans Pelicans,GS,Golden State Warriors,,,False
+401910001,4,2026-11-16,21:00,DEN,Denver Nuggets,PHX,Phoenix Suns,,,False
+401910002,5,2026-11-17,19:30,TOR,Toronto Raptors,NY,New York Knicks,,,False
+401910003,5,2026-11-17,20:00,MIN,Minnesota Timberwolves,POR,Portland Trail Blazers,,,False
+401910004,5,2026-11-17,20:00,SA,San Antonio Spurs,DET,Detroit Pistons,,,False
+401910005,5,2026-11-17,22:00,LAL,Los Angeles Lakers,CHA,Charlotte Hornets,,,False
+401910006,5,2026-11-17,23:00,LAC,LA Clippers,UTAH,Utah Jazz,,,False
+401910007,5,2026-11-18,19:00,CLE,Cleveland Cavaliers,MEM,Memphis Grizzlies,,,False
+401910008,5,2026-11-18,19:00,IND,Indiana Pacers,HOU,Houston Rockets,,,False
+401910009,5,2026-11-18,19:00,MIA,Miami Heat,MIL,Milwaukee Bucks,,,False
+401910010,5,2026-11-18,19:00,ORL,Orlando Magic,PHI,Philadelphia 76ers,,,False
+401910011,5,2026-11-18,19:30,BKN,Brooklyn Nets,CHI,Chicago Bulls,,,False
+401910012,5,2026-11-18,19:30,TOR,Toronto Raptors,WSH,Washington Wizards,,,False
+401910013,5,2026-11-18,20:00,NO,New Orleans Pelicans,DET,Detroit Pistons,,,False
+401910014,5,2026-11-18,20:00,OKC,Oklahoma City Thunder,ATL,Atlanta Hawks,,,False
+401910015,5,2026-11-18,21:00,DEN,Denver Nuggets,BOS,Boston Celtics,,,False
+401910016,5,2026-11-18,21:30,DAL,Dallas Mavericks,GS,Golden State Warriors,,,False
+401910017,5,2026-11-18,22:00,LAL,Los Angeles Lakers,UTAH,Utah Jazz,,,False
+401910018,5,2026-11-18,22:00,SAC,Sacramento Kings,PHX,Phoenix Suns,,,False
+401910019,5,2026-11-19,20:00,MEM,Memphis Grizzlies,GS,Golden State Warriors,,,False
+401910020,5,2026-11-19,20:00,MIL,Milwaukee Bucks,POR,Portland Trail Blazers,,,False
+401910021,5,2026-11-19,20:00,MIN,Minnesota Timberwolves,NY,New York Knicks,,,False
+401910022,5,2026-11-19,20:00,SA,San Antonio Spurs,LAC,LA Clippers,,,False
+401909305,5,2026-11-20,19:00,ATL,Atlanta Hawks,CHA,Charlotte Hornets,,,False
+401909306,5,2026-11-20,19:30,BKN,Brooklyn Nets,ORL,Orlando Magic,,,False
+401909307,5,2026-11-20,19:30,CLE,Cleveland Cavaliers,IND,Indiana Pacers,,,False
+401909308,5,2026-11-20,19:30,DET,Detroit Pistons,TOR,Toronto Raptors,,,False
+401909309,5,2026-11-20,20:00,CHI,Chicago Bulls,WSH,Washington Wizards,,,False
+401909310,5,2026-11-20,20:00,OKC,Oklahoma City Thunder,NO,New Orleans Pelicans,,,False
+401909311,5,2026-11-20,21:30,UTAH,Utah Jazz,PHX,Phoenix Suns,,,False
+401909312,5,2026-11-20,22:00,DEN,Denver Nuggets,HOU,Houston Rockets,,,False
+401909313,5,2026-11-20,22:00,LAL,Los Angeles Lakers,SAC,Sacramento Kings,,,False
+401910023,5,2026-11-21,13:00,PHI,Philadelphia 76ers,MIL,Milwaukee Bucks,,,False
+401910024,5,2026-11-21,19:30,NY,New York Knicks,POR,Portland Trail Blazers,,,False
+401910025,5,2026-11-21,20:00,DAL,Dallas Mavericks,LAC,LA Clippers,,,False
+401910026,5,2026-11-21,20:00,MIN,Minnesota Timberwolves,MEM,Memphis Grizzlies,,,False
+401910027,5,2026-11-21,20:00,SA,San Antonio Spurs,NO,New Orleans Pelicans,,,False
+401910028,5,2026-11-21,22:00,SAC,Sacramento Kings,BOS,Boston Celtics,,,False
+401910029,5,2026-11-22,15:30,ATL,Atlanta Hawks,DET,Detroit Pistons,,,False
+401910030,5,2026-11-22,18:00,MIA,Miami Heat,OKC,Oklahoma City Thunder,,,False
+401910031,5,2026-11-22,19:00,WSH,Washington Wizards,ORL,Orlando Magic,,,False
+401910032,5,2026-11-22,19:00,CHI,Chicago Bulls,DEN,Denver Nuggets,,,False
+401910033,5,2026-11-22,19:00,UTAH,Utah Jazz,DAL,Dallas Mavericks,,,False
+401910034,5,2026-11-22,20:00,NY,New York Knicks,IND,Indiana Pacers,,,False
+401910035,5,2026-11-22,20:30,GS,Golden State Warriors,BOS,Boston Celtics,,,False
