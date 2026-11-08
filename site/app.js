@@ -496,6 +496,7 @@ const App = {
   cache: new Map(),       // "E2026" -> Season
   preds: new Map(),       // "E" -> predictions json | null
   evals: new Map(),       // "E" -> eval json (ζωντανή αξιολόγηση) | null
+  gamenn: new Map(),      // "E" -> νευρωνικό αγώνων (gamenn json) | null
   ui: {
     team: null, team2: "", players: [], pstat: "PTS",
     an: { level: "teams", cat: "", n: 10, minGP: null, minMIN: 10, team: "", sx: "", sy: "", ss: "GP", slevel: "teams" },
@@ -529,6 +530,13 @@ const App = {
       this.evals.set(comp, c?.evaluation ? await this.json(`data/eval_${comp}.json`).catch(() => null) : null);
     }
     return this.evals.get(comp);
+  },
+  async loadGameNN(comp) {
+    if (!this.gamenn.has(comp)) {
+      const c = this.compInfo(comp);
+      this.gamenn.set(comp, c?.gamenn ? await this.json(`data/gamenn_${comp}.json`).catch(() => null) : null);
+    }
+    return this.gamenn.get(comp);
   },
   compInfo(comp = this.comp) { return this.manifest.competitions.find((c) => c.code === comp); },
   latestSeason(comp = this.comp) { return Math.max(...this.compInfo(comp).seasons); },
@@ -596,7 +604,7 @@ const App = {
 
   async render() {
     const info = this.compInfo();
-    const off = { players: info.hasBox === false, predictions: !info.predictions && !info.evaluation };
+    const off = { players: info.hasBox === false, predictions: !info.predictions && !info.evaluation && !info.gamenn };
     $$("#tabs a").forEach((a) => (a.hidden = !!off[a.getAttribute("href").slice(1)]));
     if (off[this.route()]) { location.hash = "home"; return; }
     const v = this.route();
@@ -606,6 +614,7 @@ const App = {
       await this.loadSeason(this.comp, this.season);
       await this.loadPreds(this.comp);
       if (v === "predictions") await this.loadEval(this.comp);
+      if (v === "predictions" || v === "home") await this.loadGameNN(this.comp);
       if (this.preds.get(this.comp) || v === "predictions") await this.loadSeason(this.comp, this.latestSeason());
       await Views[v](view, this.S);
     } catch (e) {
@@ -637,10 +646,13 @@ const Views = {
     const upcoming = S.upcoming.filter((g) => g.round === nextRound).slice(0, 12);
     const lastRound = S.games.length ? Math.max(...S.games.map((g) => g.round || 0)) : null;
     const results = S.games.filter((g) => g.round === lastRound);
+    const gnn = S.season === App.latestSeason() ? App.gamenn.get(App.comp) : null;
+    const nnBy = new Map(gnn ? rowsToObjs(gnn.next).map((r) => [r.gameCode, r]) : []);
 
     const gameCard = (g, i) => {
       const r = sim.run(g.home, g.away, 3000);
       const ph = Math.round(r.pHome * 100);
+      const nn = nnBy.get(g.gameCode), pn = nn ? Math.round(nn.p * 100) : null;
       return `<article class="game" data-i="${i}">
         <div class="meta"><span>${fmtDate(g.date)} ${esc(g.time || "")}</span><span>Αγ. ${g.round ?? "–"}</span></div>
         <div class="match">
@@ -648,7 +660,9 @@ const Views = {
           <span class="team">${App.teamLink(g.away, S)}</span><span class="score muted">${Math.round(r.ma)}</span>
         </div>
         <div class="probbar" aria-label="Πιθανότητα νίκης"><i style="width:${ph}%"></i><i style="width:${100 - ph}%"></i></div>
-        <div class="problabels"><span>${ph}% νίκη έδρας</span><span>${100 - ph}%</span></div>
+        <div class="problabels"><span>${nn ? "Monte Carlo · " : ""}${ph}% νίκη έδρας</span><span>${100 - ph}%</span></div>
+        ${nn ? `<div class="probbar" aria-label="Πιθανότητα νίκης (νευρωνικό)"><i style="width:${pn}%"></i><i style="width:${100 - pn}%"></i></div>
+        <div class="problabels"><span title="Αναμενόμενο σκορ νευρωνικού ± τυπική απόκλιση">Νευρωνικό · ${pn}% · ${Math.round(nn.mh)}–${Math.round(nn.ma)} (±${Math.round((nn.sh + nn.sa) / 2)})</span><span>${100 - pn}%</span></div>` : ""}
         <div class="actions"><button class="btn primary" data-sim="${i}">Προσομοίωση</button><button class="btn" data-once="${i}">Παίξε ένα ματς</button></div>
         <div class="simbox" hidden></div>
       </article>`;
@@ -667,7 +681,7 @@ const Views = {
       <section>
         <div class="sec-head"><h2>${nextRound != null ? `Επόμενη αγωνιστική · ${nextRound}η` : "Δεν υπάρχουν επερχόμενα ματς"}</h2>
           <span class="muted">${esc(App.compInfo().name)} ${seasonLabel(S.season)}</span></div>
-        ${upcoming.length ? `<p class="muted" style="margin:0">Οι αριθμοί δίπλα στις ομάδες είναι το αναμενόμενο σκορ ${S.hasBox ? "από ratings επίθεσης/άμυνας και ρυθμού" : "από τους πόντους υπέρ/κατά κάθε ομάδας"}, με +${MatchSim.HCA} πόντους έδρα.</p>
+        ${upcoming.length ? `<p class="muted" style="margin:0">Οι αριθμοί δίπλα στις ομάδες είναι το αναμενόμενο σκορ ${S.hasBox ? "από ratings επίθεσης/άμυνας και ρυθμού" : "από τους πόντους υπέρ/κατά κάθε ομάδας"}, με +${MatchSim.HCA} πόντους έδρα.${nnBy.size ? " Κάτω από την μπάρα του Monte Carlo, η πιθανότητα του νευρωνικού δικτύου αγώνων (Keras) με το δικό του αναμενόμενο σκορ." : ""}</p>
         <div class="games" id="up">${upcoming.map(gameCard).join("")}</div>` : `<div class="empty">Η σεζόν ${seasonLabel(S.season)} δεν έχει άλλα προγραμματισμένα ματς.</div>`}
       </section>
       ${results.length ? `<section><div class="sec-head"><h2>Αποτελέσματα · ${lastRound}η αγωνιστική</h2></div>
@@ -1107,7 +1121,7 @@ const Views = {
   /* ---------------- Μοντέλα: προβλέψεις + αξιολόγηση ---------------- */
   predictions(el) {
     const P = App.preds.get(App.comp), E = App.evals.get(App.comp);
-    if (!P && !E) { el.innerHTML = `<div class="empty">Δεν υπάρχουν ακόμα μοντέλα για αυτή τη διοργάνωση. Δημιουργούνται αυτόματα στο επόμενο ημερήσιο run.</div>`; return; }
+    if (!P && !E && !App.gamenn.get(App.comp)) { el.innerHTML = `<div class="empty">Δεν υπάρχουν ακόμα μοντέλα για αυτή τη διοργάνωση. Δημιουργούνται αυτόματα στο επόμενο ημερήσιο run.</div>`; return; }
     const L = App.cache.get(App.comp + App.latestSeason());
     const TG = P ? P.targets : ["PTS", "REB", "AST", "PIR", "MIN"];
     if (!TG.includes(App.ui.predTarget)) App.ui.predTarget = TG.includes("PIR") ? "PIR" : TG[0];
@@ -1216,6 +1230,52 @@ const Views = {
       </section>`);
     }
 
+    // ---- 6. Νευρωνικό αγώνων vs Monte Carlo (ίδια ματς) ----
+    const GN = App.gamenn.get(App.comp);
+    if (GN) {
+      const T = GN.test || {}, LV = GN.live || {};
+      const metrics = [
+        ["acc", "Σωστός νικητής", (v) => fmtPct(v), 1],
+        ["brier", "Brier score", (v) => fmt(v, 3), -1],
+        ["logloss", "Log loss", (v) => fmt(v, 3), -1],
+        ["mae_home", "Σφάλμα πόντων γηπεδούχου", (v) => fmt(v, 1), -1],
+        ["mae_away", "Σφάλμα πόντων φιλοξενούμενου", (v) => fmt(v, 1), -1],
+        ["mae_margin", "Σφάλμα διαφοράς", (v) => fmt(v, 1), -1],
+        ["mae_total", "Σφάλμα συνόλου", (v) => fmt(v, 1), -1],
+        ["cover80", "Κάλυψη διαστήματος 80%", (v) => fmtPct(v), 0],
+        ["sd", "Μέση αβεβαιότητα σ (π.)", (v) => fmt(v, 1), null],
+      ];
+      // ποιο είναι καλύτερο: dir 1 = μεγαλύτερο, -1 = μικρότερο, 0 = πιο κοντά στο 80%
+      const cell = (a, b, dir, f) => {
+        const better = isNum(a) && isNum(b) && dir != null && (dir === 0 ? Math.abs(a - 0.8) < Math.abs(b - 0.8) : dir * (a - b) > 0);
+        return `<td class="n ${better ? "better" : ""}">${isNum(a) ? f(a) : "–"}</td>`;
+      };
+      const pair = (o) => metrics.map(([k, , f, d]) => [cell(o.nn?.[k], o.mc?.[k], d, f), cell(o.mc?.[k], o.nn?.[k], d, f)]);
+      const tp = pair(T), lp = LV.n ? pair(LV) : null;
+      sections.push(`
+      <section><div class="sec-head"><h2>Νευρωνικό αγώνων vs Monte Carlo</h2><span class="muted">εκπαίδευση ${esc(GN.trained)} · <span class="num">${esc(GN.arch)}</span> × ${GN.seeds}</span></div>
+        <p style="margin:0;max-width:70ch">Νευρωνικό δίκτυο (Keras) που τρέχει δίπλα στην προσομοίωση. Από ${GN.features.length} χαρακτηριστικά ${GN.has_box ? "(ratings επίθεσης/άμυνας, ρυθμός, φόρμα 5 αγώνων, four factors, ξεκούραση, έδρα)" : "(πόντοι υπέρ/κατά, φόρμα 5 αγώνων, ξεκούραση, έδρα — χωρίς box scores)"}, όλα από αγώνες πριν από το ματς, προβλέπει τους πόντους γηπεδούχου και φιλοξενούμενου μαζί με την αβεβαιότητά τους (Gaussian loss). Η πιθανότητα νίκης είναι η πιθανότητα η διαφορά να βγει θετική. Ένα μοντέλο ανά διοργάνωση, χρονικό split: test = ${GN.n_test} αγώνες από ${fmtDate(GN.test_from)} έως ${fmtDate(GN.test_to)}, που το δίκτυο δεν είδε. Το Monte Carlo αξιολογείται στους ίδιους αγώνες με το walk-forward backtest.</p>
+        <div class="tbl-wrap"><table><thead>
+          <tr><th></th><th class="n" colspan="2">Test (${T.nn?.n || 0} ματς)</th><th class="n" colspan="2">Ζωντανά (${LV.n || 0} ματς)</th></tr>
+          <tr><th>Μετρική</th><th class="n">Νευρωνικό</th><th class="n">Monte Carlo</th><th class="n">Νευρωνικό</th><th class="n">Monte Carlo</th></tr></thead><tbody>
+          ${metrics.map(([, label], i) => `<tr><td>${label}</td>${tp[i].join("")}${lp ? lp[i].join("") : `<td class="n">–</td><td class="n">–</td>`}</tr>`).join("")}
+        </tbody></table></div>
+        <p class="muted" style="margin:0;font-size:13px">Πράσινο = καλύτερο από τα δύο. Brier: 0.250 = κορώνα-γράμματα. Κάλυψη 80%: πόσο συχνά οι πόντοι κάθε ομάδας έπεσαν μέσα στο διάστημα 80% του μοντέλου (ιδανικά 80%· το Monte Carlo έχει σταθερό σ = ${MatchSim.SD} π.).</p>
+        <div class="grid2">
+          <div><h3>Βαθμονόμηση · νευρωνικό</h3><div class="chart" style="max-width:520px">${Charts.calibration(T.nn?.calibration || [])}</div></div>
+          <div><h3>Βαθμονόμηση · Monte Carlo</h3><div class="chart" style="max-width:520px">${Charts.calibration(T.mc?.calibration || [])}</div></div>
+        </div>
+        <div class="grid2">
+          <div><h3>Εκπαίδευση</h3><div class="legend"><span><i class="c1bg"></i>Training loss</span><span><i class="c2bg"></i>Validation loss</span></div>
+            <div class="chart">${GN.loss?.train?.length ? Charts.line({ series: [{ k: "k1", pts: GN.loss.train.map((v, i) => [i + 1, v]) }, { k: "k2", pts: GN.loss.val.map((v, i) => [i + 1, v]) }], xLabel: (x) => "ep " + x, yFmt: (v) => v.toFixed(2), H: 200 }) : ""}</div>
+            <p class="muted" style="margin:0;font-size:13px">Gaussian negative log-likelihood (κανονικοποιημένοι πόντοι), 1ο δίκτυο του ensemble.</p></div>
+          <div><h3>Αρχιτεκτονική</h3><p style="margin:0">Ενεργή: <span class="num">${esc(GN.arch)}</span>, ensemble ${GN.seeds} δικτύων. Διαθέσιμες: ${(GN.archs || []).map((a) => `<span class="num">${esc(a)}</span>`).join(", ")} (<span class="num">--arch</span> στο scripts/game_model.py).</p></div>
+        </div>
+        <h3>Ζωντανά (προβλέψεις πριν το ματς)</h3>
+        ${LV.n ? `<div id="nn-live"></div>` : `<div class="empty">Κάθε μέρα αποθηκεύονται οι προβλέψεις του νευρωνικού για τα ματς των επόμενων 10 ημερών, δίπλα σε αυτές του Monte Carlo. Μόλις παιχτούν, εμφανίζεται εδώ η σύγκριση.</div>`}
+      </section>`);
+    }
+
     el.innerHTML = sections.join("");
 
     // ---- πίνακες / events ----
@@ -1239,6 +1299,19 @@ const Views = {
           { key: "mh", label: "Πρόβλ.", fmt: (v, r) => `${Math.round(r.mh)}–${Math.round(r.ma)}` },
           { key: "hs", label: "Τελικό", fmt: (v, r) => `${r.hs}–${r.as}` },
           { key: "ok", label: "", html: (r) => `<span class="pill ${r.ok ? "w" : "l"}">${r.ok ? "✓" : "✗"}</span>` }],
+        rows, sortKey: "date", sortDir: -1, pageSize: 15,
+      });
+    }
+    if (GN?.live?.n) {
+      const rows = rowsToObjs(GN.recent).map((r) => ({ ...r, w: r.hs > r.as }));
+      const mark = (p, w) => `<span class="pill ${(p > 0.5) === w ? "w" : "l"}">${(p > 0.5) === w ? "✓" : "✗"}</span>`;
+      new SortTable($("#nn-live", el), {
+        cols: [{ key: "date", label: "Ημ/νία", fmt: fmtDate },
+          { key: "home", label: "Αγώνας", html: (r) => `${esc(L.teamName(r.home))} – ${esc(L.teamName(r.away))}` },
+          { key: "p_mc", label: "MC", n: true, html: (r) => `${fmtPct(r.p_mc)} ${mark(r.p_mc, r.w)}` },
+          { key: "p", label: "Νευρ.", n: true, html: (r) => `${fmtPct(r.p)} ${mark(r.p, r.w)}` },
+          { key: "mh", label: "Σκορ νευρ.", fmt: (v, r) => `${Math.round(r.mh)}–${Math.round(r.ma)}` },
+          { key: "hs", label: "Τελικό", fmt: (v, r) => `${r.hs}–${r.as}` }],
         rows, sortKey: "date", sortDir: -1, pageSize: 15,
       });
     }

@@ -98,6 +98,7 @@ class SiteBuilder:
                 "section": next(k for k, (_, cs) in SECTIONS.items() if comp in cs),
                 "predictions": (SITE_DATA / f"predictions_{comp}.json").exists(),
                 "evaluation": (SITE_DATA / f"eval_{comp}.json").exists(),
+                "gamenn": (SITE_DATA / f"gamenn_{comp}.json").exists(),   # νευρωνικό αγώνων (game_model.py)
             })
         have = {c["code"] for c in self.manifest["competitions"]}
         self.manifest["sections"] = [{"key": k, "name": n, "comps": [c for c in cs if c in have]}

@@ -57,6 +57,10 @@ jobs:
       - name: Evaluate models (prediction archive, simulation backtest, history)
         run: python scripts/evaluate.py
 
+      # Νευρωνικό αγώνων δίπλα στο Monte Carlo (μετά το evaluate: συγκρίνεται με το αρχείο προβλέψεών του)
+      - name: Train game model (Keras) and compare with Monte Carlo
+        run: python scripts/game_model.py
+
       - name: Build site database
         run: python scripts/build_site.py
 

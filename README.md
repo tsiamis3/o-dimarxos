@@ -22,6 +22,8 @@ scripts/
   fetch_data.py      κατέβασμα από το EuroLeague API (incremental) -> data/raw/
   dataset.py         raw CSV -> καθαρό game log (κοινό για site + μοντέλο)
   train_model.py     feed-forward δίκτυο Keras -> models/ + site/data/predictions_*.json
+  evaluate.py        αρχείο προβλέψεων, ζωντανή αξιολόγηση, backtest προσομοίωσης -> site/data/eval_*.json
+  game_model.py      νευρωνικό αγώνων Keras (δίπλα στο Monte Carlo) -> site/data/gamenn_*.json
   build_site.py      JSON βάση για το site -> site/data/
   make_demo_data.py  συνθετικά δεδομένα για τοπικό test χωρίς internet
 site/                index.html, style.css, app.js (στατικό, χωρίς build step)
@@ -67,3 +69,20 @@ python -m http.server -d site 8000    # http://localhost:8000
 Monte Carlo στον browser: αναμενόμενοι πόντοι = ρυθμός × (ORTG ομάδας + DRTG αντιπάλου − μέσος όρος)/100,
 ±1.5 πόντοι για έδρα, θόρυβος N(0, 10) ανά ομάδα, παράταση στην ισοπαλία. Τα ratings «τραβιούνται» προς τον
 μέσο όρο στην αρχή της σεζόν (4 εικονικά ματς). Παράμετροι στην κλάση `MatchSim` του `site/app.js`.
+
+## Νευρωνικό αγώνων (δίπλα στο Monte Carlo)
+
+`scripts/game_model.py`, ένα μοντέλο ανά διοργάνωση. Για κάθε ομάδα, μόνο από αγώνες πριν από το ματς:
+ratings επίθεσης/άμυνας και ρυθμός (με το ίδιο «τράβηγμα» προς τον μέσο όρο), φόρμα 5 αγώνων, four factors
+επίθεσης και άμυνας (eFG%, TOV%, OREB%, FT rate), ξεκούραση, back-to-back, απόδοση εντός/εκτός έδρας.
+Έξοδος: πόντοι γηπεδούχου και φιλοξενούμενου ως διμεταβλητή κανονική (μέσοι, σ, συσχέτιση), με Gaussian
+negative log-likelihood. Πιθανότητα νίκης = P(διαφορά > 0). Χρονικό split (τελευταίο 15% = test), ensemble
+3 seeds, και για τα επερχόμενα επανεκπαίδευση σε όλους τους αγώνες.
+
+Σύγκριση με το Monte Carlo στα ίδια ματς (test: walk-forward backtest, ζωντανά: `data/predictions/{C}_games_nn.csv`
+απέναντι στο `{C}_games.csv`): σωστός νικητής, Brier, log loss, βαθμονόμηση, σφάλμα σκορ, κάλυψη 80%.
+Φαίνεται στη σελίδα «Μοντέλα», και στην αρχική κάθε ματς δείχνει και τις δύο πιθανότητες.
+
+```bash
+python scripts/game_model.py --comp E --arch mlp_wide --seeds 5   # αρχιτεκτονικές: GARCHS (linear, mlp_small, mlp_wide)
+```
