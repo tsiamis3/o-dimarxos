@@ -68,12 +68,74 @@ def bh_qvalues(z) -> np.ndarray:
     return q
 
 
+RATING_KEYS = ["ovr", "r_sco", "r_sho", "r_pla", "r_reb", "r_def", "r_imp"]
+SHRINK_MIN = 250.0                 # εικονικά λεπτά μέσου όρου (μικρό δείγμα -> προς τον μέσο)
+POS = ["PG", "SG", "SF", "PF", "C"]
+
+
+def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Βαθμολογίες 0–99 τύπου 2K: εκατοστημόρια μέσα στη λίγκα (παίκτες με αρκετά λεπτά), πάνω σε
+    μεγέθη συρρικνωμένα προς τον μέσο όρο για μικρά δείγματα. 40 = χαμηλότερος, 99 = κορυφαίος."""
+    p = p.copy()
+    maxmin = p.MIN.max()
+    qual = p.MIN >= max(100.0, 0.15 * maxmin)
+    p["qual"] = qual.astype(int)
+    if qual.sum() < 10:
+        for k in RATING_KEYS:
+            p[k] = np.nan
+        p["pos"], p["guard"] = None, np.nan
+        return p
+    pool = p[qual]
+
+    def shr(col):
+        # μικρό δείγμα -> προς το επίπεδο του ΙΔΙΟΥ παίκτη την προηγούμενη σεζόν (αν έπαιξε αρκετά), αλλιώς προς τον μέσο όρο
+        m = pool[col].mean()
+        target = pd.Series(m, index=p.index)
+        if prior is not None and col in prior:
+            pr = p.pid.map(prior[col])
+            target = pr.where(pr.notna(), m)
+        v = p[col].fillna(target)
+        return (v * p.MIN + SHRINK_MIN * target) / (p.MIN + SHRINK_MIN)
+
+    def z(series):
+        q = series[qual]
+        return (series - q.mean()) / (q.std() + 1e-9)
+
+    S = {c: shr(c) for c in ["pts100", "usg", "ts_adj", "fg3_adj", "ft_adj", "ast_pct", "tov_pct", "orb_pct", "drb_pct",
+                             "stl100", "blk100", "pf100", "pir100", "fg3_rate"]}
+    shooter = (S["fg3_rate"] > 0.2).astype(float)
+    comp = {
+        "r_sco": z(S["pts100"]) + 0.5 * z(S["usg"]),
+        "r_sho": z(S["ts_adj"]) + 0.5 * shooter * z(S["fg3_adj"]) + 0.3 * z(S["ft_adj"]),
+        "r_pla": z(S["ast_pct"]) - 0.4 * z(S["tov_pct"]),
+        "r_reb": z(S["orb_pct"]) + z(S["drb_pct"]),
+        "r_def": z(S["stl100"]) + z(S["blk100"]) + 0.5 * z(S["drb_pct"]) - 0.3 * z(S["pf100"]),
+    }
+    has_oo = p.onoff.notna().mean() > 0.5
+    comp["r_imp"] = z(p.onoff.fillna(0)) + 0.5 * z(S["pir100"]) if has_oo else z(S["pir100"])
+    zs = {k: z(v) for k, v in comp.items()}
+    comp["ovr"] = (0.24 * zs["r_sco"] + 0.12 * zs["r_sho"] + 0.12 * zs["r_pla"] + 0.1 * zs["r_reb"]
+                   + 0.1 * zs["r_def"] + 0.17 * zs["r_imp"] + 0.15 * z(shr("mpg")))
+    for k, v in comp.items():
+        ref = np.sort(v[qual].to_numpy())
+        pct = np.searchsorted(ref, v.to_numpy(), side="right") / len(ref)
+        p[k] = np.round(40 + 59 * np.clip(pct, 0, 1)).astype(int)
+    # θέση (εκτίμηση από το προφίλ): πάσα και τρίποντα -> guard, επιθ. ριμπάουντ και κοψίματα -> ψηλός
+    # (τα ριμπάουντ ζυγίζουν περισσότερο από τις ασίστ, ώστε οι ψηλοί-πασέρ τύπου Jokić να μένουν ψηλοί)
+    guard = 0.6 * z(S["ast_pct"]) + 0.7 * z(S["fg3_rate"]) - z(S["orb_pct"]) - 0.8 * z(S["blk100"]) - 0.9 * z(S["drb_pct"])
+    p["guard"] = guard
+    cuts = np.quantile(guard[qual], [0.2, 0.4, 0.6, 0.8])
+    p["pos"] = [POS[4 - int(np.searchsorted(cuts, g))] for g in guard]
+    return p
+
+
 class SeasonAnalytics:
     def __init__(self, data: CompetitionData, tg_all: pd.DataFrame, season: int):
         self.data, self.season = data, season
         self.tg = tg_all[tg_all.season == season].copy()
         self.box = bool(self.tg["box"].iloc[0]) if len(self.tg) else False
         self.gmin = 48.0 if data.comp == "NBA" else GAME_MIN
+        self.prior = None           # μεγέθη παικτών της προηγούμενης σεζόν (για συρρίκνωση των ratings)
 
     # ------------------------------------------------------------------ λίγκα
     def league(self, rat: RidgeRatings) -> dict:
@@ -226,7 +288,25 @@ class SeasonAnalytics:
             p["onoff"] = raw * p.MIN / (p.MIN + ONOFF_PRIOR)                   # συρρίκνωση προς 0
         else:
             p["on100"] = p["off100"] = p["onoff"] = np.nan
+        # σουτ, άμυνα, βασικός
+        lg3 = lg.FG3M.sum() / max(1, lg.FG3A.sum())
+        lgft = lg.FTM.sum() / max(1, lg.FTA.sum())
+        p["fg3_rate"] = S("FG3A") / S("FGA").replace(0, np.nan)
+        p["fg3_adj"] = (S("FG3M") + 40 * lg3) / (S("FG3A") + 40)
+        p["ft_adj"] = (S("FTM") + 20 * lgft) / (S("FTA") + 20)
+        p["fg3a_g"] = S("FG3A") / p.GP
+        p["stl100"] = 100 * S("STL") / onp
+        p["blk100"] = 100 * S("BLK") / onp
+        p["pf100"] = 100 * S("PF") / onp
+        p["GS"] = S("starter")
+        # βασικός στους 5 τελευταίους αγώνες της ομάδας του (για την πιθανή πεντάδα)
+        last5 = lg.drop_duplicates(["team", "gameCode"]).sort_values("date").groupby("team").gameCode.apply(lambda x: set(x.tail(5)))
+        rec = lg[[gc in last5.get(t, set()) for gc, t in zip(lg.gameCode, lg.team)]]
+        p["gs5"] = rec.groupby("pid").starter.sum().reindex(p.index).fillna(0)
+        p["gp5"] = rec.groupby("pid").size().reindex(p.index).fillna(0)
+        p["min5"] = rec.groupby("pid").MIN.mean().reindex(p.index)
         p = p.reset_index()
+        p = player_ratings(p, self.prior)
 
         # σημαντικές μεταβολές: τελευταίοι 5 αγώνες vs υπόλοιπη σεζόν (PIR ανά 100 κατοχές)
         lg = lg.sort_values("date")
@@ -252,7 +332,9 @@ class SeasonAnalytics:
         # στο site: όσοι έχουν |z| ≥ 2 (με q-τιμή, ώστε να φαίνεται αν είναι θόρυβος)
         trend = trend[trend.z.abs() >= 2].sort_values("z", ascending=False)
         cols = ["pid", "player", "team", "GP", "MIN", "mpg", "usg", "ts", "ts_adj", "tsa", "pts100", "ast100", "reb100",
-                "pir100", "ast_pct", "orb_pct", "drb_pct", "tov_pct", "on100", "off100", "onoff"]
+                "pir100", "ast_pct", "orb_pct", "drb_pct", "tov_pct", "on100", "off100", "onoff",
+                "fg3_rate", "fg3_adj", "ft_adj", "fg3a_g", "stl100", "blk100", "pf100", "GS", "gs5", "gp5", "min5",
+                "pos", "guard", "qual", *RATING_KEYS]
         return p[cols], trend
 
 
@@ -271,6 +353,7 @@ class Analytics:
         h = tg_all[tg_all.home == 1]
         sd_game = float((h.PTS - h.OPP).std())
         history = []
+        prev_players = None
         for s in sorted(tg_all.season.unique()):
             sa = SeasonAnalytics(self.data, tg_all, s)
             if len(sa.tg) < 20:
@@ -283,10 +366,15 @@ class Analytics:
                 ff, meta = sa.four_factors(tg_all)
                 res["four_factors"] = _rows(ff, 3)
                 res["ff_meta"] = meta
+                sa.prior = prev_players
                 pl, trend = sa.players()
+                prev_players = pl[pl.MIN >= 300].set_index("pid")
                 res["players"] = _rows(pl, 3)
                 res["trend"] = _rows(trend, 3)
                 res["trend_tested"] = sa.n_trend_tested
+                import shots_agg
+                sh = shots_agg.build(self.comp, int(s))
+                res["shots"] = bool(sh)
             out["seasons"][str(s)] = res
             history.append({"season": int(s), **league})
             print(f"   {self.comp}{s}: {league['games']} games, HCA {league['hca_adj']} pts"
