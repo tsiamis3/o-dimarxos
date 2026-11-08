@@ -25,7 +25,11 @@ test = τα φετινά (τρέχουσα σεζόν) παιγμένα ματς
 Τρέχει μετά το game_model.py.
 
     python scripts/master_model.py
-    python scripts/master_model.py --arch mlp_wide --seeds 5
+    python scripts/master_model.py --arch mlp_wide --seeds 5   # κύρια αρχιτεκτονική (προβλέψεις επερχόμενων)
+    python scripts/master_model.py --compare mlp_small            # λιγότερες αρχιτεκτονικές στη σύγκριση (πιο γρήγορο)
+
+Σύγκριση: ΟΛΕΣ οι αρχιτεκτονικές του GARCHS (master και δίκτυο λίγκας) + Monte Carlo στα ίδια φετινά ματς
+-> site/data/master.json["comps"][C]["compare"].
 """
 import argparse
 import json
@@ -100,8 +104,9 @@ def to_points(df, pred):
 
 
 class MasterTrainer:
-    def __init__(self, arch, epochs, seeds):
+    def __init__(self, arch, epochs, seeds, compare=None):
         self.arch, self.epochs, self.seeds = arch, epochs, seeds
+        self.compare = compare or [arch]
         self.comps = [c for c in COMPETITIONS if c not in EXCLUDE]
 
     def run(self):
@@ -110,42 +115,70 @@ class MasterTrainer:
         hist = df[df.played == 1]
         train = hist[hist.season < hist.cur]
         test = hist[hist.season == hist.cur]
-        print(f"== MASTER ({self.arch}): train {len(train)} games from {', '.join(self.comps)} | "
-              f"test (current seasons) {len(test)} | features {len(md.feature_cols)}")
-        model = GameNNModel(md.feature_cols, self.arch, self.seeds).fit(train, epochs=self.epochs)
-        pm = to_points(test, model.predict(test))
+        archs = [self.arch] + [a for a in self.compare if a != self.arch]     # πρώτα η κύρια
+        print(f"== MASTER: train {len(train)} games from {', '.join(self.comps)} | "
+              f"test (current seasons) {len(test)} | features {len(md.feature_cols)} | archs {', '.join(archs)}")
 
-        out_comps = {}
+        # Monte Carlo και πραγματικά σκορ στα φετινά ματς, μία φορά ανά λίγκα
+        base = {}
         for c in self.comps:
             t = test[test.comp == c]
             if t.empty:
-                print(f"   {c}: no current-season games yet")
-                out_comps[c] = {"test": {}, "n_train": int((train.comp == c).sum())}
                 continue
+            fb = md.local[c][0]
+            mc = GameSimulator(md.datas[c]).backtest()
+            mc = mc[mc.season == fb.cur_season][["season", "gameCode", "mh", "ma", "p"]].rename(
+                columns={"mh": "mh_mc", "ma": "ma_mc", "p": "p_mc"})
             res = t[["season", "gameCode", "date", "home", "away"]].assign(hs=t.hs_pts, as_=t.as_pts)
-            res = pd.concat([res, pm.loc[t.index]], axis=1)
+            base[c] = res.merge(mc, on=["season", "gameCode"], how="inner")
 
-            # δίκτυο μόνο της λίγκας, ίδιο split
+        # κάθε αρχιτεκτονική: master + δίκτυο μόνο της λίγκας (ίδιο split), στα ίδια ματς
+        preds, losses, primary = {c: {} for c in base}, {}, None
+        for arch in archs:
+            model = GameNNModel(md.feature_cols, arch, self.seeds).fit(train, epochs=self.epochs)
+            losses[arch] = {"train": [round(float(v), 4) for v in model.histories[0]["loss"]],
+                            "val": [round(float(v), 4) for v in model.histories[0]["val_loss"]],
+                            "epochs": model.best_epochs}
+            if arch == self.arch:
+                primary = model
+            pm = to_points(test, model.predict(test))
+            for c in base:
+                t = test[test.comp == c]
+                preds[c][("master", arch)] = pd.concat([t[["season", "gameCode"]], pm.loc[t.index]], axis=1)
+                fb, ldf = md.local[c]
+                lh = ldf[ldf.played == 1]
+                ltr, lte = lh[lh.season < fb.cur_season], lh[lh.season == fb.cur_season]
+                single = GameNNModel(fb.feature_cols, arch, self.seeds).fit(ltr, epochs=self.epochs)
+                preds[c][("single", arch)] = pd.concat([lte[["season", "gameCode"]], single.predict(lte)], axis=1)
+            print(f"   {arch}: trained (best epochs {model.best_epochs})")
+
+        out_comps = {}
+        for c in self.comps:
+            n_tr = int((train.comp == c).sum())
+            if c not in base:
+                print(f"   {c}: no current-season games yet")
+                out_comps[c] = {"test": {}, "compare": [], "n_train": n_tr}
+                continue
+            # μόνο ματς που έχουν ΟΛΑ τα μοντέλα
+            res = base[c]
+            for (kind, arch), pr in preds[c].items():
+                pr = pr.rename(columns={k: f"{k}_{kind}_{arch}" for k in ["mh", "ma", "sh", "sa", "rho", "p"]})
+                res = res.merge(pr, on=["season", "gameCode"], how="inner")
+            compare = [{"model": "mc", "arch": None, **score(_mc_cols(res, "_mc"))}]
+            for (kind, arch) in preds[c]:
+                compare.append({"model": kind, "arch": arch, **score(_mc_cols(res, f"_{kind}_{arch}"))})
+            sc = {"master": score(_mc_cols(res, f"_master_{self.arch}")),
+                  "single": score(_mc_cols(res, f"_single_{self.arch}")), "mc": compare[0]}
             fb, ldf = md.local[c]
             lh = ldf[ldf.played == 1]
-            ltr, lte = lh[lh.season < fb.cur_season], lh[lh.season == fb.cur_season]
-            single = GameNNModel(fb.feature_cols, self.arch, self.seeds).fit(ltr, epochs=self.epochs)
-            ps = single.predict(lte)
-            res = res.merge(pd.concat([lte[["season", "gameCode"]], ps.add_suffix("_one")], axis=1),
-                            on=["season", "gameCode"], how="inner")
-
-            # Monte Carlo
-            mc = GameSimulator(md.datas[c]).backtest()
-            mc = mc[mc.season == fb.cur_season][["season", "gameCode", "mh", "ma", "p"]].add_suffix("_mc") \
-                .rename(columns={"season_mc": "season", "gameCode_mc": "gameCode"})
-            res = res.merge(mc, on=["season", "gameCode"], how="inner")
-
-            sc = {"master": score(res[SCORE_COLS]), "single": score(_mc_cols(res, "_one")), "mc": score(_mc_cols(res, "_mc"))}
-            print(f"   {c}: {sc['master'].get('n')} games | acc/brier  master {sc['master'].get('acc')}/{sc['master'].get('brier')}"
-                  f"  league-only {sc['single'].get('acc')}/{sc['single'].get('brier')}"
-                  f"  MC {sc['mc'].get('acc')}/{sc['mc'].get('brier')}")
-            out_comps[c] = {"test": sc, "n_train": int((train.comp == c).sum()), "n_train_single": int(len(ltr)),
+            print(f"   {c}: {len(res)} games | " + "  ".join(
+                f"{r['model']}{'/' + r['arch'] if r['arch'] else ''} {r.get('acc')}/{r.get('brier')}" for r in compare))
+            t = test[test.comp == c]
+            out_comps[c] = {"test": sc, "compare": compare, "n_train": n_tr,
+                            "n_train_single": int((lh.season < fb.cur_season).sum()),
                             "test_from": t.date.min().strftime("%Y-%m-%d"), "test_to": t.date.max().strftime("%Y-%m-%d")}
+        model = primary
+        self.losses = losses
 
         # τελικό: όλοι οι αγώνες -> επερχόμενα φετινά
         final = GameNNModel(md.feature_cols, self.arch, self.seeds).fit(hist, fixed_epochs=model.best_epochs)
@@ -212,6 +245,7 @@ class MasterTrainer:
             "epochs": model.best_epochs, "features": md.feature_cols, "n_train": int(len(train)),
             "n_test": int(len(test)), "train_seasons": sorted(int(s) for s in train.season.unique()),
             "loss": {"train": [round(float(v), 4) for v in h["loss"]], "val": [round(float(v), 4) for v in h["val_loss"]]},
+            "compare_archs": list(self.losses), "losses": self.losses,
             "comps": comps,
         }
         SITE_DATA.mkdir(parents=True, exist_ok=True)
@@ -224,8 +258,10 @@ def main():
     ap.add_argument("--arch", choices=list(GARCHS), default="mlp_small")
     ap.add_argument("--epochs", type=int, default=300)
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--compare", choices=list(GARCHS), nargs="*", default=list(GARCHS),
+                    help="αρχιτεκτονικές που εκπαιδεύονται για σύγκριση στα φετινά ματς (default: όλες)")
     a = ap.parse_args()
-    MasterTrainer(a.arch, a.epochs, a.seeds).run()
+    MasterTrainer(a.arch, a.epochs, a.seeds, a.compare).run()
 
 
 if __name__ == "__main__":

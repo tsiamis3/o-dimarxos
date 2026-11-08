@@ -505,7 +505,7 @@ const App = {
           cols: { players: ["GP", "MIN", "PTS", "REB", "AST", "STL", "BLK", "TOV", "PIR", "FG3P", "TS"],
                   teams: ["GP", "W", "L", "PTS", "OPP", "NET", "PACE", "ORTG", "DRTG", "EFG", "TOVP", "OREBP"],
                   logs: ["MIN", "PTS", "REB", "AST", "STL", "TOV", "PIR", "PM"] } },
-    predGame: "", predTarget: "PTS",
+    predGame: "", predTarget: "PTS", cmpModel: "",
   },
 
   async json(path) {
@@ -1257,6 +1257,48 @@ const Views = {
     // ποιο είναι καλύτερο: dir 1 = μεγαλύτερο, -1 = μικρότερο, 0 = πιο κοντά στο 80%
     const beats = (a, b, dir) => isNum(a) && isNum(b) && dir != null && (dir === 0 ? Math.abs(a - 0.8) < Math.abs(b - 0.8) : dir * (a - b) > 0);
     const cell = (a, b, dir, f) => `<td class="n ${beats(a, b, dir) ? "better" : ""}">${isNum(a) ? f(a) : "–"}</td>`;
+
+    // ---- 5β. Σύγκριση όλων των μοντέλων αγώνων (ίδια ματς) ----
+    const MS = App.master, CMP = App.masterFor()?.compare || [];
+    const modelName = (r, prim) => r.model === "mc" ? "Monte Carlo"
+      : `${{ master: "Master", single: "Μόνο λίγκα", nn: "Νευρωνικό λίγκας" }[r.model] || r.model} · ${r.arch}${r.arch === prim ? " (κύρια)" : ""}`;
+    const CM_COLS = metrics.filter(([k]) => ["acc", "brier", "logloss", "mae_margin", "mae_total", "cover80"].includes(k));
+    // στήλες για SortTable με πράσινο στο καλύτερο της στήλης
+    const cmpCols = (rows) => [{ key: "name", label: "Μοντέλο" }, ...CM_COLS.map(([k, label, f, d]) => {
+      const vals = rows.map((r) => r[k]).filter(isNum);
+      const best = d === 0 ? vals.reduce((b, v) => (Math.abs(v - 0.8) < Math.abs(b - 0.8) ? v : b), vals[0])
+        : d > 0 ? Math.max(...vals) : Math.min(...vals);
+      return { key: k, label, n: true, html: (r) => (isNum(r[k]) ? `<span class="${f(r[k]) === f(best) ? "better" : ""}">${f(r[k])}</span>` : "–") };
+    })];
+    if (CMP.length) {
+      const mc = App.masterFor();
+      if (!App.ui.cmpModel || !CMP.some((r) => r.model + r.arch === App.ui.cmpModel)) App.ui.cmpModel = "master" + MS.arch;
+      const pick = CMP.find((r) => r.model + r.arch === App.ui.cmpModel) || CMP[0];
+      const leagues = Object.entries(MS.comps).filter(([, x]) => x.compare?.length);
+      sections.push(`
+      <section><div class="sec-head"><h2>Σύγκριση όλων των μοντέλων αγώνων</h2><span class="muted">${esc(App.compInfo().name)} · φετινή σεζόν · ${CMP[0].n} ματς</span></div>
+        <p style="margin:0;max-width:70ch">Όλες οι αρχιτεκτονικές νευρωνικών (${MS.compare_archs.map((a) => `<span class="num">${esc(a)}</span>`).join(", ")}), εκπαιδευμένες σε προηγούμενες σεζόν, είτε ως ένα master δίκτυο για όλες τις λίγκες είτε μόνο σε αυτή τη λίγκα, μαζί με το Monte Carlo. Όλα μετριούνται στα ίδια φετινά ματς${mc.test_from ? ` (${fmtDate(mc.test_from)}–${fmtDate(mc.test_to)})` : ""}. «Κύρια» είναι η αρχιτεκτονική που δίνει τις προβλέψεις στην αρχική. Πατήστε μια στήλη για ταξινόμηση.</p>
+        <div id="cmp-tab"></div>
+          <div><h3>Όλες οι λίγκες · Brier score</h3>
+            <div class="tbl-wrap"><table><thead><tr><th>Μοντέλο</th>${leagues.map(([c, x]) => `<th class="n">${esc(App.compInfo(c)?.name || c)} <span class="muted">(${x.compare[0].n})</span></th>`).join("")}<th class="n">Μέσος</th></tr></thead><tbody>
+              ${(() => {
+                const ids = CMP.map((r) => [r.model, r.arch]);
+                const val = (c, m, a) => MS.comps[c].compare.find((r) => r.model === m && r.arch === a)?.brier;
+                const avg = (m, a) => mean(leagues.map(([c]) => val(c, m, a)).filter(isNum));
+                const best = (vals) => Math.min(...vals.filter(isNum));
+                const colBest = leagues.map(([c]) => best(ids.map(([m, a]) => val(c, m, a))));
+                const avgBest = best(ids.map(([m, a]) => avg(m, a)));
+                const td = (v, b) => `<td class="n ${isNum(v) && fmt(v, 3) === fmt(b, 3) ? "better" : ""}">${fmt(v, 3)}</td>`;
+                return ids.map(([m, a]) => `<tr><td>${esc(modelName({ model: m, arch: a }, MS.arch))}</td>${leagues.map(([c], i) => td(val(c, m, a), colBest[i])).join("")}${td(avg(m, a), avgBest)}</tr>`).join("");
+              })()}
+            </tbody></table></div>
+            <p class="muted" style="margin:0;font-size:13px">Brier score ανά λίγκα στα φετινά ματς (μικρότερο = καλύτερο, 0.250 = κορώνα-γράμματα). Σε παρένθεση ο αριθμός των ματς: όσο λιγότερα, τόσο πιο αβέβαιη η σύγκριση. «Μέσος» = απλός μέσος όρος των λιγκών.</p></div>
+        <div><h3>Βαθμονόμηση</h3>
+          <label class="muted" style="font-size:12px">Μοντέλο <select id="cmp-sel">${CMP.map((r) => `<option value="${esc(r.model + r.arch)}" ${r === pick ? "selected" : ""}>${esc(modelName(r, MS.arch))}</option>`).join("")}</select></label>
+          <div class="chart" style="max-width:520px">${Charts.calibration(pick.calibration || [])}</div></div>
+      </section>`);
+    }
+
     if (GN) {
       const T = GN.test || {}, LV = GN.live || {};
       const pair = (o) => metrics.map(([k, , f, d]) => [cell(o.nn?.[k], o.mc?.[k], d, f), cell(o.mc?.[k], o.nn?.[k], d, f)]);
@@ -1269,6 +1311,7 @@ const Views = {
           <tr><th>Μετρική</th><th class="n">Νευρωνικό</th><th class="n">Monte Carlo</th><th class="n">Νευρωνικό</th><th class="n">Monte Carlo</th></tr></thead><tbody>
           ${metrics.map(([, label], i) => `<tr><td>${label}</td>${tp[i].join("")}${lp ? lp[i].join("") : `<td class="n">–</td><td class="n">–</td>`}</tr>`).join("")}
         </tbody></table></div>
+        ${GN.compare?.length > 2 ? `<h3>Αρχιτεκτονικές στο ίδιο test</h3><div id="gn-cmp"></div>` : ""}
         <p class="muted" style="margin:0;font-size:13px">Πράσινο = καλύτερο από τα δύο. Brier: 0.250 = κορώνα-γράμματα. Κάλυψη 80%: πόσο συχνά οι πόντοι κάθε ομάδας έπεσαν μέσα στο διάστημα 80% του μοντέλου (ιδανικά 80%· το Monte Carlo έχει σταθερό σ = ${MatchSim.SD} π.).</p>
         <div class="grid2">
           <div><h3>Βαθμονόμηση · νευρωνικό</h3><div class="chart" style="max-width:520px">${Charts.calibration(T.nn?.calibration || [])}</div></div>
@@ -1340,6 +1383,15 @@ const Views = {
           { key: "ok", label: "", html: (r) => `<span class="pill ${r.ok ? "w" : "l"}">${r.ok ? "✓" : "✗"}</span>` }],
         rows, sortKey: "date", sortDir: -1, pageSize: 15,
       });
+    }
+    if (CMP.length) {
+      const rows = CMP.map((r) => ({ ...r, name: modelName(r, MS.arch) }));
+      new SortTable($("#cmp-tab", el), { cols: cmpCols(rows), rows, sortKey: "brier", sortDir: 1 });
+      $("#cmp-sel", el).onchange = (e) => { App.ui.cmpModel = e.target.value; Views.predictions(el); };
+    }
+    if (GN?.compare?.length > 2) {
+      const rows = GN.compare.map((r) => ({ ...r, name: modelName(r, GN.arch) }));
+      new SortTable($("#gn-cmp", el), { cols: cmpCols(rows), rows, sortKey: "brier", sortDir: 1 });
     }
     if (GN?.live?.n) {
       const rows = rowsToObjs(GN.recent).map((r) => ({ ...r, w: r.hs > r.as }));

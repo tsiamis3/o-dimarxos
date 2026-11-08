@@ -27,6 +27,10 @@
 
     python scripts/game_model.py                       # όλες οι διοργανώσεις
     python scripts/game_model.py --comp E --arch mlp_wide --epochs 300 --seeds 5
+    python scripts/game_model.py --compare mlp_small     # χωρίς τις υπόλοιπες αρχιτεκτονικές (πιο γρήγορο)
+
+Σύγκριση αρχιτεκτονικών: εκπαιδεύονται ΟΛΕΣ οι αρχιτεκτονικές του GARCHS στο ίδιο split και μετριούνται
+στα ίδια ματς του test -> site/data/gamenn_{C}.json["compare"]. Η --arch είναι αυτή των προβλέψεων.
 """
 import argparse
 import json
@@ -363,8 +367,9 @@ def score(df: pd.DataFrame) -> dict:
 # 4) Εκπαίδευση + σύγκριση + αρχείο προβλέψεων + export
 # ----------------------------------------------------------------------------
 class GameNNTrainer:
-    def __init__(self, comp: str, arch: str, epochs: int, seeds: int):
+    def __init__(self, comp: str, arch: str, epochs: int, seeds: int, compare=None):
         self.comp, self.arch, self.epochs, self.seeds = comp, arch, epochs, seeds
+        self.compare = compare or [arch]
         self.log_path = PRED_DIR / f"{comp}_games_nn.csv"
 
     def run(self):
@@ -394,6 +399,23 @@ class GameNNTrainer:
         mc_s = score(both[["mh_mc", "ma_mc", "p_mc", "hs", "as_"]].set_axis(["mh", "ma", "p", "hs", "as_"], axis=1))
         print(f"   test {nn_s.get('n', 0)} games | NN acc {nn_s.get('acc')} brier {nn_s.get('brier')}"
               f" | MC acc {mc_s.get('acc')} brier {mc_s.get('brier')}")
+
+        # οι υπόλοιπες αρχιτεκτονικές, στα ίδια ματς (μόνο για σύγκριση)
+        compare = [{"model": "mc", "arch": None, **mc_s}, {"model": "nn", "arch": self.arch, **nn_s}]
+        self.losses = {self.arch: {"train": [round(float(v), 4) for v in model.histories[0]["loss"]],
+                                   "val": [round(float(v), 4) for v in model.histories[0]["val_loss"]]}}
+        for arch in self.compare:
+            if arch == self.arch:
+                continue
+            m2 = GameNNModel(fb.feature_cols, arch, self.seeds).fit(train, epochs=self.epochs)
+            p2 = pd.concat([test[["season", "gameCode", "hs", "as_"]], m2.predict(test)], axis=1)
+            p2 = both[["season", "gameCode"]].merge(p2, on=["season", "gameCode"])
+            s2 = score(p2[["mh", "ma", "sh", "sa", "p", "hs", "as_"]])
+            compare.append({"model": "nn", "arch": arch, **s2})
+            self.losses[arch] = {"train": [round(float(v), 4) for v in m2.histories[0]["loss"]],
+                                 "val": [round(float(v), 4) for v in m2.histories[0]["val_loss"]]}
+            print(f"   {arch}: acc {s2.get('acc')} brier {s2.get('brier')}")
+        self.compare_rows = compare
 
         # τελικό μοντέλο σε όλους τους αγώνες -> επερχόμενα
         final = GameNNModel(fb.feature_cols, self.arch, self.seeds).fit(hist, fixed_epochs=model.best_epochs)
@@ -455,6 +477,7 @@ class GameNNTrainer:
             "loss": {"train": [round(float(v), 4) for v in h["loss"]],
                      "val": [round(float(v), 4) for v in h["val_loss"]]},
             "test": {"nn": nn_s, "mc": mc_s},
+            "compare": self.compare_rows, "losses": self.losses,
             "live": live,
             "recent": {"cols": ["date", "home", "away", "p_mc", "mh_mc", "ma_mc", "p", "mh", "ma", "hs", "as"],
                        "rows": recent},
@@ -472,10 +495,12 @@ def main():
     ap.add_argument("--arch", choices=list(GARCHS), default="mlp_small")
     ap.add_argument("--epochs", type=int, default=300, help="μέγιστες εποχές (early stopping)")
     ap.add_argument("--seeds", type=int, default=3, help="μέγεθος ensemble")
+    ap.add_argument("--compare", choices=list(GARCHS), nargs="*", default=list(GARCHS),
+                    help="αρχιτεκτονικές που εκπαιδεύονται για σύγκριση στο test (default: όλες)")
     args = ap.parse_args()
     for c in args.comp:
         try:
-            GameNNTrainer(c, args.arch, args.epochs, args.seeds).run()
+            GameNNTrainer(c, args.arch, args.epochs, args.seeds, args.compare).run()
         except (FileNotFoundError, ValueError) as e:
             print(f"  ! {c}: {e}")
         except Exception:                 # ένα σφάλμα σε μία διοργάνωση δεν σταματά τις υπόλοιπες
