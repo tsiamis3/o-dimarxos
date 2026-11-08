@@ -99,6 +99,8 @@ class SiteBuilder:
                 "predictions": (SITE_DATA / f"predictions_{comp}.json").exists(),
                 "evaluation": (SITE_DATA / f"eval_{comp}.json").exists(),
                 "gamenn": (SITE_DATA / f"gamenn_{comp}.json").exists(),   # νευρωνικό αγώνων (game_model.py)
+                "analytics": (SITE_DATA / f"analytics_{comp}.json").exists(),  # σελίδα «Ανάλυση» (analytics.py)
+                "edge": (SITE_DATA / f"edge_{comp}.json").exists(),            # σελίδα «Στοίχημα» (edge_model.py)
             })
         have = {c["code"] for c in self.manifest["competitions"]}
         self.manifest["sections"] = [{"key": k, "name": n, "comps": [c for c in cs if c in have]}

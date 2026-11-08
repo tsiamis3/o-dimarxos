@@ -47,6 +47,19 @@ jobs:
         continue-on-error: true
         run: python scripts/scrapers/nba_espn.py
 
+      - name: NBA odds and injuries (ESPN)
+        continue-on-error: true
+        run: |
+          python scripts/scrapers/odds_espn.py
+          python scripts/scrapers/injuries_espn.py
+
+      # Αποδόσεις EuroLeague/EuroCup κ.ά.: μόνο αν υπάρχει το secret ODDS_API_KEY (αλλιώς δεν κάνει τίποτα)
+      - name: Odds (The Odds API, optional)
+        continue-on-error: true
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python scripts/scrapers/odds_api.py
+
       - name: Α2 γυναικών (apps.basket.gr)
         continue-on-error: true
         run: python scripts/scrapers/eok_apps.py --comp 5 --code WBL2
@@ -64,6 +77,12 @@ jobs:
       # Ένα master δίκτυο για όλες τις λίγκες (εκτός Α2 γυναικών), δίπλα στα δίκτυα λίγκας και στο Monte Carlo
       - name: Train master game model (all leagues)
         run: python scripts/master_model.py
+
+      - name: Analytics (adjusted ratings, four factors, players)
+        run: python scripts/analytics.py
+
+      - name: Betting model (edge vs market)
+        run: python scripts/edge_model.py
 
       - name: Build site database
         run: python scripts/build_site.py
