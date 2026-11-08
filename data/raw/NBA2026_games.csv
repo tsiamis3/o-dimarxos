@@ -131,7 +131,7 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909293,3,2026-11-06,20:00,NO,New Orleans Pelicans,MIN,Minnesota Timberwolves,109.0,115.0,True
 401909294,3,2026-11-06,22:00,LAL,Los Angeles Lakers,POR,Portland Trail Blazers,124.0,118.0,True
 401909295,3,2026-11-06,22:00,SAC,Sacramento Kings,SA,San Antonio Spurs,109.0,124.0,True
-401909938,3,2026-11-07,17:00,IND,Indiana Pacers,DEN,Denver Nuggets,,,False
+401909938,3,2026-11-07,17:00,IND,Indiana Pacers,DEN,Denver Nuggets,102.0,114.0,True
 401909939,3,2026-11-07,19:30,ATL,Atlanta Hawks,BKN,Brooklyn Nets,,,False
 401909940,3,2026-11-07,20:00,CLE,Cleveland Cavaliers,NY,New York Knicks,,,False
 401909941,3,2026-11-07,20:00,OKC,Oklahoma City Thunder,WSH,Washington Wizards,,,False
