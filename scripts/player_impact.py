@@ -16,9 +16,9 @@ from stints import build as build_stints
 
 FEATS = ["pts100", "usg", "ts_adj", "fg3_rate", "fg3_adj", "ft_adj", "ast_pct", "tov_pct", "orb_pct", "drb_pct",
          "stl100", "blk100", "pf100"]
-RAPM_LAM = 2000.0                  # ποινή ridge του RAPM (κατοχές)
-RAPM_TAU = None                    # None: ίσα βάρη μέσα στη σεζόν· αλλιώς ημέρες (εκθετική απόσβεση)
-RAPM_PREV = False                  # True: και τα stints της προηγούμενης σεζόν (με απόσβεση RAPM_TAU)
+RAPM_LAM = 8000.0                  # ποινή ridge του RAPM (κατοχές)
+RAPM_TAU = 365                     # None: ίσα βάρη μέσα στη σεζόν· αλλιώς ημέρες (εκθετική απόσβεση)
+RAPM_PREV = True                   # True: και τα stints της προηγούμενης σεζόν (με απόσβεση RAPM_TAU)
 TRAIN_MIN = 200.0                  # λεπτά για να μπει παίκτης-σεζόν στην εκπαίδευση
 ALPHAS = [1, 3, 10, 30, 100, 300]  # ποινή ridge (σε μονάδες βάρους· επιλογή με cross-validation)
 

@@ -87,6 +87,11 @@ RATING_MID, RATING_SD = 72.0, 8.0
 #   NBA: δεν υπάρχουν αρκετές μεταγραφές στα δεδομένα -> ΥΠΟΘΕΣΗ +0.6 sd (ισχυρότερη από την EuroLeague),
 #   ρυθμισμένη ώστε ~5% των παικτών με ρόλο να είναι 90+ (όπως στην κλίμακα του 2K)
 LEAGUE_OFFSET = {"E": 0.0, "U": -0.9, "GBL": -0.35, "NBA": 0.6}
+# Κλίμακα: πόσο «αξίζει» μία τυπική απόκλιση της λίγκας σε τυπικές αποκλίσεις EuroLeague. Σε ασθενέστερη λίγκα οι
+# κορυφαίοι ξεχωρίζουν περισσότερο από τον μέσο όρο της. Εκτίμηση από ίδιους παίκτες την ΙΔΙΑ σεζόν (ενιαίο μητρώο):
+#   ελληνική -> EuroLeague: κλίση 0.49 (n=36)· ελληνική -> EuroCup: 0.48 (n=10) => 0.55 (με διόρθωση θορύβου)
+#   EuroCup <-> EuroLeague: οι μεταγραφές δίνουν αντιφατικές κλίσεις (επιλογή) -> κρατάμε 1
+LEAGUE_SCALE = {"GBL": 0.55}
 SHRINK_MIN = 250.0                 # εικονικά λεπτά μέσου όρου (μικρό δείγμα -> προς τον μέσο)
 POS = ["PG", "SG", "SF", "PF", "C"]
 
@@ -140,7 +145,7 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str
                    model: BoxImpact | None = None, stints: pd.DataFrame | None = None) -> pd.DataFrame:
     """Βαθμολογίες τύπου 2K (40–99). Συνολική = επιρροή στο σκορ (RAPM με prior το box-μοντέλο, ή μόνο το
     box-μοντέλο όπου δεν υπάρχει play-by-play), σε τυπικές αποκλίσεις μέσα στη λίγκα + επίπεδο λίγκας:
-    rating = 72 + 8·(z + offset). Τα επιμέρους είναι προφίλ (δεν μπαίνουν με βάρη στη συνολική)."""
+    rating = 72 + 8·(κλίμακα·z + offset). Τα επιμέρους είναι προφίλ (δεν μπαίνουν με βάρη στη συνολική)."""
     p = p.copy()
     if "uid" not in p:
         p["uid"] = p.pid
@@ -202,10 +207,10 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str
         cmp_["ovr"] = cmp_["r_imp"]
         for k in IMPACT_KEYS:
             p[k] = np.nan
-    off = LEAGUE_OFFSET.get(comp, 0.0)
+    off, scale = LEAGUE_OFFSET.get(comp, 0.0), LEAGUE_SCALE.get(comp, 1.0)
     for k, v in cmp_.items():
         zz = (v - v[qual].mean()) / (v[qual].std() + 1e-9)
-        p[k] = np.round(np.clip(RATING_MID + RATING_SD * (zz + off), 40, 99)).astype(int)
+        p[k] = np.round(np.clip(RATING_MID + RATING_SD * (scale * zz + off), 40, 99)).astype(int)
         q = np.sort(v[qual].to_numpy(float))
         p["pc_" + k] = np.round(100 * np.searchsorted(q, v.to_numpy(float), side="right") / len(q)).astype(int)
     # θέση (εκτίμηση από το προφίλ): πάσα και τρίποντα -> guard, επιθ. ριμπάουντ και κοψίματα -> ψηλός
