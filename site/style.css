@@ -226,3 +226,15 @@ td .pbar i { background: var(--accent); }
   .h2h-row { grid-template-columns: 1fr auto 64px auto 1fr; gap: 6px; }
   .h2h.big .h2h-row:first-child { grid-template-columns: 1fr auto 40px auto 1fr; font-size: 13px; }
 }
+
+/* ---------- σημειώσεις (notes.html) ---------- */
+.notes { display: flex; flex-direction: column; gap: 28px; padding-block: 20px 40px; }
+.notes p, .notes li, .notes dd { max-width: 75ch; }
+.notes h3 { margin: 18px 0 6px; }
+.notes ul, .notes ol { padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.notes .formula { font-family: var(--font-num); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; overflow-x: auto; }
+.notes .toc { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.notes .gloss { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+.notes .gloss dt { font-weight: 700; }
+.notes .gloss dd { margin: 0; }
+@media (max-width: 640px) { .notes .gloss { grid-template-columns: 1fr; } .notes .gloss dd { margin-bottom: 6px; } }

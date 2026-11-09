@@ -102,7 +102,7 @@ jobs:
           git push
 
       - name: Cache busting (κάθε deploy φορτώνει αμέσως τα νέα αρχεία)
-        run: sed -i "s/__BUILD__/${GITHUB_RUN_ID}/g" site/index.html
+        run: sed -i "s/__BUILD__/${GITHUB_RUN_ID}/g" site/index.html site/notes.html
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
