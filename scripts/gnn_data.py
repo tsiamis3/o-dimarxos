@@ -11,6 +11,7 @@ EuroLeague + EuroCup μαζί: το ιστορικό κάθε παίκτη εί�
   - «νευρική» φόρμα (μισή βαρύτητα / 3 αγώνες), σταθερότητα (διακύμανση πόντων/PIR)
   - προφίλ σουτ ανά ζώνη + ευστοχία, % εύστοχων από ασίστ, πόντοι υπέρ/κατά στο παρκέ
   - RAPM επίθεσης/άμυνας (επανεκπαίδευση κάθε 14 ημέρες, μόνο με προηγούμενα stints)
+  - βιομετρικά (API EuroLeague, scrapers/bio.py): ύψος, βάρος, ηλικία την ημέρα του αγώνα, επίσημη θέση
   - ποσοστά: TS%, 3π% (με συρρίκνωση), usage
   - ρόλος: λεπτά/αγώνα, ποσοστό βασικού, κατοχές στο παρκέ
   - plus-minus στο παρκέ ανά 100 κατοχές (από τα stints): «RAPM-lite»
@@ -95,6 +96,13 @@ FEATURES = {   # όνομα -> περιγραφή (για τη σελίδα)
     "comp_E": "1 = ο αγώνας είναι EuroLeague, 0 = EuroCup",
     "hist_E": "Μερίδιο των λεπτών του ιστορικού στην EuroLeague",
     "no_hist": "1 = κανένας προηγούμενος αγώνας (τα υπόλοιπα = μέσος όρος)",
+    "height": "Ύψος (cm), από το API της EuroLeague",
+    "weight": "Βάρος (kg)",
+    "age": "Ηλικία (έτη) την ημέρα του αγώνα",
+    "pos_g": "Επίσημη θέση: Guard (1/0)",
+    "pos_f": "Επίσημη θέση: Forward (1/0)",
+    "pos_c": "Επίσημη θέση: Center (1/0)",
+    "no_bio": "1 = λείπουν βιομετρικά (ύψος/βάρος/ηλικία = μέσος όρος της θέσης ή της λίγκας)",
 }
 TEAM_FEATURES = {
     "t_off": "Rating επίθεσης ομάδας (πόντοι/100 πάνω από τον μέσο όρο, με διόρθωση για αντιπάλους)",
@@ -106,6 +114,8 @@ TEAM_FEATURES = {
     "t_rest": "Ημέρες από τον προηγούμενο αγώνα της ομάδας (έως 14)",
     "t_home": "1 = γηπεδούχος",
     "t_no_hist": "1 = δεν υπάρχει ακόμα rating (αρχή του ιστορικού)",
+    "t_height": "Μέσο ύψος (cm), σταθμισμένο με τα αναμενόμενα λεπτά των παικτών του ρόστερ",
+    "t_age": "Μέση ηλικία, σταθμισμένη με τα αναμενόμενα λεπτά",
 }
 EDGE_FEATURES = {
     "teammate": "1 = συμπαίκτες, 0 = αντίπαλοι",
@@ -118,6 +128,8 @@ EDGE_FEATURES = {
     "games_vs": "Αγώνες απέναντι στο παρκέ (όλο το ιστορικό)",
     "ast_ij": f"Ασίστ του i (pid) προς τον j ανά 100 κοινές κατοχές ως συμπαίκτες, όλο το ιστορικό (+{int(K_AST)} εικονικές κατοχές)",
     "ast_ji": "Το ίδιο, από τον j προς τον i (η ακμή έχει κατεύθυνση)",
+    "d_height": "Διαφορά ύψους i − j (cm): στους αντιπάλους, το μισμάτς",
+    "same_pos": "1 = ίδια επίσημη θέση (στους αντιπάλους: πιθανός προσωπικός αντίπαλος)",
     "net_with": f"Net rating του διδύμου: plus-minus ανά 100 κατοχές όταν παίζουν μαζί (+{int(K_PAIR)} εικονικές κατοχές στο 0)",
 }
 
@@ -190,6 +202,26 @@ def load():
     logs = logs.merge(trips[["gid", "pid", "trips"]], on=["gid", "pid"], how="left")
     logs.loc[logs.trips.isna() & logs.gid.isin(stints.gid), "trips"] = 0
     return logs, games, stints, pbp, shots, tgs
+
+
+def load_bio():
+    """Βιογραφικά ανά παίκτη (data/raw/{C}{S}_bio.csv): οι πιο πρόσφατες μη κενές τιμές."""
+    frames = []
+    for c in COMPS:
+        for f in sorted(RAW_DIR.glob(f"{c}20*_bio.csv")):
+            b = pd.read_csv(f)
+            b["season"] = int(f.name[len(c):len(c) + 4])
+            frames.append(b)
+    if not frames:
+        return pd.DataFrame(columns=["pid", "height", "weight", "birth_date", "position"])
+    b = pd.concat(frames).sort_values("season")
+    # λάθη της πηγής: ίντσες/λίβρες, βάρος = ύψος, αδύνατες τιμές -> μετατροπή ή κενό
+    imp = (b.height.between(60, 95)) & (b.weight > 140)
+    b.loc[imp, "height"], b.loc[imp, "weight"] = b.height[imp] * 2.54, b.weight[imp] * 0.4536
+    b.loc[b.weight == b.height, "weight"] = np.nan
+    b.loc[~b.height.between(160, 235), "height"] = np.nan
+    b.loc[~b.weight.between(55, 160), "weight"] = np.nan
+    return b.groupby("pid")[["height", "weight", "birth_date", "position"]].last().reset_index()
 
 
 def assist_pairs(pbp):
@@ -271,7 +303,7 @@ def rapm_asof(stints, keys):
     return out.astype(float).fillna({"rapm_o": 0.0, "rapm_d": 0.0, "rapm_exp": 0.0})
 
 
-def node_features(logs, games, pg, zones, ast, stints):
+def node_features(logs, games, pg, zones, ast, stints, bio):
     L = logs.merge(pg[["gid", "pid", "on_poss", "pm100", "on_pf", "on_pa", "orb_ch", "drb_ch", "t_plays_on"]], on=["gid", "pid"], how="left")
     L = L.merge(zones, on=["gid", "pid"], how="left")
     astd = ast.groupby(["gid", "scorer"]).ast_fg.sum().rename("astd").reset_index().rename(columns={"scorer": "pid"})
@@ -386,6 +418,16 @@ def node_features(logs, games, pg, zones, ast, stints):
     F["comp_E"] = L.isE
     F["hist_E"] = ewm_prev("isE", weight="MIN").fillna(L.isE)
     F["no_hist"] = (n_prev == 0).astype(float)
+    # βιομετρικά (σταθερά ή γνωστά από πριν: δεν «βλέπουν» το μέλλον)
+    B = L[["pid", "date"]].merge(bio, on="pid", how="left")
+    F["no_bio"] = (B.height.isna() | B.birth_date.isna()).astype(float).values
+    pos = B.position.fillna("")
+    for k, nm in (("pos_g", "Guard"), ("pos_f", "Forward"), ("pos_c", "Center")):
+        F[k] = (pos == nm).astype(float).values
+    for col in ("height", "weight"):                            # κενά -> μέσος όρος της θέσης
+        v = B[col].astype(float)
+        F[col] = v.fillna(v.groupby(pos).transform("mean")).values
+    F["age"] = ((B.date - pd.to_datetime(B.birth_date)).dt.days / 365.25).values
     # χωρίς ιστορικό -> μέσος όρος της λίγκας του αγώνα
     for c in FEATURES:
         if c in F and F[c].isna().any():
@@ -465,6 +507,14 @@ def edge_features(N, pairs, games, ast):
     E["ast_ij"] = (100 * m.c_a_ij / (m.c_pw + K_AST)).values
     E["ast_ji"] = (100 * m.c_a_ji / (m.c_pw + K_AST)).values
     E["net_with"] = (100 * m.c_mw / (m.c_pw + K_PAIR)).values
+    # βιομετρικά ζεύγους
+    nb = N.set_index(["gid", "pid"])
+    hi = pd.Series(nb.f_height.values, index=nb.index)
+    pz = pd.Series((nb.f_pos_g * 1 + nb.f_pos_f * 2 + nb.f_pos_c * 3).values, index=nb.index)
+    ki, kj = pd.MultiIndex.from_arrays([E.gid, E.pid]), pd.MultiIndex.from_arrays([E.gid, E.pid_j])
+    E["d_height"] = hi.reindex(ki).values - hi.reindex(kj).values
+    pi_, pj_ = pz.reindex(ki).values, pz.reindex(kj).values
+    E["same_pos"] = ((pi_ == pj_) & (pi_ > 0)).astype(float)
     # στο ίδιο το ματς (αποτέλεσμα, όχι είσοδος): ασίστ ανά κατεύθυνση
     E = E.merge(a.rename(columns={"a_ij": "y_ast_ij", "a_ji": "y_ast_ji"}), on=["gid", "pid", "pid_j"], how="left")
     E[["y_ast_ij", "y_ast_ji"]] = E[["y_ast_ij", "y_ast_ji"]].fillna(0)
@@ -500,7 +550,11 @@ def team_nodes(tgs, N):
     T = pd.DataFrame(rows, columns=["gid", "team", "t_home", "t_off", "t_def", "t_pace", "t_exp_for", "t_exp_against",
                                     "t_neff", "t_rest", "t_no_hist"])
     T = T[T.gid.isin(N.gid)]
-    for c in ["t_off", "t_def", "t_pace", "t_exp_for", "t_exp_against"]:
+    w = N.f_min.clip(lower=0) + 1e-6
+    agg = (N.assign(wh=w * N.f_height, wa=w * N.f_age, w=w).groupby(["gid", "team"])[["wh", "wa", "w"]].sum())
+    T = T.merge((agg.wh / agg.w).rename("t_height").reset_index(), on=["gid", "team"], how="left")
+    T = T.merge((agg.wa / agg.w).rename("t_age").reset_index(), on=["gid", "team"], how="left")
+    for c in ["t_off", "t_def", "t_pace", "t_exp_for", "t_exp_against", "t_height", "t_age"]:
         T[c] = T[c].fillna(T.groupby(T.gid.str[0])[c].transform("mean"))
     return T.reset_index(drop=True)
 
@@ -545,7 +599,8 @@ def preview(N, E, G, T, logs, ast_rate, poss_game=None):
     sample_ids = list(G.groupby("comp").tail(30).gid)
     gs = {}
     show_f = ["r_pts", "r_reb", "r_ast", "r_pir", "r_pts_s", "ts", "usg", "oreb_pct", "dreb_pct", "astd", "sh_rim", "sh_a3", "min", "starter",
-              "pm100", "rapm_o", "rapm_d", "sd_pts", "log_games", "rest", "hist_E", "no_hist"]
+              "pm100", "rapm_o", "rapm_d", "sd_pts", "log_games", "rest", "hist_E", "no_hist",
+              "height", "weight", "age", "pos_g", "pos_f", "pos_c"]
     for gid in sample_ids:
         nd = N[N.gid == gid]
         ed = E[E.gid == gid]
@@ -560,10 +615,10 @@ def preview(N, E, G, T, logs, ast_rate, poss_game=None):
                                        _r(r.y_pts, 0), _r(r.y_reb, 0), _r(r.y_ast, 0), _r(r.y_pir, 0), _r(r.y_min, 1), _r(r.y_pm100, 1), _r(r.y_on_poss, 1)]
                                       for r in nd.itertuples()]},
                    "edges": {"cols": ["i", "j", "teammate", "min_season", "min_all", "games_all", "min_with_all", "min_vs_all",
-                                      "ast_ij", "ast_ji", "net_with", "y_min_shared", "y_ast_ij", "y_ast_ji"],
+                                      "ast_ij", "ast_ji", "net_with", "d_height", "same_pos", "y_min_shared", "y_ast_ij", "y_ast_ji"],
                              "rows": [[r.pid, r.pid_j, int(r.teammate), _r(r.min_season, 1), _r(r.min_all, 1), int(r.games_all),
                                        _r(r.min_with_all, 1), _r(r.min_vs_all, 1), _r(r.ast_ij, 2), _r(r.ast_ji, 2), _r(r.net_with, 1),
-                                       _r(r.y_min_shared, 1), int(r.y_ast_ij), int(r.y_ast_ji)]
+                                       _r(r.d_height, 0), int(r.same_pos), _r(r.y_min_shared, 1), int(r.y_ast_ij), int(r.y_ast_ji)]
                                       for r in ed.itertuples()]}}
     splits = G.groupby(["split", "comp"]).size().unstack(fill_value=0)
     out = {
@@ -595,7 +650,9 @@ def main():
     ast, ast_rate = assist_pairs(pbp)
     print(f"assists matched to a made shot: {ast_rate:.1%} ({int(ast.ast.sum())})")
     zones = shot_zones(shots)
-    N = node_features(logs, games, pg, zones, ast, stints)
+    bio = load_bio()
+    print(f"bio: {len(bio)} players")
+    N = node_features(logs, games, pg, zones, ast, stints, bio)
     E = edge_features(N, pairs, games, ast)
     T = team_nodes(tgs, N)
     G = graphs_table(N, games, logs[logs.played == 1])
