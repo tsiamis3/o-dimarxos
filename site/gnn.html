@@ -30,7 +30,7 @@ const fmt = (v, d = 2) => (isNum(v) ? (+v).toFixed(d) : "–");
 const objs = (o) => o.rows.map((r) => Object.fromEntries(o.cols.map((c, i) => [c, r[i]])));
 const nice = (n) => { const s = String(n || ""); if (!s.includes(",")) return s; const [a, b] = s.split(",").map((x) => x.trim()); const t = (w) => w.toLowerCase().replace(/(^|[\s-])\S/g, (m) => m.toUpperCase()); return `${t(b)} ${t(a)}`; };
 const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`;
-const F_LABEL = { r_pts: "Πόντοι/100", r_reb: "Ριμπ./100", r_ast: "Ασίστ/100", r_pir: "PIR/100", ts: "TS%", usg: "Usage", min: "Λεπτά", starter: "Βασικός", pm100: "+/-/100", log_games: "log αγώνες", rest: "Ξεκούραση", hist_E: "Ιστορικό EL", no_hist: "Χωρίς ιστ.", r_pts_s: "Πόντοι/100 (3 αγ.)", astd: "% με ασίστ", sh_rim: "% σουτ στο καλάθι", sh_a3: "% σουτ 3π", rapm_o: "RAPM επ.", rapm_d: "RAPM άμ.", sd_pts: "σ πόντων" };
+const F_LABEL = { r_pts: "Πόντοι/100", r_reb: "Ριμπ./100", r_ast: "Ασίστ/100", r_pir: "PIR/100", ts: "TS%", usg: "Usage", min: "Λεπτά", starter: "Βασικός", pm100: "+/-/100", log_games: "log αγώνες", rest: "Ξεκούραση", hist_E: "Ιστορικό EL", no_hist: "Χωρίς ιστ.", r_pts_s: "Πόντοι/100 (3 αγ.)", astd: "% με ασίστ", sh_rim: "% σουτ στο καλάθι", sh_a3: "% σουτ 3π", rapm_o: "RAPM επ.", rapm_d: "RAPM άμ.", sd_pts: "σ πόντων", oreb_pct: "OREB%", dreb_pct: "DREB%" };
 const T_LABEL = { t_off: "Επίθεση", t_def: "Άμυνα", t_pace: "Ρυθμός", t_exp_for: "Αναμ. πόντοι", t_exp_against: "Αναμ. κατά", t_rest: "Ξεκούραση" };
 const MODES = { hist: "Λεπτά μαζί/απέναντι · ιστορικό (είσοδος)", ast: "Ασίστ · ιστορικό (είσοδος, με κατεύθυνση)", net: "Net rating διδύμου · ιστορικό (είσοδος)",
   game: "Λεπτά στο ματς (αποτέλεσμα)", ast_game: "Ασίστ στο ματς (αποτέλεσμα)" };
@@ -57,7 +57,7 @@ const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ"
         ${tile(fmt(D.avg_edges, 0), "Ακμές ανά graph")}${tile((100 * D.no_hist_rate).toFixed(1) + "%", "Κόμβοι χωρίς ιστορικό")}
         ${tile((100 * D.stint_coverage).toFixed(1) + "%", "Κόμβοι με plus-minus από stints")}${tile(D.cross.rows.length, "Παίκτες και στις 2 λίγκες")}
         ${tile(D.dnp_nodes.toLocaleString("el"), "Κόμβοι DNP (στο ρόστερ, 0′)")}${tile((100 * D.ast_rate).toFixed(1) + "%", "Ασίστ που δέθηκαν με εκτελεστή")}
-        ${tile(`${D.n_node_feats} · ${D.n_edge_feats} · ${D.n_team_feats}`, "Χαρακτηριστικά κόμβου · ακμής · ομάδας")}
+        ${tile(`${D.n_node_feats} · ${D.n_edge_feats} · ${D.n_team_feats}`, "Χαρακτηριστικά κόμβου · ακμής · ομάδας")}${tile(fmt(D.poss_game, 1), "Κατοχές ανά αγώνα (μετρημένες)")}
       </div>
       <div class="grid2">
         <div class="tbl-wrap"><table><thead><tr><th>Split (χρονικό)</th><th class="n">EuroLeague</th><th class="n">EuroCup</th><th class="n">Σύνολο</th></tr></thead><tbody>${splitRows}</tbody></table></div>
@@ -180,7 +180,7 @@ const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ"
     // πίνακας κόμβων
     const fc = Object.keys(F_LABEL), yc = Object.keys(Y_LABEL);
     $("#g-tab").innerHTML = `<table><thead><tr><th>Παίκτης</th><th>Ομ.</th>${fc.map((c) => `<th class="n" title="${c}">${F_LABEL[c]}</th>`).join("")}${yc.map((c) => `<th class="n" title="${c}" style="color:var(--c2)">${Y_LABEL[c]}</th>`).join("")}</tr></thead><tbody>
-      ${[...home, ...away].map((n) => `<tr data-pid="${esc(n.pid)}" style="cursor:pointer${n.pid === selPid ? ";background:var(--accent-soft)" : ""}"><td>${esc(nice(n.player))}</td><td>${esc(n.team)}</td>${fc.map((c) => `<td class="n">${fmt(n[c], ["ts", "usg", "starter", "hist_E", "astd", "sh_rim", "sh_a3"].includes(c) ? 2 : 1)}</td>`).join("")}${yc.map((c) => `<td class="n">${fmt(n[c], 0)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      ${[...home, ...away].map((n) => `<tr data-pid="${esc(n.pid)}" style="cursor:pointer${n.pid === selPid ? ";background:var(--accent-soft)" : ""}"><td>${esc(nice(n.player))}</td><td>${esc(n.team)}</td>${fc.map((c) => `<td class="n">${fmt(n[c], ["ts", "usg", "starter", "hist_E", "astd", "sh_rim", "sh_a3", "oreb_pct", "dreb_pct"].includes(c) ? 2 : 1)}</td>`).join("")}${yc.map((c) => `<td class="n">${fmt(n[c], 0)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     // λεπτομέρειες κόμβου
     const n = N.find((x) => x.pid === selPid);
     if (n) {

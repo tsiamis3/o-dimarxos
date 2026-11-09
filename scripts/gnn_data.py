@@ -57,6 +57,7 @@ SPLIT = {2023: "train", 2024: "train", 2025: "val", 2026: "test"}
 K_POSS, K_PM, K_TSA = 50.0, 150.0, 20.0   # εικονικές κατοχές/προσπάθειες προς τον μέσο όρο (μικρά δείγματα)
 HALF_SHORT = 3                     # «νευρική» φόρμα: μισή βαρύτητα κάθε 3 αγώνες
 K_SHOT, K_FG, K_ASTD = 20.0, 15.0, 15.0    # εικονικά σουτ (προφίλ), προσπάθειες (% ζώνης), εύστοχα (% με ασίστ)
+K_REB = 20.0                       # εικονικές ευκαιρίες ριμπάουντ (OREB% / DREB%)
 K_PAIR, K_AST = 100.0, 30.0        # εικονικές κοινές κατοχές: net rating διδύμου, ασίστ ζεύγους
 TEAM_TAU_LAM = (365, 2.0)          # ratings ομάδας για τους κόμβους-ομάδες (ημέρες μισής ζωής, ridge)
 RAPM_EVERY = 14                    # ημέρες ανάμεσα σε επανεκπαιδεύσεις του RAPM (χωρίς δεδομένα από το μέλλον)
@@ -64,7 +65,7 @@ ZONES = ["rim", "paint", "mid", "corner3", "arc3"]
 ZONE_SHORT = {"rim": "rim", "paint": "paint", "mid": "mid", "corner3": "c3", "arc3": "a3"}
 
 FEATURES = {   # όνομα -> περιγραφή (για τη σελίδα)
-    **{f"r_{s.lower()}": f"{s} ανά 100 κατοχές στο παρκέ (σταθμισμένο: μισή βαρύτητα / {HALF_LIFE} αγώνες· +{int(K_POSS)} εικονικές κατοχές στον μέσο όρο)" for s in RATE},
+    **{f"r_{s.lower()}": f"{s} ανά 100 μετρημένες κατοχές στο παρκέ (σταθμισμένο: μισή βαρύτητα / {HALF_LIFE} αγώνες· +{int(K_POSS)} εικονικές κατοχές στον μέσο όρο)" for s in RATE},
     **{f"r_{s.lower()}_s": f"{s} ανά 100 κατοχές, «νευρική» φόρμα (μισή βαρύτητα / {HALF_SHORT} αγώνες)" for s in ["PTS", "PIR"]},
     "min_s": f"Λεπτά ανά αγώνα, «νευρική» φόρμα (μισή βαρύτητα / {HALF_SHORT} αγώνες)",
     "sd_pts": "Διακύμανση (τυπ. απόκλιση) πόντων στους προηγούμενους αγώνες: πόσο σταθερός είναι",
@@ -77,13 +78,15 @@ FEATURES = {   # όνομα -> περιγραφή (για τη σελίδα)
     "rapm_o": f"RAPM επίθεσης: πόντοι/100 που προσθέτει, με έλεγχο για συμπαίκτες και αντιπάλους (εκπαίδευση κάθε {RAPM_EVERY} ημέρες μόνο με προηγούμενα δεδομένα)",
     "rapm_d": "RAPM άμυνας: πόντοι/100 που επιτρέπει (αρνητικό = καλή άμυνα)",
     "rapm_exp": "log(1 + σταθμισμένες κατοχές στο RAPM): πόσο αξιόπιστο είναι",
-    "ts": f"True shooting % (σταθμισμένο, +{int(K_TSA)} εικονικές προσπάθειες στον μέσο όρο)",
+    "oreb_pct": f"OREB%: ποσοστό των διαθέσιμων επιθετικών ριμπάουντ που παίρνει όσο είναι στο παρκέ (+{int(K_REB)} εικονικές ευκαιρίες)",
+    "dreb_pct": f"DREB%: ποσοστό των διαθέσιμων αμυντικών ριμπάουντ που παίρνει όσο είναι στο παρκέ (+{int(K_REB)} εικονικές ευκαιρίες)",
+    "ts": f"True shooting %: πόντοι / (2 × (σουτ + ΜΕΤΡΗΜΕΝΕΣ επισκέψεις στη γραμμή)), όχι 0.44 × βολές (+{int(K_TSA)} εικονικές προσπάθειες)",
     "fg3p": "Τρίποντα % (συρρίκνωση προς τον μέσο όρο με 40 εικονικές προσπάθειες)",
-    "usg": f"Usage: σουτ + 0.44·βολές + λάθη ανά κατοχή της ομάδας στο παρκέ (+{int(K_POSS)} εικονικές κατοχές)",
+    "usg": f"Usage: οι φάσεις που τελειώνει (σουτ, επίσκεψη στη γραμμή, λάθος) / όλες οι φάσεις της ομάδας του όσο είναι στο παρκέ, μετρημένες (+{int(K_POSS)} εικονικές)",
     "min": "Λεπτά ανά αγώνα (εκθετικός μέσος· μαζί με τα DNP = αναμενόμενα λεπτά από το ρόστερ)",
     "min_last": "Λεπτά στον προηγούμενο αγώνα",
     "starter": "Ποσοστό βασικού (εκθετικός μέσος)",
-    "on_poss": "Κατοχές στο παρκέ ανά αγώνα (εκθετικός μέσος)",
+    "on_poss": "Κατοχές στο παρκέ ανά αγώνα, μετρημένες από το play-by-play (εκθετικός μέσος)",
     "pm100": f"Plus-minus στο παρκέ ανά 100 κατοχές (από τα stints· +{int(K_PM)} εικονικές κατοχές στο 0)",
     "log_games": "log(1 + αγώνες στο ιστορικό, και στις δύο λίγκες)",
     "rest": "Ημέρες από τον προηγούμενο αγώνα (έως 14)",
@@ -127,7 +130,7 @@ def _r(v, d=3):
 
 # ---------------------------------------------------------------------------
 def load():
-    logs, games, stints, pbp, shots, dnp, tgs = [], [], [], [], [], [], []
+    logs, games, stints, pbp, shots, dnp, tgs, trips = [], [], [], [], [], [], [], []
     for c in COMPS:
         d = CompetitionData(c)
         lg = d.logs.copy()
@@ -140,7 +143,10 @@ def load():
         tg["comp"] = c
         tgs.append(tg)
         for s in d.seasons:
-            st = build_stints(c, s, d)
+            tr = []
+            st = build_stints(c, s, d, trips_out=tr)
+            if tr:
+                trips.append(pd.DataFrame(tr).assign(comp=c))
             if len(st):
                 st["comp"] = c
                 stints.append(st)
@@ -164,9 +170,12 @@ def load():
     shots = pd.concat(shots, ignore_index=True)
     dnp = pd.concat(dnp, ignore_index=True)
     tgs = pd.concat(tgs, ignore_index=True)
-    for df in (logs, games, stints, pbp, shots, dnp, tgs):
+    trips = pd.concat(trips, ignore_index=True)
+    for df in (logs, games, stints, pbp, shots, dnp, tgs, trips):
         df["gid"] = df.comp + df.season.astype(str) + "-" + df.gameCode.astype(str)
     stints = stints.merge(games[["gid", "date", "homecode", "awaycode"]], on="gid")
+    # ΜΕΤΡΗΜΕΝΕΣ κατοχές από το play-by-play (όχι εκτίμηση με 0.44 × βολές): για όλα τα παρακάτω και το RAPM
+    stints["poss_h"], stints["poss_a"] = stints.cposs_h.astype(float), stints.cposs_a.astype(float)
     stints["sid"] = np.arange(len(stints))
     # DNP: μόνο σε αγώνες με box score, με τα ίδια πεδία (στατιστικά 0)
     dnp = dnp[dnp.gid.isin(logs.gid)]
@@ -177,6 +186,9 @@ def load():
     dnp["starter"] = 0.0
     logs["played"], dnp["played"] = 1, 0
     logs = pd.concat([logs, dnp[logs.columns]], ignore_index=True)
+    # επισκέψεις στη γραμμή ανά παίκτη (0 σε αγώνες με play-by-play, κενό αλλιώς -> εκτίμηση 0.44 × βολές)
+    logs = logs.merge(trips[["gid", "pid", "trips"]], on=["gid", "pid"], how="left")
+    logs.loc[logs.trips.isna() & logs.gid.isin(stints.gid), "trips"] = 0
     return logs, games, stints, pbp, shots, tgs
 
 
@@ -220,10 +232,14 @@ def on_court(stints):
         for k in range(5):
             long.append(pd.DataFrame({"sid": stints.sid, "gid": stints.gid, "pid": stints[f"{side}{k}"], "side": side,
                                       "secs": stints.secs, "poss": poss, "pf": stints[f"pts_{side}"], "pa": stints[f"pts_{other}"],
+                                      "orb_ch": stints[f"orb_{side}"] + stints[f"drb_{other}"],     # επιθετικά ριμπάουντ «στο τραπέζι»
+                                      "drb_ch": stints[f"drb_{side}"] + stints[f"orb_{other}"],     # αμυντικά
+                                      "plays": stints[f"fga_{side}"] + stints[f"trip_{side}"] + stints[f"tov_{side}"],
                                       "pm": stints[f"pts_{side}"] - stints[f"pts_{other}"]}))
     long = pd.concat(long, ignore_index=True)
     pg = long.groupby(["gid", "pid"]).agg(on_poss=("poss", "sum"), on_secs=("secs", "sum"), pm=("pm", "sum"),
-                                          on_pf=("pf", "sum"), on_pa=("pa", "sum")).reset_index()
+                                          on_pf=("pf", "sum"), on_pa=("pa", "sum"), orb_ch=("orb_ch", "sum"),
+                                          drb_ch=("drb_ch", "sum"), t_plays_on=("plays", "sum")).reset_index()
     pg["pm100"] = 100 * pg.pm / pg.on_poss.replace(0, np.nan)
     # ζεύγη στο ίδιο stint
     a = long[["sid", "gid", "pid", "side", "secs", "poss", "pm"]]
@@ -256,21 +272,25 @@ def rapm_asof(stints, keys):
 
 
 def node_features(logs, games, pg, zones, ast, stints):
-    L = logs.merge(pg[["gid", "pid", "on_poss", "pm100", "on_pf", "on_pa"]], on=["gid", "pid"], how="left")
+    L = logs.merge(pg[["gid", "pid", "on_poss", "pm100", "on_pf", "on_pa", "orb_ch", "drb_ch", "t_plays_on"]], on=["gid", "pid"], how="left")
     L = L.merge(zones, on=["gid", "pid"], how="left")
     astd = ast.groupby(["gid", "scorer"]).ast_fg.sum().rename("astd").reset_index().rename(columns={"scorer": "pid"})
     L = L.merge(astd, on=["gid", "pid"], how="left")
     L = L.sort_values(["date", "gid"]).reset_index(drop=True)
     L["st_poss"] = L.on_poss.fillna(0)                          # κατοχές ΜΟΝΟ από stints (για on/off)
-    L["on_poss"] = L.on_poss.fillna(L.MIN / 40 * 75)            # χωρίς stints: εκτίμηση από τα λεπτά
+    L["on_poss"] = L.on_poss.fillna(L.MIN / 40 * 73)            # χωρίς stints: εκτίμηση από τα λεπτά
     L[["on_pf", "on_pa", "astd"]] = L[["on_pf", "on_pa", "astd"]].fillna(0)
     for z in ZONES:
         L[[f"za_{z}", f"zm_{z}"]] = L[[f"za_{z}", f"zm_{z}"]].fillna(0)
     L["za_all"] = L[[f"za_{z}" for z in ZONES]].sum(axis=1)
     L["FGA"] = L.FG2A + L.FG3A
     L["FGM"] = L.FG2M + L.FG3M
-    L["TSA"] = L.FGA + 0.44 * L.FTA
-    L["USE"] = L.FGA + 0.44 * L.FTA + L.TOV
+    L["trips"] = L.trips.fillna(0.44 * L.FTA)                   # μετρημένες επισκέψεις στη γραμμή (αλλιώς εκτίμηση)
+    L["TSA"] = L.FGA + L.trips
+    L["USE"] = L.FGA + L.trips + L.TOV                          # «ολοκληρωμένες φάσεις»: σουτ, επίσκεψη στη γραμμή, λάθος
+    has_st = L.orb_ch.notna()
+    L[["orb_ch", "drb_ch"]] = L[["orb_ch", "drb_ch"]].fillna(0)
+    L["OREB_st"], L["DREB_st"] = L.OREB.where(has_st, 0), L.DREB.where(has_st, 0)
     L["isE"] = (L.comp == "E").astype(float)
     pl = L.played == 1
     g = L.groupby("pid", sort=False)
@@ -322,6 +342,8 @@ def node_features(logs, games, pg, zones, ast, stints):
     for z in ["rim", "paint", "mid"]:
         F[f"fg_{z}"] = shrunk(dsum(f"zm_{z}"), dsum(f"za_{z}"), K_FG, L[f"zm_{z}"].sum() / max(1, L[f"za_{z}"].sum()))
     F["astd"] = shrunk(dsum("astd"), dsum("FGM"), K_ASTD, L.astd.sum() / max(1, L.loc[L.gid.isin(ast.gid), "FGM"].sum()))
+    F["oreb_pct"] = shrunk(dsum("OREB_st"), dsum("orb_ch"), K_REB, L.OREB_st.sum() / L.orb_ch.sum())
+    F["dreb_pct"] = shrunk(dsum("DREB_st"), dsum("drb_ch"), K_REB, L.DREB_st.sum() / L.drb_ch.sum())
     S_st = dsum("st_poss")
     F["off100"] = 100 * shrunk(dsum("on_pf"), S_st, K_PM, L.on_pf.sum() / L.st_poss.sum())
     F["def100"] = 100 * shrunk(dsum("on_pa"), S_st, K_PM, L.on_pa.sum() / L.st_poss.sum())
@@ -333,9 +355,10 @@ def node_features(logs, games, pg, zones, ast, stints):
     lg3 = L.FG3M.sum() / L.FG3A.sum()
     F["fg3p"] = (c3m.fillna(0) + 40 * lg3) / (c3a.fillna(0) + 40)
     # usage: χρήσεις παίκτη / χρήσεις ομάδας όσο είναι μέσα (≈ ομάδα × κατοχές παίκτη / κατοχές ομάδας)
-    tuse = L.groupby("gid").USE.transform("sum") / 2               # ~ χρήσεις ομάδας (οι δύο ομάδες / 2)
+    # παρονομαστής: οι φάσεις της ομάδας του όσο ήταν στο παρκέ (μετρημένες από τα stints· αλλιώς εκτίμηση)
+    tuse = L.groupby(["gid", "team"]).USE.transform("sum")
     tposs = L.groupby(["gid", "team"]).on_poss.transform("sum") / 5
-    L["t_use_on"] = (tuse * L.on_poss / tposs.replace(0, np.nan)).fillna(0)
+    L["t_use_on"] = L.t_plays_on.fillna((tuse * L.on_poss / tposs.replace(0, np.nan)).fillna(0))
     lg_usg = L.USE.sum() / L.t_use_on.sum()
     F["usg"] = (dsum("USE") + K_POSS * lg_usg) / (dsum("t_use_on") + K_POSS)
     F["min"] = ewm_prev("MIN")                                     # μαζί με τα DNP (0'): αναμενόμενα λεπτά από το ρόστερ
@@ -495,7 +518,7 @@ def graphs_table(N, games, logs):
     return G.sort_values("date")
 
 
-def preview(N, E, G, T, logs, ast_rate):
+def preview(N, E, G, T, logs, ast_rate, poss_game=None):
     """Περίληψη + δείγμα graphs για τη σελίδα «Δεδομένα GNN»."""
     feats = [{"name": c, "desc": d, "mean": _r(N["f_" + c].mean()), "std": _r(N["f_" + c].std()),
               "min": _r(N["f_" + c].min()), "max": _r(N["f_" + c].max())} for c, d in FEATURES.items()]
@@ -521,7 +544,7 @@ def preview(N, E, G, T, logs, ast_rate):
     # δείγμα: τελευταίοι 40 αγώνες κάθε διοργάνωσης
     sample_ids = list(G.groupby("comp").tail(30).gid)
     gs = {}
-    show_f = ["r_pts", "r_reb", "r_ast", "r_pir", "r_pts_s", "ts", "usg", "astd", "sh_rim", "sh_a3", "min", "starter",
+    show_f = ["r_pts", "r_reb", "r_ast", "r_pir", "r_pts_s", "ts", "usg", "oreb_pct", "dreb_pct", "astd", "sh_rim", "sh_a3", "min", "starter",
               "pm100", "rapm_o", "rapm_d", "sd_pts", "log_games", "rest", "hist_E", "no_hist"]
     for gid in sample_ids:
         nd = N[N.gid == gid]
@@ -545,6 +568,7 @@ def preview(N, E, G, T, logs, ast_rate):
     splits = G.groupby(["split", "comp"]).size().unstack(fill_value=0)
     out = {
         "graphs": int(len(G)), "nodes": int(len(N)), "edges": int(len(E)),
+        "poss_game": _r(poss_game, 1),
         "dnp_nodes": int((N.played == 0).sum()), "ast_rate": _r(ast_rate), "ast_pairs": int((E.y_ast_ij + E.y_ast_ji).gt(0).sum()),
         "n_node_feats": len(FEATURES), "n_edge_feats": len(EDGE_FEATURES), "n_team_feats": len(TEAM_FEATURES), "team_features": tfeat,
         "avg_nodes": _r(G.n_nodes.mean(), 1), "avg_edges": _r(len(E) / max(1, len(G)), 1),
@@ -582,7 +606,8 @@ def main():
     G.to_csv(OUT / "graphs.csv.gz", index=False, compression="gzip")
     T.to_csv(OUT / "teams.csv.gz", index=False, compression="gzip")
     print(f"nodes {len(N)} | edges {len(E)} | graphs {len(G)} | avg nodes {G.n_nodes.mean():.1f}")
-    preview(N, E, G, T, logs[logs.played == 1], ast_rate)
+    poss_game = ((stints.cposs_h + stints.cposs_a) / 2).groupby(stints.gid).sum().mean()
+    preview(N, E, G, T, logs[logs.played == 1], ast_rate, poss_game)
     print("-> site/data/gnn_preview.json")
 
 
