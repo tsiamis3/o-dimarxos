@@ -10,7 +10,11 @@
   - φόρμα: προσαρμοσμένο net των τελευταίων 8 αγώνων vs σεζόν, με z-score (θόρυβος ή πραγματική αλλαγή;)
 Παίκτες (όπου υπάρχουν box scores)
   - παραγωγή ανά 100 κατοχές, usage %, TS% με εμπειρική Bayes συρρίκνωση, AST%, OREB%/DREB%, TOV%
-  - on/off (διαφορά πόντων ανά 100 κατοχές με τον παίκτη μέσα vs έξω) με συρρίκνωση για μικρά δείγματα
+  - on/off (διαφορά πόντων ανά 100 κατοχές με τον παίκτη μέσα vs έξω) με συρρίκνωση για μικρά δείγματα (μόνο για εμφάνιση)
+  - ΣΥΝΟΛΙΚΗ βαθμολογία = επιρροή στο σκορ (πόντοι/100): RAPM με prior ένα μοντέλο box score -> RAPM που
+    μαθαίνεται από τα δεδομένα (player_impact.py)· σε λίγκες χωρίς play-by-play μόνο το box-μοντέλο.
+    Τα επιμέρους (σκοράρισμα, σουτ, δημιουργία, ριμπάουντ, άμυνα) είναι προφίλ με ποσοστημόρια.
+  - ενιαίο μητρώο παικτών σε όλες τις πηγές (player_registry.py): η προηγούμενη σεζόν μετρά από οποιαδήποτε λίγκα
   - σημαντικές μεταβολές: τελευταίοι 5 αγώνες vs σεζόν, μόνο όταν |z| ≥ 2
 
 Έξοδος: site/data/analytics_{C}.json
@@ -25,6 +29,9 @@ import pandas as pd
 
 from config import COMPETITIONS, SITE_DATA
 from dataset import CompetitionData
+import player_impact as PI
+from player_impact import TRAIN_MIN, BoxImpact, rapm_table, season_stints, zfeat
+from player_registry import link
 from ratings import RidgeRatings, team_games
 
 GAME_MIN = 40.0          # NBA: 48 (διορθώνεται παρακάτω)
@@ -69,6 +76,8 @@ def bh_qvalues(z) -> np.ndarray:
 
 
 RATING_KEYS = ["ovr", "r_sco", "r_sho", "r_pla", "r_reb", "r_def", "r_imp"]
+IMPACT_KEYS = ["imp", "imp_o", "imp_d", "imp_box", "imp_src"]          # πόντοι/100: NET, επίθεση, άμυνα (+ = καλή), box-μοντέλο
+PCT_KEYS = [f"pc_{k}" for k in RATING_KEYS]                           # ποσοστημόρια μέσα στη λίγκα (παίκτες με ρόλο)
 # Κλίμακα τύπου 2K: 72 = μέσος παίκτης με ρόλο, κάθε τυπική απόκλιση = 8 μονάδες (90+ ≈ κορυφαίο 1–2%).
 RATING_MID, RATING_SD = 72.0, 8.0
 # Επίπεδο λίγκας σε τυπικές αποκλίσεις, σε σχέση με την EuroLeague. Εκτίμηση από παίκτες που άλλαξαν λίγκα:
@@ -108,7 +117,7 @@ def cross_prior(comp: str, season: int, registry: dict) -> pd.DataFrame | None:
         if src is None or src.empty or not (s2 == season - 1 or (s2 == season and c2 != comp)):
             continue
         sp = _pool(src)
-        t = src[src.MIN >= (300 if s2 == season - 1 else 100)].set_index("pid")
+        t = src[src.MIN >= (300 if s2 == season - 1 else 100)].drop_duplicates("uid").set_index("uid")
         if t.empty or len(sp) < 10:
             continue
         conv = pd.DataFrame(index=t.index)
@@ -127,26 +136,31 @@ def cross_prior(comp: str, season: int, registry: dict) -> pd.DataFrame | None:
     return allp[~allp.index.duplicated(keep="last")]
 
 
-def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str = "E") -> pd.DataFrame:
-    """Βαθμολογίες τύπου 2K (40–99): τυπικές αποκλίσεις μέσα στη λίγκα (παίκτες με αρκετά λεπτά), πάνω σε
-    μεγέθη συρρικνωμένα για μικρά δείγματα, + διόρθωση επιπέδου λίγκας. rating = 72 + 8·(z + offset)."""
+def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str = "E",
+                   model: BoxImpact | None = None, stints: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Βαθμολογίες τύπου 2K (40–99). Συνολική = επιρροή στο σκορ (RAPM με prior το box-μοντέλο, ή μόνο το
+    box-μοντέλο όπου δεν υπάρχει play-by-play), σε τυπικές αποκλίσεις μέσα στη λίγκα + επίπεδο λίγκας:
+    rating = 72 + 8·(z + offset). Τα επιμέρους είναι προφίλ (δεν μπαίνουν με βάρη στη συνολική)."""
     p = p.copy()
+    if "uid" not in p:
+        p["uid"] = p.pid
     maxmin = p.MIN.max()
     qual = p.MIN >= max(100.0, 0.15 * maxmin)
     p["qual"] = qual.astype(int)
     if qual.sum() < 10:
-        for k in RATING_KEYS:
+        for k in RATING_KEYS + PCT_KEYS + IMPACT_KEYS:
             p[k] = np.nan
         p["pos"], p["guard"] = None, np.nan
         return p
     pool = p[qual]
 
     def shr(col):
-        # μικρό δείγμα -> προς το επίπεδο του ΙΔΙΟΥ παίκτη την προηγούμενη σεζόν (αν έπαιξε αρκετά), αλλιώς προς τον μέσο όρο
+        # μικρό δείγμα -> προς το επίπεδο του ΙΔΙΟΥ παίκτη (προηγούμενη σεζόν ή άλλη λίγκα, μέσω του ενιαίου μητρώου),
+        # αλλιώς προς τον μέσο όρο
         m = pool[col].mean()
         target = pd.Series(m, index=p.index)
         if prior is not None and col in prior:
-            pr = p.pid.map(prior[col])
+            pr = p.uid.map(prior[col])
             target = pr.where(pr.notna(), m)
         v = p[col].fillna(target)
         return (v * p.MIN + SHRINK_MIN * target) / (p.MIN + SHRINK_MIN)
@@ -165,16 +179,35 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str
         "r_reb": z(S["orb_pct"]) + z(S["drb_pct"]),
         "r_def": z(S["stl100"]) + z(S["blk100"]) + 0.5 * z(S["drb_pct"]) - 0.3 * z(S["pf100"]),
     }
-    has_oo = p.onoff.notna().mean() > 0.5
-    cmp_["r_imp"] = z(p.onoff.fillna(0)) + 0.5 * z(S["pir100"]) if has_oo else z(S["pir100"])
-    zs = {k: z(v) for k, v in cmp_.items()}
-    # τα λεπτά μετράνε λίγο (5%): αλλιώς όποιος παίζει πολύ σε αδύναμη ομάδα φουσκώνει
-    cmp_["ovr"] = (0.24 * zs["r_sco"] + 0.13 * zs["r_sho"] + 0.13 * zs["r_pla"] + 0.1 * zs["r_reb"]
-                   + 0.11 * zs["r_def"] + 0.24 * zs["r_imp"] + 0.05 * z(shr("mpg")))
+    # ---- επιρροή (πόντοι/100) ----
+    if model is not None:
+        X = zfeat(pd.DataFrame(S), qual)
+        bo, bd = model.predict(X)
+        p["imp_box"] = bo - bd
+        imp_o, imp_d, src = pd.Series(bo, index=p.index), pd.Series(bd, index=p.index), "box"
+        if stints is not None and len(stints):
+            pri_o, pri_d = dict(zip(p.pid, bo)), dict(zip(p.pid, bd))
+            rt = rapm_table(stints, prior_o=pri_o, prior_d=pri_d, lam=PI.RAPM_LAM, tau=PI.RAPM_TAU)
+            has = p.pid.isin(rt.index)
+            imp_o = imp_o.where(~has, p.pid.map(rt.O))
+            imp_d = imp_d.where(~has, p.pid.map(rt.D))
+            src = np.where(has, "rapm", "box")
+        p["imp_o"], p["imp_d"] = imp_o, -imp_d          # άμυνα: + = λιγότεροι πόντοι του αντιπάλου
+        p["imp"] = imp_o - imp_d
+        p["imp_src"] = src
+        cmp_["r_imp"] = p["imp"]
+        cmp_["ovr"] = p["imp"]
+    else:                                               # χωρίς μοντέλο (π.χ. δοκιμές): PIR
+        cmp_["r_imp"] = z(S["pir100"])
+        cmp_["ovr"] = cmp_["r_imp"]
+        for k in IMPACT_KEYS:
+            p[k] = np.nan
     off = LEAGUE_OFFSET.get(comp, 0.0)
     for k, v in cmp_.items():
         zz = (v - v[qual].mean()) / (v[qual].std() + 1e-9)
         p[k] = np.round(np.clip(RATING_MID + RATING_SD * (zz + off), 40, 99)).astype(int)
+        q = np.sort(v[qual].to_numpy(float))
+        p["pc_" + k] = np.round(100 * np.searchsorted(q, v.to_numpy(float), side="right") / len(q)).astype(int)
     # θέση (εκτίμηση από το προφίλ): πάσα και τρίποντα -> guard, επιθ. ριμπάουντ και κοψίματα -> ψηλός
     # (τα ριμπάουντ ζυγίζουν περισσότερο από τις ασίστ, ώστε οι ψηλοί-πασέρ τύπου Jokić να μένουν ψηλοί)
     guard = 0.6 * z(S["ast_pct"]) + 0.7 * z(S["fg3_rate"]) - z(S["orb_pct"]) - 0.8 * z(S["blk100"]) - 0.9 * z(S["drb_pct"])
@@ -182,6 +215,38 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str
     cuts = np.quantile(guard[qual], [0.2, 0.4, 0.6, 0.8])
     p["pos"] = [POS[4 - int(np.searchsorted(cuts, g))] for g in guard]
     return p
+
+
+def rapm_stints(stints: dict, comp: str, season: int):
+    """Stints για το RAPM της σεζόν: η σεζόν (+ η προηγούμενη, αν PI.RAPM_PREV, με χρονική απόσβεση)."""
+    cur = stints.get((comp, season))
+    if cur is None or not len(cur):
+        return None
+    prev = stints.get((comp, season - 1)) if PI.RAPM_PREV else None
+    return pd.concat([prev, cur], ignore_index=True) if prev is not None and len(prev) else cur
+
+
+def train_box_impact(raw: dict, stints: dict) -> tuple[BoxImpact, dict]:
+    """Εκπαίδευση box -> RAPM σε όλες τις σεζόν EuroLeague/EuroCup (RAPM χωρίς prior ως στόχος)."""
+    Xs, yo, yd, w, gr = [], [], [], [], []
+    for key, st in stints.items():
+        p = raw.get(key)
+        if p is None or st is None or not len(st):
+            continue
+        rt = rapm_table(st)
+        p = p.set_index("pid")
+        qual = p.MIN >= max(100.0, 0.15 * p.MIN.max())
+        X = zfeat(p, qual)
+        m = p.index.isin(rt.index) & (p.MIN >= TRAIN_MIN)
+        idx = p.index[m]
+        Xs.append(X[m])
+        yo += list(rt.loc[idx, "O"])
+        yd += list(rt.loc[idx, "D"])
+        w += list(np.minimum(rt.loc[idx, "poss"], 4000))
+        gr += [str(key[1])] * int(m.sum())
+    model = BoxImpact().fit(pd.concat(Xs), yo, yd, w, gr)
+    info = {"n": len(w), "alpha": model.alpha, "r2_cv": round(float(model.r2_cv), 3), "weights": model.weights()}
+    return model, info
 
 
 class SeasonAnalytics:
@@ -384,10 +449,10 @@ class SeasonAnalytics:
         self.n_trend_tested = len(trend)
         # στο site: όσοι έχουν |z| ≥ 2 (με q-τιμή, ώστε να φαίνεται αν είναι θόρυβος)
         trend = trend[trend.z.abs() >= 2].sort_values("z", ascending=False)
-        cols = ["pid", "player", "team", "GP", "MIN", "mpg", "usg", "ts", "ts_adj", "tsa", "pts100", "ast100", "reb100",
+        cols = ["pid", "uid", "player", "team", "GP", "MIN", "mpg", "usg", "ts", "ts_adj", "tsa", "pts100", "ast100", "reb100",
                 "pir100", "ast_pct", "orb_pct", "drb_pct", "tov_pct", "on100", "off100", "onoff",
                 "fg3_rate", "fg3_adj", "ft_adj", "fg3a_g", "stl100", "blk100", "pf100", "GS", "gs5", "gp5", "min5",
-                "pos", "guard", "qual", *RATING_KEYS]
+                "pos", "guard", "qual", *RATING_KEYS, *PCT_KEYS, *IMPACT_KEYS]
         self.player_cols = cols
         return p, trend
 
@@ -436,14 +501,16 @@ class Analytics:
         out["sd_game"] = _r(sd_game, 2)
         self.out = out
 
-    def finish(self, registry: dict):
+    def finish(self, registry: dict, model: BoxImpact | None = None, stints: dict | None = None, model_info=None):
         """Δεύτερο πέρασμα: ratings με προηγούμενη σεζόν από ΟΠΟΙΑΔΗΠΟΤΕ διοργάνωση, και εγγραφή του JSON."""
         out = getattr(self, "out", None)
         if out is None:
             return
+        if model_info:
+            out["impact_model"] = model_info
         for s, pl in self.raw.items():
             prior = cross_prior(self.comp, s, registry)
-            pl = player_ratings(pl, prior, self.comp)
+            pl = player_ratings(pl, prior, self.comp, model, rapm_stints(stints or {}, self.comp, s))
             out["seasons"][str(s)]["players"] = _rows(pl[self.player_cols], 3)
         SITE_DATA.mkdir(parents=True, exist_ok=True)
         (SITE_DATA / f"analytics_{self.comp}.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
@@ -460,8 +527,23 @@ def main():
         except (FileNotFoundError, ValueError) as e:
             print(f"  ! {c}: {e}")
     registry = {(a.comp, s): pl for a in objs for s, pl in a.raw.items()}
+    # ενιαίο μητρώο: κοινός κωδικός (uid) για τον ίδιο παίκτη σε όλες τις πηγές
+    uid = link({k: v[["pid", "player"]] for k, v in registry.items()})
+    for (c, s), pl in registry.items():
+        pl["uid"] = [uid.get((c, str(x)), str(x)) for x in pl.pid]
+    linked = sum(1 for (c, _), v in uid.items() if c not in ("E", "U") and not v.startswith(f"{c}:"))
+    print(f"== player registry: {linked} players of other sources linked to EuroLeague/EuroCup codes")
+    # stints ανά σεζόν (EuroLeague, EuroCup) και μοντέλο box -> RAPM
+    stints = {}
     for a in objs:
-        a.finish(registry)
+        if a.comp in ("E", "U"):
+            for s in a.raw:
+                st = season_stints(a.comp, s, a.data)
+                stints[(a.comp, s)] = st if len(st) else None
+    model, info = train_box_impact(registry, stints)
+    print(f"== box -> RAPM: n={info['n']}, out-of-sample R2={info['r2_cv']}, weights {info['weights']}")
+    for a in objs:
+        a.finish(registry, model, stints, info)
 
 
 if __name__ == "__main__":
