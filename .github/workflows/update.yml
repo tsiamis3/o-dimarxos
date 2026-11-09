@@ -62,6 +62,10 @@ jobs:
         continue-on-error: true
         run: python scripts/scrapers/bio.py
 
+      - name: Player bio (NBA, ESPN)
+        continue-on-error: true
+        run: python scripts/scrapers/bio_nba.py
+
       - name: NBA odds and injuries (ESPN)
         continue-on-error: true
         run: |
