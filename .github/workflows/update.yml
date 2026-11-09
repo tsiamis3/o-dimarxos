@@ -52,6 +52,11 @@ jobs:
         continue-on-error: true
         run: python scripts/scrapers/shots.py
 
+      # Play-by-play EuroLeague/EuroCup για το RAPM (μόνο τα νέα ματς)
+      - name: Play-by-play (EuroLeague/EuroCup API)
+        continue-on-error: true
+        run: python scripts/scrapers/pbp.py
+
       - name: NBA odds and injuries (ESPN)
         continue-on-error: true
         run: |

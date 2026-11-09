@@ -102,10 +102,10 @@ def game_stints(ev: pd.DataFrame, starters: dict, home: str, away: str) -> tuple
     return out, {"fixes": fixes}
 
 
-def build(comp: str, season: int, data: CompetitionData | None = None) -> pd.DataFrame:
+def build(comp: str, season: int, data: CompetitionData | None = None, with_report=False):
     p = RAW_DIR / f"{comp}{season}_pbp.csv.gz"
     if not p.exists():
-        return pd.DataFrame()
+        return (pd.DataFrame(), pd.DataFrame()) if with_report else pd.DataFrame()
     pbp = pd.read_csv(p, dtype={"pid": str, "team": str, "pt": str, "mt": str})
     for c in ("pid", "team", "pt"):
         pbp[c] = pbp[c].fillna("").str.strip()
@@ -133,8 +133,7 @@ def build(comp: str, season: int, data: CompetitionData | None = None) -> pd.Dat
         rep.append({"gameCode": gc, "ok": True, "fixes": info["fixes"], "stints": len(s),
                     "pts_h": th, "pts_a": ta, "final_h": fh, "final_a": fa})
     df = pd.DataFrame(rows)
-    df.attrs["report"] = pd.DataFrame(rep)
-    return df
+    return (df, pd.DataFrame(rep)) if with_report else df
 
 
 if __name__ == "__main__":
@@ -142,8 +141,7 @@ if __name__ == "__main__":
     ap.add_argument("--comp", default="E")
     ap.add_argument("--season", type=int, default=2025)
     a = ap.parse_args()
-    df = build(a.comp, a.season)
-    r = df.attrs.get("report", pd.DataFrame())
+    df, r = build(a.comp, a.season, with_report=True)
     if df.empty:
         print("no pbp")
     else:
