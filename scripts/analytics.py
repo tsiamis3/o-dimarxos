@@ -82,6 +82,50 @@ SHRINK_MIN = 250.0                 # εικονικά λεπτά μέσου όρ
 POS = ["PG", "SG", "SF", "PF", "C"]
 
 
+PRIOR_STATS = ["pts100", "usg", "ts_adj", "fg3_adj", "ft_adj", "ast_pct", "tov_pct", "orb_pct", "drb_pct",
+               "stl100", "blk100", "pf100", "pir100", "fg3_rate", "mpg"]
+# πόσο «μεταφέρεται» η διαφορά επιπέδου λίγκας σε κάθε μέγεθος (1 = πλήρως, −1 = αντίστροφα, 0 = καθόλου):
+# η παραγωγή ανεβαίνει σε ευκολότερη λίγκα, τα λάθη πέφτουν, τα ποσοστά και ο ρόλος αλλάζουν λιγότερο
+PRIOR_SHIFT = {"pts100": 1.0, "pir100": 1.0, "usg": 0.5, "ts_adj": 0.5, "ast_pct": 0.5, "orb_pct": 0.3, "drb_pct": 0.3,
+               "stl100": 0.3, "blk100": 0.3, "tov_pct": -0.5}
+
+
+def _pool(t: pd.DataFrame) -> pd.DataFrame:
+    return t[t.MIN >= max(100.0, 0.15 * t.MIN.max())]
+
+
+def cross_prior(comp: str, season: int, registry: dict) -> pd.DataFrame | None:
+    """Προηγούμενη σεζόν κάθε παίκτη από ΟΠΟΙΑΔΗΠΟΤΕ διοργάνωση με κοινούς κωδικούς παικτών
+    (EuroLeague/EuroCup), μετατρεπόμενη στην κλίμακα της τωρινής: z στη λίγκα προέλευσης
+    + διαφορά επιπέδου λίγκας -> μονάδες της τωρινής λίγκας. Αν έπαιξε σε δύο, κρατά όπου έπαιξε περισσότερο."""
+    cur = registry.get((comp, season))
+    if cur is None or cur.empty:
+        return None
+    cp = _pool(cur)
+    frames = []
+    for (c2, s2), src in registry.items():
+        if s2 != season - 1 or src is None or src.empty:
+            continue
+        sp = _pool(src)
+        t = src[src.MIN >= 300].set_index("pid")
+        if t.empty or len(sp) < 10:
+            continue
+        conv = pd.DataFrame(index=t.index)
+        shift = LEAGUE_OFFSET.get(c2, 0.0) - LEAGUE_OFFSET.get(comp, 0.0)   # >0: ερχόταν από δυσκολότερη λίγκα
+        for col in PRIOR_STATS:
+            if col not in t or col not in cp:
+                continue
+            zz = (t[col] - sp[col].mean()) / (sp[col].std() + 1e-9) + PRIOR_SHIFT.get(col, 0.0) * shift
+            conv[col] = cp[col].mean() + cp[col].std() * zz
+        conv["_min"] = t.MIN
+        conv["_src"] = c2
+        frames.append(conv)
+    if not frames:
+        return None
+    allp = pd.concat(frames).sort_values("_min")
+    return allp[~allp.index.duplicated(keep="last")]
+
+
 def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str = "E") -> pd.DataFrame:
     """Βαθμολογίες τύπου 2K (40–99): τυπικές αποκλίσεις μέσα στη λίγκα (παίκτες με αρκετά λεπτά), πάνω σε
     μεγέθη συρρικνωμένα για μικρά δείγματα, + διόρθωση επιπέδου λίγκας. rating = 72 + 8·(z + offset)."""
@@ -123,8 +167,9 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str
     has_oo = p.onoff.notna().mean() > 0.5
     cmp_["r_imp"] = z(p.onoff.fillna(0)) + 0.5 * z(S["pir100"]) if has_oo else z(S["pir100"])
     zs = {k: z(v) for k, v in cmp_.items()}
-    cmp_["ovr"] = (0.24 * zs["r_sco"] + 0.12 * zs["r_sho"] + 0.12 * zs["r_pla"] + 0.1 * zs["r_reb"]
-                   + 0.1 * zs["r_def"] + 0.17 * zs["r_imp"] + 0.15 * z(shr("mpg")))
+    # τα λεπτά μετράνε λίγο (5%): αλλιώς όποιος παίζει πολύ σε αδύναμη ομάδα φουσκώνει
+    cmp_["ovr"] = (0.24 * zs["r_sco"] + 0.13 * zs["r_sho"] + 0.13 * zs["r_pla"] + 0.1 * zs["r_reb"]
+                   + 0.11 * zs["r_def"] + 0.24 * zs["r_imp"] + 0.05 * z(shr("mpg")))
     off = LEAGUE_OFFSET.get(comp, 0.0)
     for k, v in cmp_.items():
         zz = (v - v[qual].mean()) / (v[qual].std() + 1e-9)
@@ -144,7 +189,6 @@ class SeasonAnalytics:
         self.tg = tg_all[tg_all.season == season].copy()
         self.box = bool(self.tg["box"].iloc[0]) if len(self.tg) else False
         self.gmin = 48.0 if data.comp == "NBA" else GAME_MIN
-        self.prior = None           # μεγέθη παικτών της προηγούμενης σεζόν (για συρρίκνωση των ratings)
 
     # ------------------------------------------------------------------ λίγκα
     def league(self, rat: RidgeRatings) -> dict:
@@ -315,7 +359,6 @@ class SeasonAnalytics:
         p["gp5"] = rec.groupby("pid").size().reindex(p.index).fillna(0)
         p["min5"] = rec.groupby("pid").MIN.mean().reindex(p.index)
         p = p.reset_index()
-        p = player_ratings(p, self.prior, self.data.comp)
 
         # σημαντικές μεταβολές: τελευταίοι 5 αγώνες vs υπόλοιπη σεζόν (PIR ανά 100 κατοχές)
         lg = lg.sort_values("date")
@@ -344,13 +387,15 @@ class SeasonAnalytics:
                 "pir100", "ast_pct", "orb_pct", "drb_pct", "tov_pct", "on100", "off100", "onoff",
                 "fg3_rate", "fg3_adj", "ft_adj", "fg3a_g", "stl100", "blk100", "pf100", "GS", "gs5", "gp5", "min5",
                 "pos", "guard", "qual", *RATING_KEYS]
-        return p[cols], trend
+        self.player_cols = cols
+        return p, trend
 
 
 class Analytics:
     def __init__(self, comp):
         self.comp = comp
         self.data = CompetitionData(comp)
+        self.raw = {}                     # σεζόν -> πίνακας παικτών (χωρίς ratings)
 
     def run(self):
         tg_all = team_games(self.data)
@@ -362,7 +407,6 @@ class Analytics:
         h = tg_all[tg_all.home == 1]
         sd_game = float((h.PTS - h.OPP).std())
         history = []
-        prev_players = None
         for s in sorted(tg_all.season.unique()):
             sa = SeasonAnalytics(self.data, tg_all, s)
             if len(sa.tg) < 20:
@@ -375,10 +419,9 @@ class Analytics:
                 ff, meta = sa.four_factors(tg_all)
                 res["four_factors"] = _rows(ff, 3)
                 res["ff_meta"] = meta
-                sa.prior = prev_players
                 pl, trend = sa.players()
-                prev_players = pl[pl.MIN >= 300].set_index("pid")
-                res["players"] = _rows(pl, 3)
+                self.raw[int(s)] = pl                      # ratings στο δεύτερο πέρασμα (finish)
+                self.player_cols = sa.player_cols
                 res["trend"] = _rows(trend, 3)
                 res["trend_tested"] = sa.n_trend_tested
                 import shots_agg
@@ -387,20 +430,37 @@ class Analytics:
             out["seasons"][str(s)] = res
             history.append({"season": int(s), **league})
             print(f"   {self.comp}{s}: {league['games']} games, HCA {league['hca_adj']} pts"
-                  f"{'' if not box else f', {len(res['players']['rows'])} players, {len(res['trend']['rows'])} trends'}")
+                  f"{'' if not box else f', {len(self.raw[int(s)])} players, {len(res['trend']['rows'])} trends'}")
         out["history"] = history
         out["sd_game"] = _r(sd_game, 2)
+        self.out = out
+
+    def finish(self, registry: dict):
+        """Δεύτερο πέρασμα: ratings με προηγούμενη σεζόν από ΟΠΟΙΑΔΗΠΟΤΕ διοργάνωση, και εγγραφή του JSON."""
+        out = getattr(self, "out", None)
+        if out is None:
+            return
+        for s, pl in self.raw.items():
+            prior = cross_prior(self.comp, s, registry)
+            pl = player_ratings(pl, prior, self.comp)
+            out["seasons"][str(s)]["players"] = _rows(pl[self.player_cols], 3)
         SITE_DATA.mkdir(parents=True, exist_ok=True)
         (SITE_DATA / f"analytics_{self.comp}.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
 
 
 def main():
+    objs = []
     for c in COMPETITIONS:
         print(f"== {COMPETITIONS[c]}")
         try:
-            Analytics(c).run()
+            a = Analytics(c)
+            a.run()
+            objs.append(a)
         except (FileNotFoundError, ValueError) as e:
             print(f"  ! {c}: {e}")
+    registry = {(a.comp, s): pl for a in objs for s, pl in a.raw.items()}
+    for a in objs:
+        a.finish(registry)
 
 
 if __name__ == "__main__":
