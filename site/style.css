@@ -238,3 +238,19 @@ td .pbar i { background: var(--accent); }
 .notes .gloss dt { font-weight: 700; }
 .notes .gloss dd { margin: 0; }
 @media (max-width: 640px) { .notes .gloss { grid-template-columns: 1fr; } .notes .gloss dd { margin-bottom: 6px; } }
+
+/* ---------- σελίδα αγώνα ---------- */
+.game-head { display: grid; grid-template-columns: 1fr minmax(220px, 1.1fr) 1fr; gap: 16px; align-items: center; }
+.gh-team { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.gh-team.r { justify-content: flex-end; }
+.gh-name { font: 700 20px/1.2 var(--font-display); }
+.gh-mid { display: flex; flex-direction: column; gap: 6px; text-align: center; }
+.gh-score { font: 700 30px/1 var(--font-num); }
+@media (max-width: 640px) {
+  .game-head { grid-template-columns: 1fr; }
+  .gh-team.r { justify-content: flex-start; flex-direction: row-reverse; }
+  .gh-team.r > div { text-align: left !important; }
+}
+.h2h.wide .h2h-row { grid-template-columns: 1fr auto minmax(130px, 200px) auto 1fr; }
+.h2h-p { font-family: var(--font-body); }
+@media (max-width: 640px) { .h2h.wide .h2h-row { grid-template-columns: 1fr auto 104px auto 1fr; font-size: 13px; } }

@@ -42,7 +42,7 @@ MIN_BLEND = 300                # αγώνες με αποδόσεις πριν �
 EV_MIN = 0.03
 THRESHOLDS = [0.0, 0.02, 0.03, 0.05, 0.08]
 KELLY_FRAC, STAKE_CAP = 0.25, 0.02
-UPCOMING_DAYS = 7
+UPCOMING_DAYS = 14
 RNG = np.random.default_rng(0)
 
 
@@ -448,7 +448,7 @@ class EdgeModel:
             rows.append({
                 "gameCode": int(r.gameCode), "date": pd.Timestamp(r.date).strftime("%Y-%m-%d"), "home": r.home, "away": r.away,
                 "src": src, "p_home": _r(p, 3), "fair_home": _r(1 / max(p, 1e-3), 2), "fair_away": _r(1 / max(1 - p, 1e-3), 2),
-                "line": _r(-mu, 1), "total": _r(tot, 1), "sd_m": _r(sd, 1),
+                "line": _r(-mu, 1), "total": _r(tot, 1), "sd_m": _r(sd, 1), "sd_t": _r(sdt, 1),
                 "mv_h": _r(r.mv_h, 1), "mv_a": _r(r.mv_a, 1),
                 "mkt": None if pd.isna(r.p_mkt) else {"p": _r(r.p_mkt, 3), "ml_home": _r(r.ml_home, 2), "ml_away": _r(r.ml_away, 2),
                                                       "spread": _r(r.spread, 1), "total": _r(r.total, 1),
