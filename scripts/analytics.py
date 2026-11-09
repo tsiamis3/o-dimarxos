@@ -533,7 +533,7 @@ def main():
             print(f"  ! {c}: {e}")
     registry = {(a.comp, s): pl for a in objs for s, pl in a.raw.items()}
     # ενιαίο μητρώο: κοινός κωδικός (uid) για τον ίδιο παίκτη σε όλες τις πηγές
-    uid = link({k: v[["pid", "player"]] for k, v in registry.items()})
+    uid = link({k: v[["pid", "player", "team"]] for k, v in registry.items()})
     for (c, s), pl in registry.items():
         pl["uid"] = [uid.get((c, str(x)), str(x)) for x in pl.pid]
     linked = sum(1 for (c, _), v in uid.items() if c not in ("E", "U") and not v.startswith(f"{c}:"))

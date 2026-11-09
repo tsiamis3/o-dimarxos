@@ -657,6 +657,7 @@ const App = {
   edge: new Map(),        // "E" -> μοντέλο στοιχήματος (edge_E.json) | null
   shots: new Map(),       // "E2025" -> συγκεντρωτικά σουτ (shots_E2025.json) | null
   roles: new Map(),       // "E" -> ρόλοι παικτών (roles_E.json) | null
+  careers: undefined,     // όλες οι σεζόν κάθε παίκτη σε όλες τις λίγκες (careers.json) | null
   teamMeta: null,         // σήματα ομάδων (teams_meta.json)
   ui: {
     team: null, team2: "", players: [], pstat: "PTS", pteam: "",
@@ -758,6 +759,14 @@ const App = {
   },
   go(view) { if (this.route() === view) this.render(); else location.hash = view; window.scrollTo(0, 0); },
   goPlayer(pid) { this.ui.players = [pid]; this.go("players"); },
+  /** Άνοιγμα παίκτη σε άλλη λίγκα/σεζόν (πίνακας «Καριέρα»). */
+  openPlayerAt(comp, season, pid) {
+    const sec = this.sections().find((x) => x.comps.includes(comp));
+    if (sec) { this.section = sec.key; store.set("section", this.section); }
+    this.comp = comp; store.set("comp", comp);
+    this.season = this.compInfo(comp)?.seasons.includes(season) ? season : this.latestSeason(comp);
+    this.resetSelections(); this.ui.players = [pid]; this.renderControls(); this.go("players");
+  },
   goTeam(code) { this.ui.team = code; this.ui.team2 = ""; this.go("teams"); },
 
   async render() {
@@ -773,6 +782,7 @@ const App = {
       if (["home", "predictions", "game", "edge"].includes(v)) await this.loadOpt(this.edge, this.comp, "edge", "edge");
       if (["analysis", "teams", "players", "court", "game"].includes(v)) await this.loadOpt(this.analytics, this.comp, "analytics", "analytics");
       if (v === "players" || v === "teams") await this.loadOpt(this.roles, this.comp, "roles", "roles");
+      if (v === "players" && this.careers === undefined) this.careers = this.manifest.careers ? await this.json("data/careers.json").catch(() => null) : null;
       if (v === "game") {
         const prev = this.compInfo().seasons.filter((x) => x < this.latestSeason()).slice(-1);
         for (const s of prev) await this.loadSeason(this.comp, s).catch(() => null); }
@@ -791,6 +801,8 @@ const App = {
 
 // Ένας κοινός click handler για όλους τους συνδέσμους παικτών/ομάδων
 document.addEventListener("click", (e) => {
+  const cr = e.target.closest("[data-career]");
+  if (cr) { const [comp, season, pid] = cr.dataset.career.split("|"); return App.openPlayerAt(comp, +season, pid); }
   const p = e.target.closest("[data-pid]"); if (p) return App.goPlayer(p.dataset.pid);
   const t = e.target.closest("[data-team]"); if (t) return App.goTeam(t.dataset.team);
 });
@@ -1034,6 +1046,21 @@ const Views = {
       ["Άμυνα και ριμπάουντ", [["Ριμπάουντ", "REB"], ["Επιθετικά ριμπάουντ", "OREB"], ["Κλεψίματα", "STL"], ["Κοψίματα", "BLK"]]],
       ["Γενικά", [["Λεπτά", "MIN_AVG"], ["Αγώνες (βασικός)", "GP"], ["PIR", "PIR"], ["+/−", "PM"]]],
     ];
+    const careerBlock = (p) => {
+      const C = App.careers;
+      if (!C) return "";
+      const uid = C.uid?.[App.comp]?.[p.pid] || p.pid;
+      const rows = (C.careers[uid] || []).map((r) => Object.fromEntries(C.cols.map((c, i) => [c, r[i]])));
+      if (!rows.length) return "";
+      const cur = (r) => r.comp === App.comp && r.season === S.season;
+      return `<div style="grid-column:1/-1"><div class="eyebrow" style="margin-bottom:4px">Καριέρα στη βάση (όλες οι λίγκες)</div>
+        <div class="tbl-wrap"><table><thead><tr><th>Σεζόν</th><th>Λίγκα</th><th>Ομάδα</th><th class="n">Αγ.</th><th class="n">Λεπτά</th><th class="n">Πόντοι</th><th class="n">Ριμπ.</th><th class="n">Ασίστ</th><th class="n">PIR</th></tr></thead><tbody>
+        ${rows.map((r) => `<tr ${cur(r) ? 'style="background:var(--accent-soft)"' : `data-career="${esc(r.comp)}|${r.season}|${esc(r.pid)}" style="cursor:pointer" title="Άνοιγμα αυτής της σεζόν"`}>
+          <td>${seasonLbl(r.season)}</td><td>${esc(App.compInfo(r.comp)?.name || r.comp)}</td><td>${esc(r.team)}</td>
+          <td class="n">${r.GP}</td><td class="n">${fmt(r.MIN, 1)}</td><td class="n">${fmt(r.PTS, 1)}</td><td class="n">${fmt(r.REB, 1)}</td><td class="n">${fmt(r.AST, 1)}</td><td class="n">${fmt(r.PIR, 1)}</td></tr>`).join("")}
+        </tbody></table></div>
+        <p class="muted" style="margin:4px 0 0;font-size:12px">Μέσοι όροι ανά αγώνα. Πάτα μια σεζόν για να ανοίξει η κάρτα εκείνης της σεζόν.</p></div>`;
+    };
     const fmCard = (p) => {
       const m = playerMeta(S, p.pid), r = m.r, o = m.o, b = m.b;
       const age = b.birth ? Math.floor((Date.now() - Date.parse(b.birth)) / 3.15576e10) : null;
@@ -1063,6 +1090,7 @@ const Views = {
         <div>${radar}</div>
         <div class="fm-attrs">${ATTRS.map(([g, list]) => `<div class="fm-group"><h4>${g}</h4>${list.map(val).join("")}</div>`).join("")}
           <p class="muted" style="grid-column:1/-1;margin:2px 0 0;font-size:12px">Μέσοι όροι ανά αγώνα στη σεζόν, όπως είναι στη βάση. <span style="color:var(--good)">Πράσινο</span>: στο κορυφαίο 20% της λίγκας (υπογραμμισμένο: 5%), <span style="color:var(--bad)">κόκκινο</span>: στο χαμηλότερο 15%.</p></div>
+        ${careerBlock(p)}
       </div>${o ? roleNote : ""}`;
     };
     const roleCompare = (sel) => {
