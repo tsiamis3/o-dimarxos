@@ -96,16 +96,12 @@ class SiteBuilder:
             self.manifest["competitions"].append({
                 "code": comp, "name": name, "seasons": seasons, "hasBox": data.has_box,
                 "section": next(k for k, (_, cs) in SECTIONS.items() if comp in cs),
-                "predictions": (SITE_DATA / f"predictions_{comp}.json").exists(),
-                "evaluation": (SITE_DATA / f"eval_{comp}.json").exists(),
-                "gamenn": (SITE_DATA / f"gamenn_{comp}.json").exists(),   # νευρωνικό αγώνων (game_model.py)
                 "analytics": (SITE_DATA / f"analytics_{comp}.json").exists(),  # σελίδα «Ανάλυση» (analytics.py)
                 "edge": (SITE_DATA / f"edge_{comp}.json").exists(),            # σελίδα «Στοίχημα» (edge_model.py)
             })
         have = {c["code"] for c in self.manifest["competitions"]}
         self.manifest["sections"] = [{"key": k, "name": n, "comps": [c for c in cs if c in have]}
                                      for k, (n, cs) in SECTIONS.items() if any(c in have for c in cs)]
-        self.manifest["master"] = (SITE_DATA / "master.json").exists()     # master νευρωνικό (master_model.py)
         import team_meta                                         # σήματα ομάδων (συντομογραφία + χρώματα)
         team_meta.build()
         (SITE_DATA / "manifest.json").write_text(json.dumps(self.manifest, indent=1))

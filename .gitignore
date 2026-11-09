@@ -5,3 +5,6 @@ __pycache__/
 .venv/
 # demo δεδομένα δεν ανεβαίνουν
 data/raw/.demo
+
+# δεδομένα εκπαίδευσης GNN (ξαναχτίζονται από το scripts/gnn_data.py)
+data/gnn/

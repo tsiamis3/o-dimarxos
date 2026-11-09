@@ -104,10 +104,11 @@ def cross_prior(comp: str, season: int, registry: dict) -> pd.DataFrame | None:
     cp = _pool(cur)
     frames = []
     for (c2, s2), src in registry.items():
-        if s2 != season - 1 or src is None or src.empty:
+        # προηγούμενη σεζόν (οποιαδήποτε λίγκα) ή ΙΔΙΑ σεζόν σε άλλη λίγκα (μεταγραφή μέσα στη σεζόν)
+        if src is None or src.empty or not (s2 == season - 1 or (s2 == season and c2 != comp)):
             continue
         sp = _pool(src)
-        t = src[src.MIN >= 300].set_index("pid")
+        t = src[src.MIN >= (300 if s2 == season - 1 else 100)].set_index("pid")
         if t.empty or len(sp) < 10:
             continue
         conv = pd.DataFrame(index=t.index)

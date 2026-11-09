@@ -1,6 +1,6 @@
 """
 Φόρτωση raw CSV -> καθαρό "game log" DataFrame (μία γραμμή = παίκτης σε ματς).
-Το χρησιμοποιούν και το build_site.py και το train_model.py.
+Το χρησιμοποιούν όλα τα scripts (build_site, analytics, edge_model, gnn_data κ.λπ.).
 """
 import re
 
