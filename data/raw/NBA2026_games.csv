@@ -140,9 +140,9 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909944,3,2026-11-07,22:00,POR,Portland Trail Blazers,SA,San Antonio Spurs,103.0,125.0,True
 401909945,3,2026-11-08,15:30,CHI,Chicago Bulls,PHI,Philadelphia 76ers,121.0,127.0,True
 401909946,3,2026-11-08,18:00,DET,Detroit Pistons,LAL,Los Angeles Lakers,116.0,121.0,True
-401909947,3,2026-11-08,19:00,MIN,Minnesota Timberwolves,UTAH,Utah Jazz,,,False
-401909948,3,2026-11-08,19:30,DAL,Dallas Mavericks,BKN,Brooklyn Nets,,,False
-401909949,3,2026-11-08,20:00,MIL,Milwaukee Bucks,BOS,Boston Celtics,,,False
+401909947,3,2026-11-08,19:00,MIN,Minnesota Timberwolves,UTAH,Utah Jazz,115.0,100.0,True
+401909948,3,2026-11-08,19:30,DAL,Dallas Mavericks,BKN,Brooklyn Nets,130.0,93.0,True
+401909949,3,2026-11-08,20:00,MIL,Milwaukee Bucks,BOS,Boston Celtics,97.0,117.0,True
 401909950,3,2026-11-08,21:00,LAC,LA Clippers,NO,New Orleans Pelicans,,,False
 401909951,3,2026-11-08,21:00,SAC,Sacramento Kings,MIA,Miami Heat,,,False
 401909952,3,2026-11-09,19:00,ATL,Atlanta Hawks,LAL,Los Angeles Lakers,,,False
