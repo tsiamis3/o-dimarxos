@@ -25,6 +25,7 @@ const seasonLabel = (s) => `${s}-${String(s + 1).slice(2)}`;
 function niceName(n) {
   if (!n) return "";
   const tc = (s) => s.toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+  n = n.replace(/\s*-\s*/g, "-");                 // «ROBINSON - EARL» -> «Robinson-Earl» (γραφή της πηγής EuroCup)
   const [last, first] = n.split(",").map((s) => s.trim());
   return first ? `${tc(first)} ${tc(last)}` : tc(last);
 }
@@ -353,7 +354,7 @@ const Charts = {
   },
 
   /** Radar: axes = [label], series = [{k, vals:[0..1]}] */
-  radar({ axes, series, W = 420, H = 380 }) {
+  radar({ axes, series, W = 420, H = 380, mid = false }) {
     const cx = W / 2, cy = H / 2 + 4, R = Math.min(W, H) / 2 - 58, n = axes.length;
     const pt = (i, r) => [cx + r * Math.sin((2 * Math.PI * i) / n), cy - r * Math.cos((2 * Math.PI * i) / n)];
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" style="min-width:280px">`;
@@ -363,9 +364,12 @@ const Charts = {
       s += `<line class="grid" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`;
       s += `<text x="${lx}" y="${ly + 4}" text-anchor="${Math.abs(lx - cx) < 8 ? "middle" : lx > cx ? "start" : "end"}">${esc(a)}</text>`;
     });
+    if (mid) s += `<polygon fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="2 3" points="${axes.map((_, i) => pt(i, R * 0.5).join(",")).join(" ")}"/>
+      <text x="${cx + 4}" y="${cy - R * 0.5 - 4}" style="font-size:10px;fill:var(--muted)">μέσος όρος</text>`;
     series.forEach((se) => {
       const p = se.vals.map((v, i) => pt(i, R * Math.max(0.03, isNum(v) ? v : 0)).join(",")).join(" ");
-      s += `<polygon class="area ${se.k}" points="${p}" style="opacity:.18"/><polygon class="line ${se.k}" points="${p}"/>`;
+      if (se.dash) s += `<polygon class="line ${se.k}" points="${p}" style="stroke-dasharray:5 4;stroke-width:1.5;opacity:.85"/>`;
+      else s += `<polygon class="area ${se.k}" points="${p}" style="opacity:.18"/><polygon class="line ${se.k}" points="${p}"/>`;
     });
     return s + "</svg>";
   },
@@ -645,6 +649,7 @@ const App = {
   analytics: new Map(),   // "E" -> αναλυτικά (analytics_E.json) | null
   edge: new Map(),        // "E" -> μοντέλο στοιχήματος (edge_E.json) | null
   shots: new Map(),       // "E2025" -> συγκεντρωτικά σουτ (shots_E2025.json) | null
+  roles: new Map(),       // "E" -> ρόλοι παικτών (roles_E.json) | null
   teamMeta: null,         // σήματα ομάδων (teams_meta.json)
   ui: {
     team: null, team2: "", players: [], pstat: "PTS",
@@ -760,6 +765,7 @@ const App = {
       await this.loadSeason(this.comp, this.season);
       if (["home", "predictions", "game", "edge"].includes(v)) await this.loadOpt(this.edge, this.comp, "edge", "edge");
       if (["analysis", "teams", "players", "court", "game"].includes(v)) await this.loadOpt(this.analytics, this.comp, "analytics", "analytics");
+      if (v === "players") await this.loadOpt(this.roles, this.comp, "roles", "roles");
       if (v === "game") {
         const prev = this.compInfo().seasons.filter((x) => x < this.latestSeason()).slice(-1);
         for (const s of prev) await this.loadSeason(this.comp, s).catch(() => null); }
@@ -957,6 +963,53 @@ const Views = {
     const R = new Map(A?.players ? rowsToObjs(A.players).map((p) => [p.pid, p]) : []);
     const pool = [...R.values()].filter((p) => p.qual);
     const SH = A?.shots ? await App.loadShots(App.comp, S.season) : null;
+    // ---- ρόλοι (roles.py): σχήμα κανονικοποιημένο σε μήκος 1, πιθανότητες ρόλων, πιο όμοιοι ----
+    const RJ = App.roles.get(App.comp);
+    const RO = new Map((RJ?.players?.[String(S.season)] || []).map((row) => { const o = Object.fromEntries(RJ.cols.map((c, i) => [c, row[i]])); return [o.pid, o]; }));
+    const LG = { E: "EL", U: "EC", NBA: "NBA", GBL: "GBL" };
+    const seasonLbl = (y) => `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
+    const rv = (shape) => shape.map((v) => 0.5 + 0.5 * v);                       // μεσαίος κύκλος = μέσος όρος
+    const SHORT = { "Σώμα/ριμπάουντ": "Σώμα/ριμπ.", "Καλάθι/βολές": "Καλάθι", "Μέση απόσταση": "Μέση απόστ." };
+    const rAxes = () => RJ.axes.map((a) => SHORT[a] || a);
+    const topRoles = (o) => o.probs.map((q, k) => [k, q]).sort((a, b) => b[1] - a[1]);
+    const roleNote = `<p class="muted" style="margin:0;font-size:12px">Το σχήμα δείχνει <b>πώς</b> παίζει, όχι πόσο καλός είναι: οι 6 άξονες (από SVD 14 μεγεθών στυλ και σώματος) μετρούν την απόκλιση από τον μέσο όρο της λίγκας του (διακεκομμένος κύκλος), και όλο το σχήμα κανονικοποιείται σε μήκος 1, ώστε δύο παίκτες με ίδιο στυλ να πέφτουν ο ένας πάνω στον άλλο. Ρόλοι: soft clustering σε ${RJ?.n_fit ?? ""} παίκτες-σεζόν EuroLeague, EuroCup και NBA (≥${RJ?.min_fit ?? 300}′).</p>`;
+    const roleBlock = (p) => {
+      const o = RO.get(p.pid);
+      if (!RJ) return `<div class="empty">Δεν υπάρχουν ρόλοι για αυτή τη λίγκα (χρειάζονται ζώνες σουτ).</div>`;
+      if (!o) return `<div class="empty">Δεν υπάρχει προφίλ ρόλου: χρειάζονται τουλάχιστον ${RJ.min_show}′ στη σεζόν.</div>`;
+      const tr = topRoles(o), [k1, p1] = tr[0], [k2, p2] = tr[1];
+      const series = [{ k: "k1", vals: rv(o.shape) }, { k: "k3", dash: true, vals: rv(RJ.roles[k1].center) }];
+      if (p2 >= 0.15) series.push({ k: "k4", dash: true, vals: rv(RJ.roles[k2].center) });
+      const inten = o.intensity >= 0.6 ? `Ξεκάθαρο προφίλ: πιο έντονο από το ${Math.round(100 * o.intensity)}% των παικτών.`
+        : o.intensity < 0.25 ? "Ισορροπημένο προφίλ: κοντά στον μέσο όρο σε όλα, οπότε το σχήμα (και ο ρόλος) είναι λιγότερο σίγουρο." : "";
+      const sim = o.similar.map(([pid, name, comp, season, c]) => {
+        const nm = comp === App.comp && season === S.season ? App.playerLink(pid, niceName(name)) : esc(niceName(name));
+        return `<li>${nm} <span class="muted">${LG[comp] || comp} ${seasonLbl(season)}</span> <b class="num" title="ομοιότητα σχήματος (100 = ίδιο στυλ)">${Math.round(100 * c)}</b></li>`; }).join("");
+      return `<div class="grid2">
+        <div><div class="chart">${Charts.radar({ axes: rAxes(), series, mid: true, W: 480 })}</div>
+          <div class="legend"><span><i class="c1bg"></i>${esc(p.player)}</span><span><i style="background:var(--c3)"></i>${esc(RJ.roles[k1].name)} (κέντρο)</span>${p2 >= 0.15 ? `<span><i style="background:var(--c4)"></i>${esc(RJ.roles[k2].name)} (κέντρο)</span>` : ""}</div></div>
+        <div>
+          <div class="eyebrow">Ρόλος</div>
+          <div style="font-size:20px;font-weight:700;margin:2px 0 4px">${esc(RJ.roles[k1].name)}${p2 >= 0.25 ? ` <span class="muted" style="font-weight:400;font-size:15px">+ ${esc(RJ.roles[k2].name)}</span>` : ""}</div>
+          <p class="muted" style="margin:0 0 8px;font-size:13px">${esc(RJ.roles[k1].desc)}</p>
+          <div class="rbars">${tr.filter(([, q]) => q >= 0.03).map(([k, q]) => `<div class="rbar"><span>${esc(RJ.roles[k].name)}</span><b>${Math.round(100 * q)}%</b><span class="pbar"><i style="width:${Math.max(2, 100 * q)}%"></i></span></div>`).join("")}</div>
+          <p class="muted" style="margin:8px 0 0;font-size:13px">${o.fit ? "" : `Μικρό δείγμα (κάτω από ${RJ.min_fit}′): εκτίμηση. `}${inten}</p>
+          <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;font-size:12px">${RJ.axes.map((a, i) => `<span class="chip" title="ποσοστημόριο στη λίγκα">${esc(a)} <b class="num">${Math.round(100 * o.pct[i])}</b></span>`).join("")}</div>
+          <h3 style="margin-top:14px">Παίζουν με παρόμοιο τρόπο</h3>
+          <ul class="insights" style="margin:0">${sim}</ul>
+        </div></div>${roleNote}`;
+    };
+    const roleCompare = (sel) => {
+      const os = sel.map((p) => RO.get(p.pid));
+      if (!RJ || os.some((o) => !o)) return "";
+      const cos = os[0].shape.reduce((a, v, i) => a + v * os[1].shape[i], 0);
+      return `<section><h3>Ρόλος και στυλ</h3><div class="grid2">
+        <div><div class="chart">${Charts.radar({ axes: rAxes(), series: os.map((o, i) => ({ k: "k" + (i + 1), vals: rv(o.shape) })), mid: true, W: 480 })}</div>
+          <div class="legend">${sel.map((p, i) => `<span><i class="c${i + 1}bg"></i>${esc(p.player)}</span>`).join("")}</div></div>
+        <div><div class="tile"><div class="v">${Math.round(100 * cos)}</div><div class="l">ομοιότητα σχήματος: 100 = ίδιο στυλ, 0 = άσχετο, −100 = αντίθετο</div></div>
+          ${os.map((o, i) => { const [k, q] = topRoles(o)[0]; return `<p style="margin:10px 0 0"><b style="color:var(--c${i + 1})">${esc(sel[i].player)}</b>: ${esc(RJ.roles[k].name)} <span class="muted">${Math.round(100 * q)}%</span></p>`; }).join("")}</div>
+      </div>${roleNote}</section>`;
+    };
     const byId = new Map(pa.map((p) => [p.pid, p]));
     App.ui.players = App.ui.players.filter((id) => byId.has(id)).slice(0, 2);
     if (!App.ui.players.length) {
@@ -1095,6 +1148,7 @@ const Views = {
           <section><h3>Τι ξεχωρίζει</h3>${insights(p)}
 </section>
         </div>
+        <section><h3>Ρόλος και στυλ</h3>${roleBlock(p)}</section>
         <div class="grid2">
           <section><h3>Προφίλ στη λίγκα</h3>${R.get(p.pid) ? metricTable([p]) : `<div class="empty">Δεν υπάρχουν αναλυτικά.</div>`}</section>
           <section><h3>Από πού σουτάρει</h3>${shotBlock(p, shotW)}
@@ -1104,7 +1158,7 @@ const Views = {
           <div class="legend"><span><i class="c1bg" style="opacity:.5"></i>Αγώνας</span><span><i class="c1bg"></i>Μ.Ο. 5 αγώνων</span></div>
           <div class="chart">${Charts.line({ series, xLabel: (x) => "Αγ." + (lg[x - 1]?.round ?? x), yZero: k !== "PM" })}</div></section>
         <section><h3>Game log</h3><div id="plog"></div></section>
-        <p class="muted" style="margin:0;font-size:13px">* Θέση: εκτίμηση από το προφίλ (ασίστ, τρίποντα, ριμπάουντ, κοψίματα), όχι επίσημη. Βαθμολογίες τύπου 2K: 72 = μέσος παίκτης με ρόλο, κάθε 8 μονάδες = μία τυπική απόκλιση μέσα στη λίγκα (90+ ≈ κορυφαίο 1–2%), με διόρθωση για το επίπεδο της λίγκας ώστε να συγκρίνονται μεταξύ τους: EuroCup −7, GBL −3 σε σχέση με την EuroLeague (εκτίμηση από παίκτες που άλλαξαν λίγκα), NBA +5 (υπόθεση).</p>`;
+        <p class="muted" style="margin:0;font-size:13px">* Θέση: εκτίμηση από το προφίλ (ασίστ, τρίποντα, ριμπάουντ, κοψίματα), όχι επίσημη. OVR: επιρροή στη διαφορά πόντων (RAPM από το play-by-play με αφετηρία ένα μοντέλο των στατιστικών· στην ελληνική λίγκα και στο NBA μόνο το μοντέλο), σε κλίμακα τύπου 2K: 72 = μέσος παίκτης με ρόλο, 8 μονάδες = μία τυπική απόκλιση. Διόρθωση λίγκας ώστε να συγκρίνονται: EuroCup −7 (από παίκτες που άλλαξαν λίγκα), ελληνική λίγκα −3 και μισή κλίμακα (ίδιοι παίκτες την ίδια σεζόν), NBA +5 (υπόθεση). Τα επιμέρους είναι προφίλ.</p>`;
       bindStat();
       new SortTable($("#plog", pv), {
         cols: [{ key: "round", label: "Αγ.", n: true }, { key: "date", label: "Ημ/νία", fmt: fmtDate },
@@ -1128,6 +1182,7 @@ const Views = {
             return `<div class="h2h-row"><span class="h2h-bar"><i class="c1bg" style="width:${((a - 30) / 69) * 100}%"></i></span><b class="${a > b ? "better" : ""}">${a}</b><span class="h2h-label">${label}</span><b class="${b > a ? "better" : ""}">${b}</b><span class="h2h-bar r"><i class="c2bg" style="width:${((b - 30) / 69) * 100}%"></i></span></div>`; }).join("")}
             <div class="h2h-row" style="font-size:18px"><span></span><b class="${rs[0].ovr > rs[1].ovr ? "better" : ""}">${rs[0].ovr}</b><span class="h2h-label"><b>OVR</b></span><b class="${rs[1].ovr > rs[0].ovr ? "better" : ""}">${rs[1].ovr}</b><span></span></div></div>
         </div></section>` : ""}
+      ${roleCompare(sel)}
       <section><h3>Προφίλ στη λίγκα</h3>${rs.some(Boolean) ? metricTable(sel) : ""}</section>
       <section><h3>Από πού σουτάρουν</h3><div class="grid2">${sel.map((p, i) => `<div><div class="eyebrow" style="color:var(--c${i + 1})">${esc(p.player)}</div>${shotBlock(p, shotW)}</div>`).join("")}</div></section>
       <section><div class="sec-head"><h3>Πορεία (κυλιόμενος μέσος 3 αγώνων)</h3>${statSelect}</div>

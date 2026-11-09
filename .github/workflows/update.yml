@@ -86,6 +86,11 @@ jobs:
       - name: Analytics (adjusted ratings, four factors, players)
         run: python scripts/analytics.py
 
+      # Ρόλοι παικτών (unsupervised): σχήμα στυλ + σώματος, soft clustering (EuroLeague, EuroCup, NBA)
+      - name: Player roles
+        continue-on-error: true
+        run: python scripts/roles.py
+
       - name: GNN dataset (graphs per game, EuroLeague + EuroCup)
         continue-on-error: true
         run: python scripts/gnn_data.py

@@ -36,6 +36,29 @@ class CompetitionData:
         self.comp = comp
         self.games = self._load_games()
         self.logs = self._load_logs()
+        self.pid_alias = self._dedupe_pids()
+
+    def _dedupe_pids(self) -> dict:
+        """Ίδιος παίκτης με δύο κωδικούς στην πηγή (ίδιο όνομα, ίδια ομάδα, ίδια σεζόν, ποτέ στο ίδιο ματς):
+        ενώνεται κάτω από τον κωδικό με τους περισσότερους αγώνες. Επιστρέφει {κωδικός -> κανονικός} και διορθώνει τα logs."""
+        from player_registry import name_key
+        lg = self.logs
+        if lg.empty:
+            return {}
+        lg = lg.assign(key=lg.player.map(name_key))
+        alias = {}
+        for (_, _, k), g in lg.dropna(subset=["key"]).groupby(["season", "team", "key"]):
+            pids = g.pid.unique()
+            if len(pids) < 2:
+                continue
+            if (g.groupby("gameCode").pid.nunique() > 1).any():
+                continue                               # έπαιξαν μαζί: διαφορετικοί άνθρωποι
+            first = lg[lg.pid.isin(pids)].groupby("pid").agg(d=("date", "min"), n=("gameCode", "size"))
+            canon = first.sort_values(["n", "d"], ascending=[False, True]).index[0]
+            alias.update({p: canon for p in pids if p != canon})
+        if alias:
+            self.logs = self.logs.assign(pid=self.logs.pid.replace(alias))
+        return alias
 
     @property
     def seasons(self) -> list[int]:
