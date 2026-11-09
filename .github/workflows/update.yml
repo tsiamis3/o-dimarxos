@@ -47,6 +47,11 @@ jobs:
         continue-on-error: true
         run: python scripts/scrapers/nba_espn.py
 
+      # Σουτ με συντεταγμένες για τα shot charts (μόνο τα νέα ματς)
+      - name: Shot data (EuroLeague/EuroCup API, NBA via ESPN)
+        continue-on-error: true
+        run: python scripts/scrapers/shots.py
+
       - name: NBA odds and injuries (ESPN)
         continue-on-error: true
         run: |

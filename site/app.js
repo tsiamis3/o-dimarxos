@@ -17,6 +17,8 @@ const sum = (a) => a.reduce((s, x) => s + (+x || 0), 0);
 const mean = (a) => (a.length ? sum(a) / a.length : NaN);
 const div = (a, b) => (b ? a / b : NaN);
 const rowsToObjs = (o) => o.rows.map((r) => Object.fromEntries(o.cols.map((c, i) => [c, r[i]])));
+/** Συνάρτηση σφάλματος (Abramowitz–Stegun 7.1.26), για πιθανότητες από κανονική κατανομή. */
+const erf = (x) => { const t = 1 / (1 + 0.3275911 * Math.abs(x)); const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; };
 const randn = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 const fmtDate = (d) => { if (!d) return ""; const [y, m, dd] = d.split("-"); return `${dd}/${m}/${y.slice(2)}`; };
 const seasonLabel = (s) => `${s}-${String(s + 1).slice(2)}`;
@@ -419,6 +421,157 @@ const Charts = {
 };
 
 /* =========================================================================
+ * 5β. Σήματα ομάδων, avatars παικτών, μπάλα, γήπεδο, shot chart (όλα δικά μας SVG)
+ *     Τα χρώματα/συντομογραφίες έρχονται από data/teams_meta.json (scripts/team_meta.py).
+ *     Αν μια ομάδα αποκτήσει "img", χρησιμοποιείται αυτή αντί για το σήμα.
+ * ========================================================================= */
+const Gfx = {
+  meta(code, comp = App.comp) {
+    const m = App.teamMeta?.[comp]?.[code];
+    return m || { abbr: String(code || "?").slice(0, 3), c1: "var(--muted)", c2: "var(--surface)", fg: "#fff", img: null };
+  },
+  /** Σήμα ομάδας ως <g> μέσα σε SVG (κέντρο cx,cy, ακτίνα r). */
+  badgeG(code, cx, cy, r, extra = "") {
+    const m = this.meta(code);
+    if (m.img) return `<image href="${esc(m.img)}" x="${cx - r}" y="${cy - r}" width="${2 * r}" height="${2 * r}" ${extra}/>`;
+    const fs = Math.max(7, r * (m.abbr.length > 3 ? 0.62 : 0.78));
+    return `<g ${extra}><circle cx="${cx}" cy="${cy}" r="${r}" fill="${m.c1}" stroke="${m.c2}" stroke-width="${Math.max(1.5, r * 0.12)}"/>` +
+      `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" style="fill:${m.fg};font:700 ${fs.toFixed(1)}px var(--font-display);letter-spacing:-.02em">${esc(m.abbr)}</text></g>`;
+  },
+  /** Σήμα ομάδας ως αυτόνομο inline SVG (για κείμενο/πίνακες). */
+  badge(code, size = 22) {
+    return `<svg class="badge" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="vertical-align:middle;flex:none">${this.badgeG(code, size / 2, size / 2, size / 2 - 1.5)}</svg>`;
+  },
+  initials(name) {
+    const n = String(name || "?").replace(/,/g, " ").split(/\s+/).filter(Boolean);
+    return ((n[0]?.[0] || "") + (n.length > 1 ? n[n.length - 1][0] : "")).toUpperCase();
+  },
+  /** Avatar παίκτη: κύκλος με αρχικά, δαχτυλίδι στα χρώματα της ομάδας. */
+  avatarG(name, code, cx, cy, r) {
+    const m = this.meta(code);
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--surface)" stroke="${m.c1}" stroke-width="${Math.max(2, r * 0.16)}"/>` +
+      `<circle cx="${cx}" cy="${cy}" r="${r * 0.78}" fill="${m.c1}" opacity=".14"/>` +
+      `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" style="fill:var(--fg);font:700 ${(r * 0.72).toFixed(1)}px var(--font-display)">${esc(this.initials(name))}</text>`;
+  },
+  avatar(name, code, size = 56) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${this.avatarG(name, code, size / 2, size / 2, size / 2 - 3)}</svg>`;
+  },
+  /** Μπάλα μπάσκετ (για bubbles παικτών). */
+  ballG(cx, cy, r, ring = "") {
+    const s = (v) => v.toFixed(1);
+    return `<g><circle cx="${s(cx)}" cy="${s(cy)}" r="${s(r)}" fill="var(--c2)" ${ring ? `stroke="${ring}" stroke-width="${s(Math.max(1.5, r * .22))}"` : `stroke="rgba(0,0,0,.35)" stroke-width="1"`}/>` +
+      `<path d="M${s(cx - r)} ${s(cy)}H${s(cx + r)}M${s(cx)} ${s(cy - r)}V${s(cy + r)}M${s(cx - r * .7)} ${s(cy - r * .7)}Q${s(cx - r * .15)} ${s(cy)} ${s(cx - r * .7)} ${s(cy + r * .7)}M${s(cx + r * .7)} ${s(cy - r * .7)}Q${s(cx + r * .15)} ${s(cy)} ${s(cx + r * .7)} ${s(cy + r * .7)}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="${s(Math.max(.6, r * .07))}"/></g>`;
+  },
+  /** Τράβηγμα κύκλων ώστε να μην επικαλύπτονται (λίγες επαναλήψεις αρκούν). */
+  relax(nodes, x0, x1, y0, y1, iters = 120) {
+    for (let it = 0; it < iters; it++) {
+      let moved = false;
+      for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        let dx = b.px - a.px, dy = b.py - a.py; const d = Math.hypot(dx, dy) || 0.01, min = a.pr + b.pr + 1.5;
+        if (d < min) { const push = (min - d) / 2; dx /= d; dy /= d; a.px -= dx * push; a.py -= dy * push; b.px += dx * push; b.py += dy * push; moved = true; }
+      }
+      // ελαφριά επιστροφή προς τη σωστή θέση
+      for (const n of nodes) { n.px += (n.tx - n.px) * 0.04; n.py += (n.ty - n.py) * 0.04; n.px = Math.max(x0 + n.pr, Math.min(x1 - n.pr, n.px)); n.py = Math.max(y0 + n.pr, Math.min(y1 - n.pr, n.py)); }
+      if (!moved && it > 10) break;
+    }
+    return nodes;
+  },
+};
+
+/** Γράφημα «σήματα»: κάθε σημείο είναι σήμα ομάδας ή μπάλα, το μέγεθος κωδικοποιεί ένα μέγεθος (sizeLabel).
+ *  pts: [{x, y, s (0..1), code?|ball?, label, title, team?, pid?, hi?}] */
+Charts.badges = function ({ pts, xName, yName, fx = (v) => fmt(v), fy = (v) => fmt(v), invertY = false, quads = null, sizeLabel = "", diag = null, W = Charts.W(620), rMin = 9, rMax = 24 }) {
+  const ok = pts.filter((p) => isNum(p.x) && isNum(p.y));
+  if (!ok.length) return `<div class="empty">Δεν υπάρχουν δεδομένα.</div>`;
+  const small = W < 480;
+  const H = Math.round(Math.min(560, Math.max(320, W * 0.72))), L = small ? 44 : 56, R = 16, T = 16, B = 46;
+  const ext = (a) => { const lo = Math.min(...a), hi = Math.max(...a), d = (hi - lo) * 0.1 || 1; return [lo - d, hi + d]; };
+  const [x0, x1] = ext(ok.map((p) => p.x)), [y0, y1] = ext(ok.map((p) => p.y));
+  const X = this.scale(x0, x1, L, W - R), Y = invertY ? this.scale(y0, y1, T, H - B) : this.scale(y0, y1, H - B, T);
+  const dense = ok.length > 60;                      // πολλά σημεία: μικρότερα και ΣΤΗ σωστή θέση (χωρίς μετατόπιση)
+  const rs = (small ? 0.7 : 1) * (dense ? 0.6 : 1);
+  const nodes = ok.map((p) => { const pr = (rMin + (rMax - rMin) * Math.sqrt(Math.max(0, Math.min(1, p.s ?? 0.5)))) * rs; return { ...p, tx: X(p.x), ty: Y(p.y), px: X(p.x), py: Y(p.y), pr }; });
+  if (!dense) Gfx.relax(nodes, L, W - R, T, H - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(yName)} ως προς ${esc(xName)}">`;
+  this.ticks(x0, x1, 6).filter((v) => v >= x0 && v <= x1).forEach((v) => (s += `<line class="grid" x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${H - B}"/><text x="${X(v)}" y="${H - B + 16}" text-anchor="middle">${fx(v)}</text>`));
+  this.ticks(y0, y1, 6).filter((v) => v >= y0 && v <= y1).forEach((v) => (s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${fy(v)}</text>`));
+  if (diag) s += diag(X, Y, x0, x1, y0, y1);
+  const med = (a) => { const b = [...a].sort((p, q) => p - q); return b[Math.floor(b.length / 2)]; };
+  const mx = med(ok.map((p) => p.x)), my = med(ok.map((p) => p.y));
+  s += `<line class="axis" x1="${X(mx)}" x2="${X(mx)}" y1="${T}" y2="${H - B}" stroke-dasharray="4 4" opacity=".6"/><line class="axis" x1="${L}" x2="${W - R}" y1="${Y(my)}" y2="${Y(my)}" stroke-dasharray="4 4" opacity=".6"/>`;
+  if (quads) {
+    const q = (t, x, y, a) => `<text x="${x}" y="${y}" text-anchor="${a}" style="font-size:12px;font-weight:600;opacity:.75">${esc(t)}</text>`;
+    s += q(quads[0], L + 6, T + 14, "start") + q(quads[1], W - R - 6, T + 14, "end") + q(quads[2], L + 6, H - B - 8, "start") + q(quads[3], W - R - 6, H - B - 8, "end");
+  }
+  for (const n of [...nodes].sort((a, b) => (a.hi ? 1 : 0) - (b.hi ? 1 : 0) || b.pr - a.pr)) {
+    const attr = n.team ? `data-team="${esc(n.team)}"` : n.pid ? `data-pid="${esc(n.pid)}"` : "";
+    const moved = Math.hypot(n.px - n.tx, n.py - n.ty) > 2;
+    s += `<g ${attr} style="cursor:pointer" opacity="${n.dim ? 0.3 : 1}"><title>${esc(n.title || n.label)}</title>`;
+    if (moved) s += `<line x1="${n.tx.toFixed(1)}" y1="${n.ty.toFixed(1)}" x2="${n.px.toFixed(1)}" y2="${n.py.toFixed(1)}" class="axis" opacity=".5"/><circle cx="${n.tx.toFixed(1)}" cy="${n.ty.toFixed(1)}" r="2" class="k1"/>`;
+    s += n.code ? Gfx.badgeG(n.code, +n.px.toFixed(1), +n.py.toFixed(1), +n.pr.toFixed(1)) : Gfx.ballG(n.px, n.py, n.pr, n.ring || "");
+    if (n.showLabel) s += `<text x="${n.px.toFixed(1)}" y="${(n.py + n.pr + 12).toFixed(1)}" text-anchor="middle" style="font-size:11px;fill:var(--fg)">${esc(n.label)}</text>`;
+    s += `</g>`;
+  }
+  s += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle">${esc(xName)}</text>`;
+  s += `<text x="12" y="${(T + H - B) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(T + H - B) / 2})">${esc(yName)}</text>`;
+  s += `</svg>`;
+  return s + (sizeLabel ? `<div class="muted" style="font-size:12px;margin-top:4px">Μέγεθος: ${esc(sizeLabel)}</div>` : "");
+};
+
+/** Μισό γήπεδο (μέτρα, καλάθι στο 0,0, y προς το κέντρο). comp NBA -> γραμμή 3π NBA. */
+const Court = {
+  dims(comp) {
+    return comp === "NBA" ? { three: 7.24, corner: 6.71, cornerY: 4.22 - 1.575, key: 2.44, ft: 5.8 - 1.575, w: 7.62 }
+      : { three: 6.75, corner: 6.6, cornerY: 2.99 - 1.575, key: 2.45, ft: 5.8 - 1.575, w: 7.5 };
+  },
+  /** Γραμμές μισού γηπέδου σε SVG, με συνάρτηση προβολής P(x,y) -> [px,py]. */
+  half(P, comp, cls = "axis") {
+    const d = this.dims(comp), line = (pts) => `<path class="${cls}" fill="none" d="${pts.map((p, i) => (i ? "L" : "M") + P(...p).map((v) => v.toFixed(1)).join(" ")).join("")}"/>`;
+    const arc = (r, a0, a1, n = 40) => { const pts = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push([r * Math.cos(a), r * Math.sin(a)]); } return pts; };
+    const base = -1.575;
+    let s = line([[-d.w, base], [d.w, base]]);                                   // τελική
+    s += line([[-d.w, base], [-d.w, 12.5]]) + line([[d.w, base], [d.w, 12.5]]);  // πλάγιες
+    s += line([[-d.key, base], [-d.key, d.ft], [d.key, d.ft], [d.key, base]]);    // ρακέτα
+    s += line(arc(1.8, 0, Math.PI).map(([x, y]) => [x, y + d.ft]));               // κύκλος βολών
+    s += line(arc(1.25, 0, Math.PI));                                             // no-charge
+    const a0 = Math.asin(d.cornerY / d.three);
+    s += line([[-d.corner, base], [-d.corner, d.cornerY]]) + line([[d.corner, base], [d.corner, d.cornerY]]);
+    s += line(arc(d.three, a0, Math.PI - a0).map(([x, y]) => [x, y]).reverse().map(([x, y]) => [x, y]));
+    const [bx, by] = P(0, 0), [rx] = P(0.23, 0);
+    s += `<circle class="${cls}" fill="none" cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${Math.abs(rx - bx).toFixed(1)}"/>`;
+    s += line([[-0.9, -0.375], [0.9, -0.375]]);                                   // ταμπλό
+    return s;
+  },
+  /** Shot chart: εξάγωνα μέγεθος = συχνότητα, χρώμα = εύστοχα vs μέσος όρος λίγκας στην ίδια θέση. */
+  shotChart({ cells, league, hex, comp, W = 360, title = "" }) {
+    const d = this.dims(comp), H = Math.round(W * 0.94), pad = 6;
+    const sc = (W - 2 * pad) / (2 * d.w), P = (x, y) => [W / 2 + x * sc, pad + (y + 1.575) * sc];
+    const lg = new Map(league.map(([q, r, a, m]) => [q + "," + r, [a, m]]));
+    const tot = cells.reduce((s, c) => s + c[2], 0);
+    if (!tot) return `<div class="empty">Δεν υπάρχουν σουτ.</div>`;
+    const maxShare = Math.max(...cells.map((c) => c[2] / tot));
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title || "Χάρτης σουτ")}">`;
+    s += `<rect x="0" y="0" width="${W}" height="${H}" fill="var(--surface-2)" opacity=".45"/>`;
+    s += this.half(P, comp);
+    for (const [q, r, a, m] of cells) {
+      const cx = hex * Math.sqrt(3) * (q + r / 2), cy = hex * 1.5 * r;
+      if (cy > 11) continue;
+      const [l0, l1] = lg.get(q + "," + r) || [0, 0];
+      const lgp = l0 ? l1 / l0 : 0.45;
+      // συρρίκνωση προς τη λίγκα (5 εικονικά σουτ)
+      const diff = (m + 5 * lgp) / (a + 5) - lgp;
+      const rr = hex * sc * (0.3 + 0.7 * Math.sqrt(a / tot / maxShare));
+      const [px, py] = P(cx, cy);
+      const pts = []; for (let i = 0; i < 6; i++) { const ang = Math.PI / 180 * (60 * i - 30); pts.push([px + rr * Math.cos(ang), py + rr * Math.sin(ang)]); }
+      const col = diff > 0 ? "var(--good)" : "var(--bad)", op = Math.min(0.95, 0.25 + Math.abs(diff) * 4);
+      s += `<polygon points="${pts.map((p) => p.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="${col}" opacity="${op.toFixed(2)}"><title>${a} σουτ · ${fmtPct(m / a)} (λίγκα ${fmtPct(lgp)})</title></polygon>`;
+    }
+    return s + `</svg>`;
+  },
+};
+
+/* =========================================================================
  * 6. Πίνακας με ταξινόμηση + σελιδοποίηση
  * ========================================================================= */
 class SortTable {
@@ -474,7 +627,7 @@ const logCol = (k) => ({ key: k, label: STAT[k]?.label || k, n: true, fmt: (v) =
 /* =========================================================================
  * 7. Εφαρμογή: κατάσταση, φόρτωση δεδομένων, routing
  * ========================================================================= */
-const VIEWS = ["home", "teams", "players", "analysis", "explorer", "predictions", "edge"];
+const VIEWS = ["home", "teams", "players", "court", "analysis", "explorer", "predictions", "edge"];
 
 const App = {
   manifest: null, section: "europe", comp: "E", season: null,
@@ -485,9 +638,12 @@ const App = {
   master: undefined,      // master νευρωνικό όλων των λιγκών (master.json) | null
   analytics: new Map(),   // "E" -> αναλυτικά (analytics_E.json) | null
   edge: new Map(),        // "E" -> μοντέλο στοιχήματος (edge_E.json) | null
+  shots: new Map(),       // "E2025" -> συγκεντρωτικά σουτ (shots_E2025.json) | null
+  teamMeta: null,         // σήματα ομάδων (teams_meta.json)
   ui: {
     team: null, team2: "", players: [], pstat: "PTS",
     an2: { team: "", minPct: null },
+    court: { a: "", b: "", lineups: {}, sel: 0 },
     ex: { level: "players", all: false, mode: "avg", team: "", minGP: 1, minMIN: 0, q: "", cs: "PTS", co: ">=", cv: "",
           cols: { players: ["GP", "MIN", "PTS", "REB", "AST", "STL", "BLK", "TOV", "PIR", "FG3P", "TS"],
                   teams: ["GP", "W", "L", "PTS", "OPP", "NET", "PACE", "ORTG", "DRTG", "EFG", "TOVP", "OREBP"],
@@ -533,6 +689,11 @@ const App = {
     }
     return map.get(comp);
   },
+  async loadShots(comp, season) {
+    const k = comp + season;
+    if (!this.shots.has(k)) this.shots.set(k, await this.json(`data/shots_${k}.json`).catch(() => null));
+    return this.shots.get(k);
+  },
   async loadMaster() {
     if (this.master === undefined) this.master = this.manifest.master ? await this.json("data/master.json").catch(() => null) : null;
     return this.master;
@@ -552,6 +713,7 @@ const App = {
     }
     if (!this.manifest.competitions.length) { $("#view").innerHTML = `<div class="empty">Η βάση είναι άδεια.</div>`; return; }
     $("#updated").textContent = "ενημέρωση " + this.manifest.updated;
+    this.teamMeta = await this.json("data/teams_meta.json").catch(() => null);
     $("#demo-banner").hidden = !this.manifest.demo;
     const secs = this.sections();
     const savedSec = store.get("section");
@@ -605,7 +767,7 @@ const App = {
 
   async render() {
     const info = this.compInfo();
-    const off = { players: info.hasBox === false, predictions: !info.predictions && !info.evaluation && !info.gamenn && !(this.manifest.master && info.hasBox), edge: !info.edge };
+    const off = { players: info.hasBox === false, court: info.hasBox === false, predictions: !info.predictions && !info.evaluation && !info.gamenn && !(this.manifest.master && info.hasBox), edge: !info.edge };
     $$("#tabs a").forEach((a) => (a.hidden = !!off[a.getAttribute("href").slice(1)]));
     if (off[this.route()]) { location.hash = "home"; return; }
     const v = this.route();
@@ -616,7 +778,7 @@ const App = {
       await this.loadPreds(this.comp);
       if (v === "predictions") await this.loadEval(this.comp);
       if (v === "predictions" || v === "home") { await this.loadGameNN(this.comp); await this.loadMaster(); }
-      if (v === "analysis" || v === "teams") await this.loadOpt(this.analytics, this.comp, "analytics", "analytics");
+      if (["analysis", "teams", "players", "court"].includes(v)) await this.loadOpt(this.analytics, this.comp, "analytics", "analytics");
       if (v === "edge") { await this.loadOpt(this.edge, this.comp, "edge", "edge"); await this.loadSeason(this.comp, this.latestSeason()); }
       if (this.preds.get(this.comp) || v === "predictions") await this.loadSeason(this.comp, this.latestSeason());
       await Views[v](view, this.S);
@@ -816,26 +978,104 @@ const Views = {
         : `<div class="empty">Δεν έχουν παίξει μεταξύ τους αυτή τη σεζόν.</div>`}</section>`;
   },
 
-  /* ---------------- Παίκτες: προφίλ + σύγκριση έως 4 ---------------- */
-  players(el, S) {
+  /* ---------------- Παίκτες: προφίλ (ratings 0–99), τι ξεχωρίζει, εκατοστημόρια, shot chart, σύγκριση 2 ---------------- */
+  async players(el, S) {
     const pa = S.playerAgg;
     if (!pa.length) { el.innerHTML = `<div class="empty">Δεν υπάρχουν στατιστικά παικτών για αυτή τη σεζόν.</div>`; return; }
+    const AN = App.analytics.get(App.comp), A = AN?.seasons?.[String(S.season)];
+    const R = new Map(A?.players ? rowsToObjs(A.players).map((p) => [p.pid, p]) : []);
+    const pool = [...R.values()].filter((p) => p.qual);
+    const SH = A?.shots ? await App.loadShots(App.comp, S.season) : null;
     const byId = new Map(pa.map((p) => [p.pid, p]));
-    App.ui.players = App.ui.players.filter((id) => byId.has(id));
-    if (!App.ui.players.length) App.ui.players = [[...pa].filter((p) => p.GP >= 3).sort((a, b) => b.PIR - a.PIR)[0]?.pid || pa[0].pid];
+    App.ui.players = App.ui.players.filter((id) => byId.has(id)).slice(0, 2);
+    if (!App.ui.players.length) {
+      const best = pool.length ? [...pool].sort((a, b) => b.ovr - a.ovr)[0]?.pid : [...pa].filter((p) => p.GP >= 3).sort((a, b) => b.PIR - a.PIR)[0]?.pid;
+      App.ui.players = [best || pa[0].pid];
+    }
     const sel = App.ui.players.map((id) => byId.get(id));
-    const K = ["k1", "k2", "k3", "k4"], BG = ["c1bg", "c2bg", "c3bg", "c4bg"];
     const chartStats = ["PTS", "REB", "AST", "PIR", "MIN", "STL", "TOV", "FG3M", "FTA", "PM"];
     if (!chartStats.includes(App.ui.pstat)) App.ui.pstat = "PTS";
+    const k = App.ui.pstat;
+
+    // ---- βοηθητικά ----
+    const METRICS = [
+      ["mpg", "Λεπτά / αγώνα", (v) => fmt(v)], ["pts100", "Πόντοι / 100 κατοχές", (v) => fmt(v)],
+      ["usg", "Usage %", fmtPct], ["ts_adj", "True shooting % (διορθ.)", fmtPct],
+      ["fg3_adj", "Τρίποντα % (διορθ.)", fmtPct, (p) => p.fg3_rate >= 0.15], ["ft_adj", "Βολές %", fmtPct],
+      ["ast_pct", "Ασίστ % (AST%)", fmtPct], ["tov_pct", "Λάθη / κατοχή που τελειώνει", fmtPct, null, true],
+      ["orb_pct", "Επιθ. ριμπάουντ %", fmtPct], ["drb_pct", "Αμυν. ριμπάουντ %", fmtPct],
+      ["stl100", "Κλεψίματα / 100", (v) => fmt(v)], ["blk100", "Κοψίματα / 100", (v) => fmt(v)],
+      ["onoff", "On/Off (π. / 100, συρρικν.)", (v) => (isNum(v) ? (v > 0 ? "+" : "") + fmt(v) : "–")],
+    ].filter(([key]) => pool.some((p) => isNum(p[key])));
+    const pctl = (key, v, low) => {
+      const vals = pool.map((p) => p[key]).filter(isNum);
+      if (!vals.length || !isNum(v)) return NaN;
+      const below = vals.filter((x) => (low ? x > v : x < v)).length;
+      return below / vals.length;
+    };
+    const CATS = [["r_sco", "Σκοράρισμα"], ["r_sho", "Σουτ"], ["r_pla", "Δημιουργία"], ["r_reb", "Ριμπάουντ"], ["r_def", "Άμυνα"], ["r_imp", "Επιρροή"]];
+    const bar = (v, max = 99, cls = "") => `<span class="pbar ${cls}"><i style="width:${isNum(v) ? Math.max(2, Math.min(100, (100 * v) / max)) : 0}%"></i></span>`;
+    const ovrCls = (v) => (v >= 90 ? "elite" : v >= 75 ? "good" : "");
+
+    const card = (p, i) => {
+      const r = R.get(p.pid);
+      const head = `<div class="pcard-head">${Gfx.avatar(p.player, p.team, 64)}
+          <div style="min-width:0"><div class="pcard-name">${esc(p.player)}</div>
+            <div class="row muted" style="gap:6px;font-size:13px">${Gfx.badge(p.team, 18)} ${App.teamLink(p.team, S)}${r?.pos ? ` · <span title="Εκτίμηση από το προφίλ στατιστικών">${r.pos}*</span>` : ""} · ${p.GP} αγ. · ${fmt(p.MIN_AVG ?? p.MIN)}'</div></div>
+          ${r && isNum(r.ovr) ? `<div class="ovr ${ovrCls(r.ovr)}" title="Συνολική βαθμολογία (0–99)"><b>${r.ovr}</b><span>OVR</span></div>` : ""}</div>`;
+      if (!r || !isNum(r.ovr)) return `<div class="pcard" style="border-color:var(--c${i + 1})">${head}<p class="muted" style="margin:0">Δεν υπάρχουν αναλυτικά για αυτόν τον παίκτη.</p></div>`;
+      return `<div class="pcard" style="border-color:var(--c${i + 1})">${head}
+        <div class="rbars">${CATS.map(([key, label]) => `<div class="rbar"><span>${label}</span><b>${r[key]}</b>${bar(r[key], 99, ovrCls(r[key]))}</div>`).join("")}</div>
+        ${!r.qual ? `<p class="muted" style="margin:0;font-size:12px">Λίγα λεπτά (${fmt(r.MIN, 0)}'): οι βαθμολογίες είναι τραβηγμένες προς τον μέσο όρο.</p>` : ""}</div>`;
+    };
+    const insights = (p) => {
+      const r = R.get(p.pid);
+      if (!r || !r.qual) return "";
+      const items = METRICS.filter(([key, , , cond]) => !cond || cond(r)).map(([key, label, f, , low]) => ({ label, v: f(r[key]), p: pctl(key, r[key], low) })).filter((x) => isNum(x.p));
+      const top = items.filter((x) => x.p >= 0.85).sort((a, b) => b.p - a.p).slice(0, 4);
+      const weak = items.filter((x) => x.p <= 0.15).sort((a, b) => a.p - b.p).slice(0, 2);
+      if (!top.length && !weak.length) return `<p class="muted" style="margin:0">Κανένα μέγεθος δεν ξεχωρίζει έντονα: ισορροπημένο προφίλ κοντά στον μέσο όρο της λίγκας.</p>`;
+      return `<ul class="insights">${top.map((x) => `<li><span class="pill w">κορυφαίο ${Math.max(1, Math.round(100 * (1 - x.p)))}%</span> ${esc(x.label)}: <b>${x.v}</b></li>`).join("")}${weak.map((x) => `<li><span class="pill l">χαμηλότερο ${Math.max(1, Math.round(100 * x.p))}%</span> ${esc(x.label)}: <b>${x.v}</b></li>`).join("")}</ul>`;
+    };
+    const ZL = { rim: "Στο καλάθι", paint: "Ρακέτα", mid: "Μέση απόσταση", corner3: "Γωνία 3π", arc3: "3π (κορυφή/πλάγια)" };
+    const shotBlock = (p, W) => {
+      if (SH && SH.players[p.pid]) {
+        const z = SH.pzones[p.pid] || [], lz = SH.league.zones, tot = z.reduce((s, x) => s + x[0], 0), ltot = lz.reduce((s, x) => s + x[0], 0);
+        return `<div class="chart" style="max-width:${W}px">${Court.shotChart({ cells: SH.players[p.pid], league: SH.league.hex, hex: SH.hex, comp: App.comp, W, title: "Χάρτης σουτ " + p.player })}</div>
+          <div class="tbl-wrap"><table><thead><tr><th>Ζώνη</th><th class="n">Σουτ</th><th class="n">% σουτ (λίγκα)</th><th class="n">Εύστοχα % (λίγκα)</th></tr></thead><tbody>
+            ${SH.zones.map((zn, i) => { const [a, m] = z[i] || [0, 0], [la, lm] = lz[i]; const fg = a ? m / a : NaN, lf = la ? lm / la : NaN, d = fg - lf;
+              return `<tr><td>${ZL[zn]}</td><td class="n">${a}</td><td class="n">${fmtPct(a / Math.max(1, tot))} <span class="muted">(${fmtPct(la / ltot)})</span></td><td class="n">${a ? `<span class="${a >= 10 && d > 0.03 ? "better" : ""}" ${a >= 10 && d < -0.03 ? 'style="color:var(--bad)"' : ""}>${fmtPct(fg)}</span>` : "–"} <span class="muted">(${fmtPct(lf)})</span></td></tr>`; }).join("")}
+          </tbody></table></div>`;
+      }
+      // χωρίς συντεταγμένες (GBL): κατανομή από τα box scores
+      const lgA = (key) => { const t = pa.reduce((s, x) => s + x[key] * x.GP, 0); return t; };
+      const l2a = lgA("FG2A"), l3a = lgA("FG3A"), lfa = lgA("FTA"), lsum = l2a + l3a;
+      const lf2 = lgA("FG2M") / l2a, lf3 = lgA("FG3M") / l3a, lft = lgA("FTM") / lfa;
+      const fga = p.FG2A + p.FG3A;
+      const row = (label, share, lshare, pctv, lpct) => `<tr><td>${label}</td><td class="n">${fmtPct(share)} <span class="muted">(${fmtPct(lshare)})</span></td><td class="n">${fmtPct(pctv)} <span class="muted">(${fmtPct(lpct)})</span></td></tr>`;
+      return `<p class="muted" style="margin:0;font-size:13px">Για αυτή τη διοργάνωση δεν υπάρχουν θέσεις σουτ. Κατανομή από τα box scores:</p>
+        <div class="tbl-wrap"><table><thead><tr><th>Σουτ</th><th class="n">Μερίδιο (λίγκα)</th><th class="n">Εύστοχα % (λίγκα)</th></tr></thead><tbody>
+          ${row("Δίποντα", p.FG2A / (fga || 1), l2a / lsum, p.FG2P, lf2)}${row("Τρίποντα", p.FG3A / (fga || 1), l3a / lsum, p.FG3P, lf3)}${row("Βολές (ανά σουτ)", p.FTA / (fga || 1), lfa / lsum, p.FTP, lft)}
+        </tbody></table></div>`;
+    };
+    const metricTable = (ps) => `<div class="tbl-wrap"><table><thead><tr><th>Μέγεθος</th>${ps.map((p, i) => `<th class="n" style="color:var(--c${i + 1})">${esc(p.player.split(" ").at(-1))}</th><th class="n muted" style="min-width:90px">εκατοστ.</th>`).join("")}</tr></thead><tbody>
+      ${METRICS.map(([key, label, f, cond, low]) => {
+        const rs = ps.map((p) => R.get(p.pid));
+        const vals = rs.map((r) => r?.[key]);
+        const best = ps.length > 1 && vals.every(isNum) ? (low ? Math.min(...vals) : Math.max(...vals)) : null;
+        return `<tr><td>${label}</td>${rs.map((r, i) => { const pc = pctl(key, r?.[key], low); return `<td class="n ${best != null && vals[i] === best ? "better" : ""}">${r ? f(r[key]) : "–"}</td><td class="n">${isNum(pc) ? bar(pc, 1) + ` <span class="muted" style="font-size:12px">${Math.round(100 * pc)}</span>` : "–"}</td>`; }).join("")}</tr>`;
+      }).join("")}</tbody></table></div>
+      <p class="muted" style="margin:0;font-size:13px">Εκατοστημόριο ανάμεσα σε ${pool.length} παίκτες με αρκετά λεπτά (για τα λάθη: χαμηλότερο = καλύτερο). «Διορθ.»: τραβηγμένο προς τον μέσο όρο για λίγες προσπάθειες.</p>`;
 
     el.innerHTML = `
       <section>
         <div class="filters">
-          <label style="flex:1 1 260px">Αναζήτηση παίκτη (πρόσθεσε έως 4 για σύγκριση)
+          <label style="flex:1 1 260px">Αναζήτηση παίκτη (έως 2 για σύγκριση)
             <input type="search" id="psearch" placeholder="π.χ. όνομα ή ομάδα" autocomplete="off"></label>
         </div>
         <div class="chips" id="presults"></div>
-        <div class="row">${sel.map((p, i) => `<span class="sel-chip" style="border-color:var(--c${i + 1})">${esc(p.player)} <span class="muted">${esc(p.team)}</span><button data-rm="${p.pid}" aria-label="Αφαίρεση ${esc(p.player)}">×</button></span>`).join("")}</div>
+        <div class="row">${sel.map((p, i) => `<span class="sel-chip" style="border-color:var(--c${i + 1})">${esc(p.player)} <span class="muted">${esc(p.team)}</span><button data-rm="${p.pid}" aria-label="Αφαίρεση ${esc(p.player)}">×</button></span>`).join("")}
+          ${sel.length === 1 ? `<span class="muted" style="font-size:13px">Πρόσθεσε δεύτερο παίκτη για σύγκριση</span>` : ""}</div>
       </section>
       <div id="pv" style="display:flex;flex-direction:column;gap:28px"></div>`;
 
@@ -844,13 +1084,13 @@ const Views = {
       const q = search.value.trim().toLowerCase();
       if (q.length < 2) { res.innerHTML = ""; return; }
       const hits = pa.filter((p) => p.player.toLowerCase().includes(q) || S.teamName(p.team).toLowerCase().includes(q) || p.team.toLowerCase() === q)
-        .sort((a, b) => b.PIR - a.PIR).slice(0, 14);
-      res.innerHTML = hits.map((p) => `<button class="chip" data-add="${p.pid}">${esc(p.player)} <span class="muted">${esc(p.team)} · ${fmt(p.PIR)} PIR</span></button>`).join("") || `<span class="muted">Κανένα αποτέλεσμα</span>`;
+        .sort((a, b) => (R.get(b.pid)?.ovr ?? 0) - (R.get(a.pid)?.ovr ?? 0) || b.PIR - a.PIR).slice(0, 14);
+      res.innerHTML = hits.map((p) => `<button class="chip" data-add="${p.pid}">${Gfx.badge(p.team, 16)} ${esc(p.player)} <span class="muted">${R.get(p.pid)?.ovr ? R.get(p.pid).ovr + " OVR" : fmt(p.PIR) + " PIR"}</span></button>`).join("") || `<span class="muted">Κανένα αποτέλεσμα</span>`;
     };
     res.onclick = (e) => {
       const b = e.target.closest("[data-add]"); if (!b) return;
       const id = b.dataset.add;
-      if (!App.ui.players.includes(id)) App.ui.players = [...App.ui.players, id].slice(-4);
+      if (!App.ui.players.includes(id)) App.ui.players = App.ui.players.length >= 2 ? [App.ui.players[0], id] : [...App.ui.players, id];
       Views.players(el, S);
     };
     el.querySelector(".row").onclick = (e) => {
@@ -861,9 +1101,9 @@ const Views = {
 
     const pv = $("#pv", el);
     const logsOf = (pid) => S.logs.filter((r) => r.pid === pid).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-    const statSelect = `<label class="muted" style="font-size:12px">Στατιστικό <select id="pstat">${chartStats.map((k) => `<option value="${k}" ${k === App.ui.pstat ? "selected" : ""}>${STAT[k].name}</option>`).join("")}</select></label>`;
+    const statSelect = `<label class="muted" style="font-size:12px">Στατιστικό <select id="pstat">${chartStats.map((s) => `<option value="${s}" ${s === k ? "selected" : ""}>${STAT[s].name}</option>`).join("")}</select></label>`;
     const bindStat = () => { $("#pstat", pv).onchange = (e) => { App.ui.pstat = e.target.value; Views.players(el, S); }; };
-    const k = App.ui.pstat;
+    const shotW = Math.min(420, Charts.W(420));
 
     if (sel.length === 1) {
       const p = sel[0], lg = logsOf(p.pid);
@@ -879,15 +1119,22 @@ const Views = {
       if (hasModel && bt.length) series.push({ k: "k2", dash: true, dots: true, r: 3, pts: bt.filter((r) => idxOf.has(r.gameCode)).map((r) => [idxOf.get(r.gameCode), r["p_" + k]]) });
       if (hasModel && nx) series.push({ k: "k2", dotsOnly: true, r: 6, pts: [[lg.length + 1, nx[k]]] });
       pv.innerHTML = `
-        <section><div class="sec-head"><h2>${esc(p.player)}</h2><span>${App.teamLink(p.team, S)}</span></div>
-          <div class="tiles">${["GP", "MIN", "PTS", "REB", "AST", "PIR", "TS", "FG3P"].map((s) => `<div class="tile"><div class="v">${fmtStat(s, p[s])}</div><div class="l">${STAT[s].name}</div></div>`).join("")}</div>
-          ${nx ? `<div class="tile" style="border-color:var(--c2)"><div class="eyebrow">Πρόβλεψη μοντέλου · επόμενο ματς ${nx.home ? "vs" : "@"} ${esc(S.teamName(nx.opp))} (${fmtDate(nx.date)})</div>
-            <div class="row num" style="margin-top:6px;gap:18px">${preds.targets.map((t) => `<span><b>${fmt(nx[t])}</b> <span class="muted">${STAT[t].label}</span></span>`).join("")}</div></div>` : ""}
-        </section>
+        <div class="grid2">
+          <section>${card(p, 0)}</section>
+          <section><h3>Τι ξεχωρίζει</h3>${insights(p)}
+            ${nx ? `<div class="tile" style="border-color:var(--c2);margin-top:10px"><div class="eyebrow">Πρόβλεψη μοντέλου · επόμενο ματς ${nx.home ? "vs" : "@"} ${esc(S.teamName(nx.opp))} (${fmtDate(nx.date)})</div>
+              <div class="row num" style="margin-top:6px;gap:18px">${preds.targets.map((t) => `<span><b>${fmt(nx[t])}</b> <span class="muted">${STAT[t].label}</span></span>`).join("")}</div></div>` : ""}</section>
+        </div>
+        <div class="grid2">
+          <section><h3>Προφίλ στη λίγκα</h3>${R.get(p.pid) ? metricTable([p]) : `<div class="empty">Δεν υπάρχουν αναλυτικά.</div>`}</section>
+          <section><h3>Από πού σουτάρει</h3>${shotBlock(p, shotW)}
+            ${SH?.players[p.pid] ? `<p class="muted" style="margin:0;font-size:13px">Μέγεθος εξαγώνου = πόσο συχνά σουτάρει από εκεί. Χρώμα = εύστοχα σε σχέση με τον μέσο όρο της λίγκας στο ίδιο σημείο (πράσινο καλύτερα, κόκκινο χειρότερα, πιο έντονο = μεγαλύτερη διαφορά).</p>` : ""}</section>
+        </div>
         <section><div class="sec-head"><h3>Ανά αγώνα</h3>${statSelect}</div>
-          <div class="legend"><span><i class="c1bg" style="opacity:.5"></i>Αγώνας</span><span><i class="c1bg"></i>Μ.Ο. 5 αγώνων</span>${hasModel ? `<span><i class="c2bg"></i>Πρόβλεψη μοντέλου (εκτός training)</span>` : ""}</div>
+          <div class="legend"><span><i class="c1bg" style="opacity:.5"></i>Αγώνας</span><span><i class="c1bg"></i>Μ.Ο. 5 αγώνων</span>${hasModel ? `<span><i class="c2bg"></i>Πρόβλεψη μοντέλου</span>` : ""}</div>
           <div class="chart">${Charts.line({ series, xLabel: (x) => (x <= lg.length ? "Αγ." + (lg[x - 1].round ?? x) : "Επόμ."), yZero: k !== "PM" })}</div></section>
-        <section><h3>Game log</h3><div id="plog"></div></section>`;
+        <section><h3>Game log</h3><div id="plog"></div></section>
+        <p class="muted" style="margin:0;font-size:13px">* Θέση: εκτίμηση από το προφίλ (ασίστ, τρίποντα, ριμπάουντ, κοψίματα), όχι επίσημη. Βαθμολογίες 0–99: εκατοστημόρια στη λίγκα, 40 = χαμηλότερος, 99 = κορυφαίος.</p>`;
       bindStat();
       new SortTable($("#plog", pv), {
         cols: [{ key: "round", label: "Αγ.", n: true }, { key: "date", label: "Ημ/νία", fmt: fmtDate },
@@ -898,27 +1145,24 @@ const Views = {
       return;
     }
 
-    // ---- σύγκριση παικτών ----
-    const maxGP = Math.max(...pa.map((p) => p.GP));
-    const pool = pa.filter((p) => p.GP >= Math.max(2, 0.3 * maxGP) && p.MIN >= 10);
-    const RADAR = ["PTS", "REB", "AST", "STL", "BLK", "PIR", "TS", "FG3P", "MIN"];
-    const pr = (key, v) => (pool.length > 1 ? pool.filter((x) => x[key] < v).length / (pool.length - 1) : 0.5);
-    const CMP = ["GP", "MIN", "PTS", "REB", "OREB", "AST", "STL", "BLK", "TOV", "PF", "FD", "PIR", "PM", "FG2P", "FG3P", "FG3A", "FTP", "FTA", "EFG", "TS", "PTS36", "PIR36"];
+    // ---- σύγκριση δύο παικτών ----
     const roll3 = (lg) => lg.map((r, i) => [i + 1, mean(lg.slice(Math.max(0, i - 2), i + 1).map((x) => x[k]))]);
+    const rs = sel.map((p) => R.get(p.pid));
+    const head2 = rs.every((r) => r && isNum(r.ovr));
     pv.innerHTML = `
-      <section><div class="legend">${sel.map((p, i) => `<span><i class="${BG[i]}"></i>${esc(p.player)} (${esc(p.team)})</span>`).join("")}</div></section>
-      <div class="grid2">
-        <section><h3>Προφίλ (εκατοστημόριο)</h3>
-          <div class="chart">${Charts.radar({ axes: RADAR.map((s) => STAT[s].label), series: sel.map((p, i) => ({ k: K[i], vals: RADAR.map((s) => pr(s, p[s])) })) })}</div>
-          <p class="muted" style="margin:0;font-size:13px">Σε σχέση με παίκτες με ≥10' και αρκετά ματς (${pool.length} παίκτες).</p></section>
-        <section><h3>Μέσοι όροι</h3><div class="tbl-wrap"><table><thead><tr><th>Στατιστικό</th>${sel.map((p, i) => `<th class="n" style="color:var(--c${i + 1})">${esc(p.player.split(" ").at(-1))}</th>`).join("")}</tr></thead><tbody>
-          ${CMP.map((s) => {
-            const vals = sel.map((p) => p[s]), best = STAT[s].low ? Math.min(...vals.filter(isNum)) : Math.max(...vals.filter(isNum));
-            return `<tr><td>${STAT[s].name}</td>${vals.map((v) => `<td class="n ${v === best && s !== "GP" ? "better" : ""}">${fmtStat(s, v)}</td>`).join("")}</tr>`;
-          }).join("")}</tbody></table></div></section>
-      </div>
+      <div class="grid2">${sel.map((p, i) => `<section>${card(p, i)}</section>`).join("")}</div>
+      ${head2 ? `<section><h3>Κατηγορίες</h3>
+        <div class="grid2">
+          <div class="chart">${Charts.radar({ axes: CATS.map((c) => c[1]), series: rs.map((r, i) => ({ k: "k" + (i + 1), vals: CATS.map(([key]) => (r[key] - 40) / 59) })) })}</div>
+          <div class="h2h">${CATS.map(([key, label]) => { const a = rs[0][key], b = rs[1][key];
+            return `<div class="h2h-row"><span class="h2h-bar"><i class="c1bg" style="width:${((a - 30) / 69) * 100}%"></i></span><b class="${a > b ? "better" : ""}">${a}</b><span class="h2h-label">${label}</span><b class="${b > a ? "better" : ""}">${b}</b><span class="h2h-bar r"><i class="c2bg" style="width:${((b - 30) / 69) * 100}%"></i></span></div>`; }).join("")}
+            <div class="h2h-row" style="font-size:18px"><span></span><b class="${rs[0].ovr > rs[1].ovr ? "better" : ""}">${rs[0].ovr}</b><span class="h2h-label"><b>OVR</b></span><b class="${rs[1].ovr > rs[0].ovr ? "better" : ""}">${rs[1].ovr}</b><span></span></div></div>
+        </div></section>` : ""}
+      <section><h3>Προφίλ στη λίγκα</h3>${rs.some(Boolean) ? metricTable(sel) : ""}</section>
+      <section><h3>Από πού σουτάρουν</h3><div class="grid2">${sel.map((p, i) => `<div><div class="eyebrow" style="color:var(--c${i + 1})">${esc(p.player)}</div>${shotBlock(p, shotW)}</div>`).join("")}</div></section>
       <section><div class="sec-head"><h3>Πορεία (κυλιόμενος μέσος 3 αγώνων)</h3>${statSelect}</div>
-        <div class="chart">${Charts.line({ series: sel.map((p, i) => ({ k: K[i], pts: roll3(logsOf(p.pid)) })), xLabel: (x) => "#" + x, yZero: k !== "PM" })}</div></section>`;
+        <div class="legend">${sel.map((p, i) => `<span><i class="c${i + 1}bg"></i>${esc(p.player)}</span>`).join("")}</div>
+        <div class="chart">${Charts.line({ series: sel.map((p, i) => ({ k: "k" + (i + 1), pts: roll3(logsOf(p.pid)) })), xLabel: (x) => "#" + x, yZero: k !== "PM" })}</div></section>`;
     bindStat();
   },
 
@@ -1055,10 +1299,19 @@ const Views = {
       <p style="margin:0;max-width:75ch">Το <b>προσαρμοσμένο net</b> είναι η διαφορά πόντων ανά 100 κατοχές αφού διορθωθεί για τη δυσκολία του προγράμματος και την έδρα (ridge regression σε όλα τα ματς της σεζόν). Είναι καλύτερος οδηγός για τη συνέχεια από το ρεκόρ. Η <b>τύχη</b> είναι νίκες μείον αναμενόμενες νίκες από τη διαφορά πόντων: ομάδες με μεγάλη θετική τύχη έχουν κερδίσει πολλά κλειστά ματς, κάτι που ιστορικά δεν διατηρείται.</p>
       <div id="an-teams"></div>
       <div class="grid2">
-        <div><h3>Επίθεση vs άμυνα (προσαρμοσμένες)</h3><div class="chart">${Charts.bubble({ pts: T.map((t) => ({ x: t.adj_o, y: t.adj_d, r: 0.5, label: teamShort(S, t.team), name: t.name, team: t.team })), xKey: "ADJ_O", yKey: "ADJ_D", W: Charts.W(560) })}</div>
-          <p class="muted" style="margin:0;font-size:13px">Δεξιά = καλύτερη επίθεση, κάτω = καλύτερη άμυνα (δέχεται λιγότερους πόντους). Κάτω δεξιά βρίσκονται οι πραγματικά δυνατές ομάδες.</p></div>
-        <div><h3>Τύχη: νίκες − αναμενόμενες</h3><div class="chart">${Charts.bubble({ pts: T.map((t) => ({ x: t.adj_net, y: t.luck, r: 0.5, label: teamShort(S, t.team), name: t.name, team: t.team })), xKey: "ADJ_NET", yKey: "LUCK", W: Charts.W(560) })}</div>
-          <p class="muted" style="margin:0;font-size:13px">Πάνω από τη μέση γραμμή: περισσότερες νίκες απ' όσες «αξίζει» η διαφορά πόντων. Τυπικά διορθώνεται με τον καιρό.</p></div>
+        <div><h3>Επίθεση vs άμυνα (προσαρμοσμένες)</h3><div class="chart">${Charts.badges({
+            pts: T.map((t) => ({ x: t.adj_o, y: t.adj_d, s: t.W / Math.max(1, t.GP), code: t.team, team: t.team, title: `${t.name}: aORTG ${fmt(t.adj_o)}, aDRTG ${fmt(t.adj_d)}, ${t.W}–${t.L}` })),
+            xName: "Επίθεση: πόντοι / 100 κατοχές (προσαρμ.)", yName: "Άμυνα: πόντοι που δέχεται / 100 (↑ καλύτερη)", invertY: true,
+            quads: ["Μόνο άμυνα", "Δυνατές και στα δύο", "Αδύναμες", "Μόνο επίθεση"], sizeLabel: "ποσοστό νικών",
+            diag: (X, Y, x0, x1, y0, y1) => [-10, -5, 0, 5, 10].map((c) => { const a = Math.max(x0, y0 + c), b = Math.min(x1, y1 + c); if (a >= b) return "";
+              return `<line x1="${X(a)}" y1="${Y(a - c)}" x2="${X(b)}" y2="${Y(b - c)}" class="grid" stroke-dasharray="2 5"/><text x="${X(b) - 4}" y="${Y(b - c) + 14}" text-anchor="end" style="font-size:11px">net ${c > 0 ? "+" : ""}${c}</text>`; }).join(""),
+            W: Charts.W(560) })}</div>
+          <p class="muted" style="margin:0;font-size:13px">Δεξιά = καλύτερη επίθεση, πάνω = καλύτερη άμυνα. Οι διαγώνιες ενώνουν ομάδες με το ίδιο net rating. Μεγαλύτερο σήμα = περισσότερες νίκες.</p></div>
+        <div><h3>Τύχη: νίκες − αναμενόμενες</h3><div class="chart">${(() => { const mc = Math.max(1, ...T.map((t) => t.close_w + t.close_l));
+            return Charts.badges({ pts: T.map((t) => ({ x: t.adj_net, y: t.luck, s: (t.close_w + t.close_l) / mc, code: t.team, team: t.team, title: `${t.name}: τύχη ${fmt(t.luck)}, κλειστά ${t.close_w}–${t.close_l}` })),
+              xName: "Πραγματική δύναμη (προσαρμοσμένο net)", yName: "Νίκες − αναμενόμενες", fx: (v) => (v > 0 ? "+" : "") + v, fy: (v) => (v > 0 ? "+" : "") + v,
+              quads: ["Αδύναμη αλλά τυχερή", "Δυνατή και τυχερή", "Αδύναμη και άτυχη", "Δυνατή αλλά άτυχη"], sizeLabel: "πόσα κλειστά ματς (≤5 π.) έχει παίξει", W: Charts.W(560) }); })()}</div>
+          <p class="muted" style="margin:0;font-size:13px">Η «τύχη» κρίνεται σχεδόν πάντα στα κλειστά ματς: όσο μεγαλύτερο το σήμα, τόσο περισσότερα κλειστά ματς. Τυπικά διορθώνεται με τον καιρό.</p></div>
       </div>
     </section>`);
 
@@ -1146,8 +1399,11 @@ const Views = {
         rows: pool(), sortKey: "pir100", pageSize: 25,
       });
       const drawUsg = () => {
-        const pts = pool().map((p) => ({ x: p.usg, y: p.ts_adj, r: p.MIN / maxMin, label: p.player.split(" ").at(-1), name: `${p.player} (${p.team})`, pid: p.pid, hi: ui.team && p.team === ui.team }));
-        $("#an-usg", el).innerHTML = Charts.bubble({ pts, xKey: "USG", yKey: "TSA" });
+        const list = pool(), top = new Set([...list].sort((a, b) => b.MIN - a.MIN).slice(0, ui.team ? 15 : 10).map((p) => p.pid));
+        const pts = list.map((p) => ({ x: p.usg, y: p.ts_adj, s: p.MIN / maxMin, label: p.player.split(" ").at(-1), title: `${p.player} (${p.team}): USG ${fmtPct(p.usg)}, TS ${fmtPct(p.ts_adj)}, ${fmt(p.MIN, 0)}'`,
+          pid: p.pid, showLabel: top.has(p.pid), ring: ui.team ? Gfx.meta(p.team).c1 : "" }));
+        $("#an-usg", el).innerHTML = Charts.badges({ pts, xName: "Usage % (κατοχές που τελειώνει)", yName: "True shooting % (διορθωμένο)", fx: (v) => (100 * v).toFixed(0) + "%", fy: (v) => (100 * v).toFixed(0) + "%",
+          quads: ["Αποδοτικός ρόλος", "Σταρ: όγκος + αποδοτικότητα", "Περιορισμένος ρόλος", "Όγκος χωρίς αποδοτικότητα"], sizeLabel: "λεπτά συμμετοχής", rMin: 4, rMax: 15, W: Charts.W(960) });
       };
       drawUsg();
       $("#an2-team", el).onchange = (e) => { ui.team = e.target.value; tab.setRows(pool()); drawUsg(); };
@@ -1269,6 +1525,140 @@ const Views = {
         rows: [...by.values()], sortKey: "value", pageSize: 15,
       });
     }
+  },
+
+  /* ---------------- Ματσάρισμα: δύο ομάδες στο γήπεδο, παίκτης προς παίκτη (σαν μενού 2K) ---------------- */
+  court(el, S) {
+    const AN = App.analytics.get(App.comp), A = AN?.seasons?.[String(S.season)];
+    if (!A?.players) { el.innerHTML = `<div class="empty">Το ματσάρισμα χρειάζεται στατιστικά παικτών (box scores) και αναλυτικά για τη σεζόν.</div>`; return; }
+    const P = rowsToObjs(A.players).map((p) => ({ ...p, player: niceName(p.player) || p.player }));
+    const T = new Map(rowsToObjs(A.teams).map((t) => [t.team, t]));
+    const teams = [...T.keys()].sort((a, b) => S.teamName(a).localeCompare(S.teamName(b)));
+    const ui = App.ui.court;
+    // προεπιλογή: το επόμενο ματς της διοργάνωσης
+    if (!T.has(ui.a) || !T.has(ui.b) || ui.a === ui.b) {
+      const g = S.upcoming.find((u) => T.has(u.home) && T.has(u.away));
+      ui.a = g ? g.home : teams[0]; ui.b = g ? g.away : teams[1]; ui.lineups = {}; ui.sel = 0;
+    }
+    const POS = ["PG", "SG", "SF", "PF", "C"];
+    const roster = (code) => P.filter((p) => p.team === code && p.GP > 0);
+    /** Πιθανή πεντάδα: βασικοί στους 5 τελευταίους αγώνες (μετά λεπτά), ταξινομημένοι από τον πιο «guard» στον πιο «ψηλό». */
+    const lineup = (code) => {
+      if (ui.lineups[code]) return ui.lineups[code].map((id) => P.find((p) => p.pid === id)).filter(Boolean);
+      const r = roster(code).filter((p) => p.gp5 > 0).sort((a, b) => b.gs5 - a.gs5 || (b.min5 || 0) - (a.min5 || 0));
+      const five = (r.length >= 5 ? r : roster(code).sort((a, b) => b.MIN - a.MIN)).slice(0, 5).sort((a, b) => (b.guard ?? 0) - (a.guard ?? 0));
+      ui.lineups[code] = five.map((p) => p.pid);
+      return five;
+    };
+    const LA = lineup(ui.a), LB = lineup(ui.b);
+    const avg = (l) => mean(l.map((p) => p.ovr).filter(isNum));
+    const ta = T.get(ui.a), tb = T.get(ui.b);
+    // πιθανότητα νίκης (γηπεδούχος = αριστερή ομάδα) από τα προσαρμοσμένα ratings της σεζόν
+    const pace = mean([ta.adj_pace, tb.adj_pace]);
+    const hca = A.league?.hca_adj ?? 2;
+    const margin = ((ta.adj_net - tb.adj_net) * pace) / 100 + hca;
+    const sd = AN.sd_game || 12;
+    const pHome = 0.5 * (1 + erf(margin / (sd * Math.SQRT2)));
+    const CATS = [["r_sco", "Σκορ"], ["r_sho", "Σουτ"], ["r_pla", "Δημ."], ["r_reb", "Ριμπ."], ["r_def", "Άμυνα"], ["r_imp", "Επιρ."]];
+
+    const opts = (sel) => teams.map((c) => `<option value="${esc(c)}" ${c === sel ? "selected" : ""}>${esc(S.teamName(c))}</option>`).join("");
+    el.innerHTML = `
+      <section><div class="filters">
+        <label>Γηπεδούχος<select id="ct-a">${opts(ui.a)}</select></label>
+        <label>Φιλοξενούμενος<select id="ct-b">${opts(ui.b)}</select></label>
+        <button class="btn" id="ct-swap" title="Αλλαγή έδρας">⇄</button>
+        <button class="btn" id="ct-reset">Επαναφορά πεντάδων</button>
+      </div></section>
+      <section class="court-head">
+        <div class="ct-team">${Gfx.badge(ui.a, 40)}<div><b>${esc(S.teamName(ui.a))}</b><div class="muted" style="font-size:13px">${ta.W}–${ta.L} · aNET ${fmt(ta.adj_net)} · OVR πεντάδας <b>${fmt(avg(LA), 0)}</b></div></div></div>
+        <div class="ct-prob"><div class="probbar"><i style="width:${Math.round(100 * pHome)}%"></i><i style="width:${100 - Math.round(100 * pHome)}%"></i></div>
+          <div class="problabels"><span>${fmtPct(pHome)}</span><span>${fmt(Math.abs(margin))} π. ${margin >= 0 ? "υπέρ γηπεδούχου" : "υπέρ φιλοξενούμενου"}</span><span>${fmtPct(1 - pHome)}</span></div></div>
+        <div class="ct-team r"><div style="text-align:right"><b>${esc(S.teamName(ui.b))}</b><div class="muted" style="font-size:13px">OVR πεντάδας <b>${fmt(avg(LB), 0)}</b> · aNET ${fmt(tb.adj_net)} · ${tb.W}–${tb.L}</div></div>${Gfx.badge(ui.b, 40)}</div>
+      </section>
+      <section><div class="chart court-chart" id="ct-svg"></div>
+        <p class="muted" style="margin:0;font-size:13px">Πάτα έναν παίκτη για να δεις το μονομάχο της ίδιας θέσης. Για αλλαγή: πάτα παίκτη στο γήπεδο και μετά κάποιον από τον πάγκο. Πεντάδα = οι συχνότεροι βασικοί των 5 τελευταίων αγώνων, θέσεις κατ' εκτίμηση από το προφίλ.</p></section>
+      <section id="ct-h2h"></section>
+      <div class="grid2"><section><h3>Πάγκος · ${esc(S.teamName(ui.a))}</h3><div class="bench" id="ct-bench-a"></div></section>
+        <section><h3>Πάγκος · ${esc(S.teamName(ui.b))}</h3><div class="bench" id="ct-bench-b"></div></section></div>
+      <p class="muted" style="margin:0;font-size:13px">Πιθανότητα και διαφορά από τα προσαρμοσμένα ratings της σεζόν (με έδρα ${fmt(hca)} π. για τον γηπεδούχο). Το OVR της πεντάδας δεν μπαίνει στον υπολογισμό, είναι για σύγκριση.</p>`;
+
+    // ---- γήπεδο ----
+    const draw = () => {
+      const W = Charts.W(960), vertical = W < 620;
+      const CW = 28, CH = 15;                             // μέτρα, ολόκληρο γήπεδο
+      const H = vertical ? Math.round(W * CW / CH * 0.98) : Math.round(W * CH / CW);
+      // προβολή: (u, v) με u = 0..28 κατά μήκος (αριστερά -> δεξιά), v = 0..15 κατά πλάτος
+      const Pj = (u, v) => (vertical ? [(v / CH) * W, H - (u / CW) * H] : [(u / CW) * W, (v / CH) * H]);
+      const line = (pts, cls = "axis") => `<path class="${cls}" fill="none" d="${pts.map((p, i) => (i ? "L" : "M") + Pj(...p).map((x) => x.toFixed(1)).join(" ")).join("")}"/>`;
+      let s = `<svg viewBox="0 0 ${vertical ? W : W} ${H}" role="img" aria-label="Γήπεδο ματσαρίσματος">`;
+      s += `<rect x="0" y="0" width="${W}" height="${H}" fill="var(--surface-2)" opacity=".5" rx="6"/>`;
+      s += line([[0, 0], [28, 0], [28, 15], [0, 15], [0, 0]]) + line([[14, 0], [14, 15]]);
+      const circ = (cu, cv, r) => { const pts = []; for (let i = 0; i <= 48; i++) { const a = (i / 48) * 2 * Math.PI; pts.push([cu + r * Math.cos(a), cv + r * Math.sin(a)]); } return line(pts); };
+      s += circ(14, 7.5, 1.8);
+      for (const side of [0, 1]) {
+        const bu = side ? 28 - 1.575 : 1.575, dir = side ? -1 : 1;
+        // μισό γήπεδο με την ίδια γεωμετρία: x πλάγια -> v, y από το καλάθι -> u
+        const H2 = (x, y) => [bu + dir * y, 7.5 + x];
+        s += Court.half((x, y) => Pj(...H2(x, y)), App.comp === "NBA" ? "NBA" : "E");
+      }
+      // θέσεις (μέτρα από το καλάθι): PG κορυφή, SG/SF φτερά, PF ψηλά/πλάι, C κοντά στο καλάθι
+      const SPOT = [[0, 8.2], [-5.6, 5.4], [5.6, 5.4], [-2.4, 2.4], [1.6, 1.1]];
+      const nodeR = vertical ? W * 0.055 : H * 0.075;
+      const spot = (side, i) => { const [x, y] = SPOT[i]; const bu = side ? 28 - 1.575 : 1.575, dir = side ? -1 : 1; return Pj(bu + dir * y, 7.5 + (side ? -x : x)); };
+      const node = (p, side, i) => {
+        if (!p) return "";
+        const [cx, cy] = spot(side, i), on = ui.sel === i;
+        const team = side ? ui.b : ui.a, last = p.player.split(" ").at(-1);
+        return `<g data-slot="${side}:${i}" style="cursor:pointer">${on ? `<circle cx="${cx}" cy="${cy}" r="${nodeR * 1.28}" fill="none" stroke="var(--accent)" stroke-width="3"/>` : ""}
+          ${Gfx.avatarG(p.player, team, cx, cy, nodeR)}
+          <g>${(() => { const ox = cx + nodeR * 0.78, oy = cy - nodeR * 0.78, rr = nodeR * 0.48; return `<circle cx="${ox}" cy="${oy}" r="${rr}" fill="var(--fg)"/><text x="${ox}" y="${oy}" text-anchor="middle" dominant-baseline="central" style="fill:var(--bg);font:700 ${(rr * 1.05).toFixed(1)}px var(--font-num)">${p.ovr ?? "–"}</text>`; })()}</g>
+          <text x="${cx}" y="${cy + nodeR * 1.28 + 13}" text-anchor="middle" style="fill:var(--fg);font:600 ${vertical ? 11 : 12.5}px var(--font-body);paint-order:stroke;stroke:var(--surface);stroke-width:3px">${esc(last)}</text>
+          <text x="${cx}" y="${cy + nodeR * 1.28 + (vertical ? 25 : 27)}" text-anchor="middle" style="font-size:11px">${POS[i]}</text></g>`;
+      };
+      LA.forEach((p, i) => (s += node(p, 0, i)));
+      LB.forEach((p, i) => (s += node(p, 1, i)));
+      s += `</svg>`;
+      $("#ct-svg", el).innerHTML = s;
+    };
+    // ---- μονομαχία θέσης ----
+    const h2h = () => {
+      const i = ui.sel ?? 0, a = LA[i], b = LB[i];
+      if (!a || !b) { $("#ct-h2h", el).innerHTML = ""; return; }
+      const stat = [["mpg", "Λεπτά", (v) => fmt(v)], ["pts100", "Πόντοι/100", (v) => fmt(v)], ["ts_adj", "TS%", fmtPct], ["usg", "Usage", fmtPct], ["ast_pct", "AST%", fmtPct], ["drb_pct", "DREB%", fmtPct], ["onoff", "On/Off", (v) => (isNum(v) ? (v > 0 ? "+" : "") + fmt(v) : "–")]];
+      $("#ct-h2h", el).innerHTML = `<div class="sec-head"><h2>${POS[i]}: ${esc(a.player)} vs ${esc(b.player)}</h2>
+          <div class="seg" id="ct-pos">${POS.map((p, j) => `<button data-pos="${j}" aria-pressed="${j === i}">${p}</button>`).join("")}</div></div>
+        <div class="h2h big">
+          <div class="h2h-row"><span class="h2h-p">${Gfx.avatar(a.player, ui.a, 44)} ${App.playerLink(a.pid, a.player)}</span><b class="ovr-s ${a.ovr > b.ovr ? "better" : ""}">${a.ovr}</b><span class="h2h-label"><b>OVR</b></span><b class="ovr-s ${b.ovr > a.ovr ? "better" : ""}">${b.ovr}</b><span class="h2h-p r">${App.playerLink(b.pid, b.player)} ${Gfx.avatar(b.player, ui.b, 44)}</span></div>
+          ${CATS.map(([k, label]) => { const x = a[k], y = b[k];
+            return `<div class="h2h-row"><span class="h2h-bar"><i class="c1bg" style="width:${((x - 30) / 69) * 100}%"></i></span><b class="${x > y ? "better" : ""}">${x}</b><span class="h2h-label">${label}</span><b class="${y > x ? "better" : ""}">${y}</b><span class="h2h-bar r"><i class="c2bg" style="width:${((y - 30) / 69) * 100}%"></i></span></div>`; }).join("")}
+        </div>
+        <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th class="n">${esc(a.player.split(" ").at(-1))}</th><th style="text-align:center">Μέγεθος</th><th>${esc(b.player.split(" ").at(-1))}</th></tr></thead><tbody>
+          ${stat.map(([k, label, f]) => { const x = a[k], y = b[k], lowGood = false, bx = isNum(x) && isNum(y) && (lowGood ? x < y : x > y), by = isNum(x) && isNum(y) && (lowGood ? y < x : y > x);
+            return `<tr><td class="n ${bx ? "better" : ""}">${f(x)}</td><td style="text-align:center" class="muted">${label}</td><td class="${by ? "better" : ""}">${f(y)}</td></tr>`; }).join("")}
+        </tbody></table></div>`;
+      $("#ct-pos", el).onclick = (e) => { const bt = e.target.closest("[data-pos]"); if (!bt) return; ui.sel = +bt.dataset.pos; draw(); h2h(); };
+    };
+    // ---- πάγκοι ----
+    const bench = (code, L, side) => {
+      const on = new Set(L.map((p) => p.pid));
+      const rows = roster(code).filter((p) => !on.has(p.pid)).sort((a, b) => (b.ovr ?? 0) - (a.ovr ?? 0));
+      $(side ? "#ct-bench-b" : "#ct-bench-a", el).innerHTML = rows.map((p) => `<button class="chip" data-bench="${side}:${p.pid}" title="Αλλαγή με τον ${POS[ui.sel ?? 0]}">${Gfx.avatar(p.player, code, 26)} ${esc(p.player)} <span class="muted">${p.pos || ""} · ${p.ovr ?? "–"} · ${fmt(p.mpg)}'</span></button>`).join("") || `<span class="muted">—</span>`;
+    };
+    const all = () => { draw(); h2h(); bench(ui.a, LA, 0); bench(ui.b, LB, 1); };
+    all();
+    $("#ct-svg", el).onclick = (e) => { const g = e.target.closest("[data-slot]"); if (!g) return; ui.sel = +g.dataset.slot.split(":")[1]; all(); };
+    el.querySelectorAll(".bench").forEach((b) => (b.onclick = (e) => {
+      const c = e.target.closest("[data-bench]"); if (!c) return;
+      const [side, pid] = c.dataset.bench.split(":"), code = +side ? ui.b : ui.a, L = +side ? LB : LA, i = ui.sel ?? 0;
+      const np = P.find((p) => p.pid === pid); if (!np) return;
+      L[i] = np; ui.lineups[code] = L.map((p) => p.pid);
+      Views.court(el, S);
+    }));
+    const set = (k, v) => { ui[k] = v; ui.lineups = {}; Views.court(el, S); };
+    $("#ct-a", el).onchange = (e) => set("a", e.target.value);
+    $("#ct-b", el).onchange = (e) => set("b", e.target.value);
+    $("#ct-swap", el).onclick = () => { const t = ui.a; ui.a = ui.b; ui.b = t; Views.court(el, S); };
+    $("#ct-reset", el).onclick = () => { ui.lineups = {}; Views.court(el, S); };
   },
 
   /* ---------------- Μοντέλα: προβλέψεις + αξιολόγηση ---------------- */

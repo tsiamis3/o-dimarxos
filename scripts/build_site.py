@@ -106,6 +106,8 @@ class SiteBuilder:
         self.manifest["sections"] = [{"key": k, "name": n, "comps": [c for c in cs if c in have]}
                                      for k, (n, cs) in SECTIONS.items() if any(c in have for c in cs)]
         self.manifest["master"] = (SITE_DATA / "master.json").exists()     # master νευρωνικό (master_model.py)
+        import team_meta                                         # σήματα ομάδων (συντομογραφία + χρώματα)
+        team_meta.build()
         (SITE_DATA / "manifest.json").write_text(json.dumps(self.manifest, indent=1))
         print("  manifest.json written")
 
