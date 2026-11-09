@@ -37,11 +37,54 @@ def _rows(df: pd.DataFrame) -> list[list]:
 class SiteBuilder:
     def __init__(self):
         SITE_DATA.mkdir(parents=True, exist_ok=True)
+        self.bio = self._load_bio()
         self.manifest = {
             "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "demo": (RAW_DIR / ".demo").exists(),
             "competitions": [],
         }
+
+    @staticmethod
+    def _load_bio() -> dict:
+        """Βιομετρικά ανά κωδικό παίκτη: EuroLeague/EuroCup (API EuroLeague), NBA (ESPN). Οι παίκτες της ελληνικής
+        λίγκας τα παίρνουν μέσω του ενιαίου μητρώου (uid στα analytics). -> {pid: [ύψος, βάρος, γέννηση, χώρα, θέση, αριθμός, φωτο]}"""
+        frames = [pd.read_csv(f) for f in sorted(RAW_DIR.glob("[EU]20*_bio.csv"))]
+        if (RAW_DIR / "NBA_bio.csv").exists():
+            frames.append(pd.read_csv(RAW_DIR / "NBA_bio.csv"))
+        if not frames:
+            return {}
+        b = pd.concat(frames, ignore_index=True)
+        for c in ["country", "dorsal"]:
+            if c not in b:
+                b[c] = None
+        b.loc[~b.height.between(160, 235), "height"] = None
+        b.loc[~b.weight.between(55, 160), "weight"] = None
+        b = b.groupby("pid")[["height", "weight", "birth_date", "country", "position", "dorsal", "headshot"]].last()
+        def val(k, v):
+            if pd.isna(v):
+                return None
+            if k in ("height", "weight"):
+                return round(float(v))
+            if k == "dorsal":
+                try:
+                    return str(int(float(v)))
+                except ValueError:
+                    return str(v)
+            return str(v)
+        out = {pid: [val(k, v) for k, v in r.items()] for pid, r in b.iterrows()}
+        # ελληνική λίγκα: μέσω uid (ενιαίο μητρώο)
+        f = SITE_DATA / "analytics_GBL.json"
+        if f.exists():
+            A = json.loads(f.read_text())
+            for v in A.get("seasons", {}).values():
+                P = v.get("players")
+                if not P or "uid" not in P["cols"]:
+                    continue
+                i, j = P["cols"].index("pid"), P["cols"].index("uid")
+                for row in P["rows"]:
+                    if row[j] in out:
+                        out[str(row[i])] = out[row[j]]
+        return out
 
     def build_season(self, data: CompetitionData, season: int) -> None:
         logs = data.logs[data.logs.season == season]
@@ -70,6 +113,8 @@ class SiteBuilder:
             "comp": data.comp, "season": season,
             "teams": teams,
             "players": players,
+            "bio": {pid: self.bio[pid] for pid in players if pid in self.bio},
+            "bio_cols": ["height", "weight", "birth", "country", "pos", "number", "photo"],
             "games": {"cols": ["gameCode", "round", "date", "home", "away", "hs", "as"],
                       "rows": _rows(played[["gameCode", "Round", "date", "homecode", "awaycode",
                                             "homescore", "awayscore"]])},
