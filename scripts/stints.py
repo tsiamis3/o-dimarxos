@@ -6,6 +6,10 @@ Play-by-play -> stints: διαστήματα αγώνα όπου οι ίδιοι
   - αλλαγές: γεγονότα IN / OUT του play-by-play
   - πόντοι: από τα εύστοχα (2FGM/LAYUPMD/DUNK = 2, 3FGM = 3, FTM = 1)
   - κατοχές: σουτ + 0.44 × βολές + λάθη − επιθετικά ριμπάουντ (ίδιος τύπος με τα box scores)
+  - ΚΑΙ μετρημένες κατοχές (cposs_*): κάθε φορά που η μπάλα αλλάζει ομάδα (σουτ, βολή, λάθος, ριμπάουντ,
+    κλέψιμο)· οι βολές τεχνικής ποινής δεν αλλάζουν κατοχή. Νέα κατοχή και στην αρχή κάθε περιόδου.
+  - επισκέψεις στη γραμμή (trip_*): κάθε σειρά βολών, εκτός από το and-one (βολή μετά από εύστοχο του ίδιου
+    παίκτη στο ίδιο δευτερόλεπτο)· αμυντικά ριμπάουντ (drb_*) για τα ποσοστά ριμπάουντ.
 Αν ένας παίκτης κάνει ενέργεια ενώ «δεν είναι» στο παρκέ (αλλαγή που δεν καταγράφηκε, συνήθως
 στην αρχή περιόδου), τον βάζουμε στη θέση εκείνου που είναι περισσότερη ώρα μέσα χωρίς ενέργεια.
 
@@ -20,6 +24,10 @@ from config import RAW_DIR
 from dataset import CompetitionData
 
 FGA = {"2FGM", "2FGA", "3FGM", "3FGA", "LAYUPMD", "LAYUPATT", "DUNK"}
+FGM = {"2FGM", "3FGM", "LAYUPMD", "DUNK"}
+FT = {"FTM", "FTA"}
+FOUL_TECH = {"CMT", "CMTI", "CMD", "C", "B"}          # τεχνικές / πάγκου: οι βολές τους δεν αλλάζουν κατοχή
+BALL = FGA | FT | {"TO", "O", "D", "ST"}               # γεγονότα που δείχνουν ποια ομάδα έχει την μπάλα
 PTS = {"2FGM": 2, "LAYUPMD": 2, "DUNK": 2, "3FGM": 3, "FTM": 1}
 PERIOD_SEC = {1: 600, 2: 600, 3: 600, 4: 600}       # παράταση: 300
 
@@ -36,6 +44,22 @@ def _clock(period, mt) -> float:
     return base + (length - left if left == left else 0)
 
 
+def ft_flags(ev: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Για γεγονότα ενός αγώνα (ταξινομημένα): (αρχή νέας επίσκεψης στη γραμμή, βολή τεχνικής ποινής)."""
+    ev = ev.reset_index(drop=True)
+    clock = ev.period.astype(str) + "|" + ev.mt.astype(str)
+    key = ev.pid.astype(str) + "|" + clock
+    pt = ev.pt.astype(str)
+    isft = pt.isin(FT)
+    prev_ft = key.where(isft).ffill().shift(1)                 # η προηγούμενη βολή (παίκτης|χρόνος)
+    last_fgm = key.where(pt.isin(FGM)).ffill()                 # το τελευταίο εύστοχο σουτ πριν
+    isfoul = pt.str.startswith("CM") | pt.isin(["C", "B"])
+    lf_pt, lf_clock = pt.where(isfoul).ffill(), clock.where(isfoul).ffill()
+    tech = isft & lf_pt.isin(FOUL_TECH) & (lf_clock == clock)
+    trip = isft & (prev_ft != key) & (last_fgm != key)
+    return trip.to_numpy(), tech.to_numpy()
+
+
 def game_stints(ev: pd.DataFrame, starters: dict, home: str, away: str) -> tuple[list, dict]:
     on = {home: list(starters.get(home, [])), away: list(starters.get(away, []))}
     last_seen = {}                                   # pid -> τελευταία ενέργεια (δευτερόλεπτα)
@@ -46,13 +70,18 @@ def game_stints(ev: pd.DataFrame, starters: dict, home: str, away: str) -> tuple
 
     def open_stint(t):
         return {"h": key()[0], "a": key()[1], "t0": t, "t1": t, "pts_h": 0, "pts_a": 0,
-                "fga_h": 0, "fga_a": 0, "fta_h": 0, "fta_a": 0, "tov_h": 0, "tov_a": 0, "orb_h": 0, "orb_a": 0}
+                "fga_h": 0, "fga_a": 0, "fta_h": 0, "fta_a": 0, "tov_h": 0, "tov_a": 0, "orb_h": 0, "orb_a": 0,
+                "drb_h": 0, "drb_a": 0, "trip_h": 0, "trip_a": 0, "cposs_h": 0, "cposs_a": 0}
 
     t = 0.0
     cur = open_stint(t)
-    for r in ev.itertuples():
+    trip_f, tech_f = ft_flags(ev)
+    trips, ball = {}, None
+    for k, r in enumerate(ev.itertuples()):
         t = _clock(r.period, r.mt) if isinstance(r.mt, str) and ":" in r.mt else t
         team, pid, pt = r.team, r.pid, r.pt
+        if pt == "BP":                                   # αρχή περιόδου: νέα κατοχή για όποιον πάρει την μπάλα
+            ball = None
         if team not in on or not isinstance(pid, str) or not pid:
             # γεγονός ομάδας (timeout, αρχή/τέλος περιόδου): απλώς προχωρά ο χρόνος
             cur["t1"] = t
@@ -77,6 +106,12 @@ def game_stints(ev: pd.DataFrame, starters: dict, home: str, away: str) -> tuple
         last_seen[pid] = t
         side = "h" if team == home else "a"
         cur["t1"] = t
+        if pt in BALL and not tech_f[k] and team != ball:  # η μπάλα άλλαξε ομάδα: νέα (μετρημένη) κατοχή
+            cur["cposs_" + side] += 1
+            ball = team
+        if trip_f[k]:
+            cur["trip_" + side] += 1
+            trips[pid] = trips.get(pid, 0) + 1
         if pt in PTS:
             cur["pts_" + side] += PTS[pt]
         if pt in FGA:
@@ -87,6 +122,8 @@ def game_stints(ev: pd.DataFrame, starters: dict, home: str, away: str) -> tuple
             cur["tov_" + side] += 1
         elif pt == "O":
             cur["orb_" + side] += 1
+        elif pt == "D":
+            cur["drb_" + side] += 1
     stints.append(cur)
     out = []
     for s in stints:
@@ -98,11 +135,13 @@ def game_stints(ev: pd.DataFrame, starters: dict, home: str, away: str) -> tuple
             continue
         out.append({**{f"h{i}": p for i, p in enumerate(s["h"])}, **{f"a{i}": p for i, p in enumerate(s["a"])},
                     "secs": max(0.0, s["t1"] - s["t0"]), "pts_h": s["pts_h"], "pts_a": s["pts_a"],
-                    "poss_h": max(ph, 0.0), "poss_a": max(pa, 0.0)})
-    return out, {"fixes": fixes}
+                    "poss_h": max(ph, 0.0), "poss_a": max(pa, 0.0),
+                    **{f"{c}_{x}": s[f"{c}_{x}"] for c in ("fga", "fta", "trip", "tov", "orb", "drb", "cposs") for x in "ha"}})
+    return out, {"fixes": fixes, "trips": trips}
 
 
-def build(comp: str, season: int, data: CompetitionData | None = None, with_report=False):
+def build(comp: str, season: int, data: CompetitionData | None = None, with_report=False, trips_out: list | None = None):
+    """trips_out: αν δοθεί λίστα, προστίθενται γραμμές (season, gameCode, pid, trips) ανά παίκτη και αγώνα."""
     p = RAW_DIR / f"{comp}{season}_pbp.csv.gz"
     if not p.exists():
         return (pd.DataFrame(), pd.DataFrame()) if with_report else pd.DataFrame()
@@ -128,6 +167,8 @@ def build(comp: str, season: int, data: CompetitionData | None = None, with_repo
         for x in s:
             x.update(season=season, gameCode=int(gc))
         rows += s
+        if trips_out is not None:
+            trips_out += [{"season": season, "gameCode": int(gc), "pid": p, "trips": n} for p, n in info["trips"].items()]
         th, ta = sum(x["pts_h"] for x in s), sum(x["pts_a"] for x in s)
         fh, fa = (final.loc[gc, 1], final.loc[gc, 0]) if gc in final.index else (np.nan, np.nan)
         rep.append({"gameCode": gc, "ok": True, "fixes": info["fixes"], "stints": len(s),
@@ -150,4 +191,6 @@ if __name__ == "__main__":
               f"{df.secs.sum() / 60 / max(1, len(ok)):.1f} min/game covered, fixes/game {ok.fixes.mean():.2f}")
         print("points match final:", ((ok.pts_h == ok.final_h) & (ok.pts_a == ok.final_a)).mean().round(3),
               "| mean abs diff", ((ok.pts_h - ok.final_h).abs() + (ok.pts_a - ok.final_a).abs()).mean().round(2))
-        print("poss per game", ((df.poss_h + df.poss_a) / 2).groupby(df.gameCode).sum().mean().round(1))
+        print("poss per game (estimated)", ((df.poss_h + df.poss_a) / 2).groupby(df.gameCode).sum().mean().round(1),
+              "| counted", ((df.cposs_h + df.cposs_a) / 2).groupby(df.gameCode).sum().mean().round(1))
+        print("FT trips per FTA", ((df.trip_h + df.trip_a).sum() / (df.fta_h + df.fta_a).sum()).round(3))
