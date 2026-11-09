@@ -15,6 +15,14 @@ import re
 import unicodedata
 
 SUFFIX = {"JR", "SR", "II", "III", "IV"}
+# υποκοριστικά -> πλήρες όνομα (ίδιος άνθρωπος γραμμένος αλλιώς σε άλλη πηγή)
+NICK = {"GIORGOS": "GEORGIOS", "YIORGOS": "GEORGIOS", "KOSTAS": "KONSTANTINOS", "NIKOS": "NIKOLAOS",
+        "STELIOS": "STYLIANOS", "VASILIS": "VASILEIOS", "VASSILIS": "VASILEIOS", "DIMITRIS": "DIMITRIOS",
+        "GIANNIS": "IOANNIS", "YANNIS": "IOANNIS", "THANASIS": "ATHANASIOS", "PANOS": "PANAGIOTIS",
+        "TAKIS": "PANAGIOTIS", "MICHALIS": "MICHAIL", "MANOLIS": "EMMANOUIL", "LEFTERIS": "ELEFTHERIOS",
+        "NENO": "NENAD", "MATT": "MATTHEW", "WILL": "WILLIAM", "MIKE": "MICHAEL", "NICK": "NICHOLAS",
+        "ALEX": "ALEXANDER", "TONY": "ANTHONY", "CHRIS": "CHRISTOPHER", "DAN": "DANIEL", "ZACH": "ZACHARY",
+        "JOE": "JOSEPH", "TJ": "TJ", "PJ": "PJ"}
 
 
 def group(comp: str, pid: str) -> str:
@@ -39,7 +47,11 @@ def name_key(name) -> str | None:
         toks = [t for t in re.split(r"[\s.\-']+", x) if t and t not in SUFFIX]
         return "".join(re.sub(r"[^A-Z]", "", t) for t in toks)
 
-    last, first = clean(last), clean(first)
+    last = clean(last)
+    toks = [t for t in re.split(r"[\s.\-']+", first) if t and t not in SUFFIX]
+    toks = [re.sub(r"[^A-Z]", "", t) for t in toks]
+    toks = [NICK.get(t, t) for t in toks if t]
+    first = "".join(toks)
     return f"{last}|{first}" if last and first else None
 
 
@@ -88,6 +100,21 @@ def link(tables: dict) -> dict:
         nodes = [next(iter(v)) for v in per_group.values()]
         for n in nodes[1:]:
             union(nodes[0], n)
+    # δεύτερο πέρασμα: ίδιο επώνυμο, το ένα μικρό όνομα αρχή του άλλου (JEAN ↔ JEANCLAUDIO), και το επώνυμο
+    # μοναδικό σε ΚΑΘΕ πηγή (ένας μόνο παίκτης με αυτό το επώνυμο) -> σύνδεση
+    by_last = {}
+    for node, ks in names.items():
+        for k in ks:
+            last, first = k.split("|")
+            by_last.setdefault(last, {}).setdefault(node[0], {})[node] = first
+    for last, per_group in by_last.items():
+        if len(per_group) < 2 or any(len(v) > 1 for v in per_group.values()):
+            continue
+        nodes = [(next(iter(v)), next(iter(v.values()))) for v in per_group.values()]
+        n0, f0 = nodes[0]
+        for n, f in nodes[1:]:
+            if f.startswith(f0) or f0.startswith(f):
+                union(n0, n)
     out = {}
     for node, comps in comps_of.items():
         r = find(node)

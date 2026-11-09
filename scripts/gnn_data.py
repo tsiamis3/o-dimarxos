@@ -167,11 +167,13 @@ def load():
                 if f.exists():
                     x = pd.read_csv(f)
                     x["comp"], x["season"] = c, s
+                    if d.pid_alias:
+                        x["pid"] = x.pid.replace(d.pid_alias)
                     out.append(x)
             f = RAW_DIR / f"{c}{s}_box.csv.gz"
             if f.exists():                     # όσοι ήταν στο ρόστερ αλλά δεν έπαιξαν (DNP)
                 b = pd.read_csv(f, usecols=["Gamecode", "Home", "Player_ID", "Player", "Team", "Minutes"])
-                b["pid"] = b.Player_ID.astype(str).str.strip()
+                b["pid"] = b.Player_ID.astype(str).str.strip().replace(d.pid_alias)
                 b = b[(b.Minutes.map(_minutes) <= 0) & b.pid.str.match(r"^P")]
                 dnp.append(pd.DataFrame({"comp": c, "season": s, "gameCode": b.Gamecode, "pid": b.pid,
                                          "player": b.Player, "team": b.Team, "home": b.Home}))

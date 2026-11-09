@@ -149,6 +149,8 @@ def build(comp: str, season: int, data: CompetitionData | None = None, with_repo
     for c in ("pid", "team", "pt"):
         pbp[c] = pbp[c].fillna("").str.strip()
     data = data or CompetitionData(comp)
+    if getattr(data, "pid_alias", None):
+        pbp["pid"] = pbp.pid.replace(data.pid_alias)          # διπλοί κωδικοί του ίδιου παίκτη
     games = data.games[data.games.season == season].set_index("gameCode")
     logs = data.logs[data.logs.season == season]
     st = logs[logs.starter == 1].groupby(["gameCode", "team"]).pid.apply(list)
