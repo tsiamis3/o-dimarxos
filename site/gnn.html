@@ -30,8 +30,8 @@ const fmt = (v, d = 2) => (isNum(v) ? (+v).toFixed(d) : "–");
 const objs = (o) => o.rows.map((r) => Object.fromEntries(o.cols.map((c, i) => [c, r[i]])));
 const nice = (n) => { const s = String(n || ""); if (!s.includes(",")) return s; const [a, b] = s.split(",").map((x) => x.trim()); const t = (w) => w.toLowerCase().replace(/(^|[\s-])\S/g, (m) => m.toUpperCase()); return `${t(b)} ${t(a)}`; };
 const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`;
-const F_LABEL = { r_pts: "Πόντοι/100", r_reb: "Ριμπ./100", r_ast: "Ασίστ/100", r_pir: "PIR/100", ts: "TS%", usg: "Usage", min: "Λεπτά", starter: "Βασικός", pm100: "+/-/100", log_games: "log αγώνες", rest: "Ξεκούραση", hist_E: "Ιστορικό EL", no_hist: "Χωρίς ιστ.", r_pts_s: "Πόντοι/100 (3 αγ.)", astd: "% με ασίστ", sh_rim: "% σουτ στο καλάθι", sh_a3: "% σουτ 3π", rapm_o: "RAPM επ.", rapm_d: "RAPM άμ.", sd_pts: "σ πόντων", oreb_pct: "OREB%", dreb_pct: "DREB%" };
-const T_LABEL = { t_off: "Επίθεση", t_def: "Άμυνα", t_pace: "Ρυθμός", t_exp_for: "Αναμ. πόντοι", t_exp_against: "Αναμ. κατά", t_rest: "Ξεκούραση" };
+const F_LABEL = { r_pts: "Πόντοι/100", r_reb: "Ριμπ./100", r_ast: "Ασίστ/100", r_pir: "PIR/100", ts: "TS%", usg: "Usage", min: "Λεπτά", starter: "Βασικός", pm100: "+/-/100", log_games: "log αγώνες", rest: "Ξεκούραση", hist_E: "Ιστορικό EL", no_hist: "Χωρίς ιστ.", r_pts_s: "Πόντοι/100 (3 αγ.)", astd: "% με ασίστ", sh_rim: "% σουτ στο καλάθι", sh_a3: "% σουτ 3π", rapm_o: "RAPM επ.", rapm_d: "RAPM άμ.", sd_pts: "σ πόντων", oreb_pct: "OREB%", dreb_pct: "DREB%", height: "Ύψος", weight: "Βάρος", age: "Ηλικία", pos_g: "G", pos_f: "F", pos_c: "C" };
+const T_LABEL = { t_off: "Επίθεση", t_def: "Άμυνα", t_pace: "Ρυθμός", t_exp_for: "Αναμ. πόντοι", t_exp_against: "Αναμ. κατά", t_rest: "Ξεκούραση", t_height: "Μέσο ύψος", t_age: "Μέση ηλικία" };
 const MODES = { hist: "Λεπτά μαζί/απέναντι · ιστορικό (είσοδος)", ast: "Ασίστ · ιστορικό (είσοδος, με κατεύθυνση)", net: "Net rating διδύμου · ιστορικό (είσοδος)",
   game: "Λεπτά στο ματς (αποτέλεσμα)", ast_game: "Ασίστ στο ματς (αποτέλεσμα)" };
 const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ", y_pir: "PIR", y_min: "Λεπτά", y_pm100: "+/-/100", y_on_poss: "Κατοχές" };
@@ -180,7 +180,7 @@ const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ"
     // πίνακας κόμβων
     const fc = Object.keys(F_LABEL), yc = Object.keys(Y_LABEL);
     $("#g-tab").innerHTML = `<table><thead><tr><th>Παίκτης</th><th>Ομ.</th>${fc.map((c) => `<th class="n" title="${c}">${F_LABEL[c]}</th>`).join("")}${yc.map((c) => `<th class="n" title="${c}" style="color:var(--c2)">${Y_LABEL[c]}</th>`).join("")}</tr></thead><tbody>
-      ${[...home, ...away].map((n) => `<tr data-pid="${esc(n.pid)}" style="cursor:pointer${n.pid === selPid ? ";background:var(--accent-soft)" : ""}"><td>${esc(nice(n.player))}</td><td>${esc(n.team)}</td>${fc.map((c) => `<td class="n">${fmt(n[c], ["ts", "usg", "starter", "hist_E", "astd", "sh_rim", "sh_a3", "oreb_pct", "dreb_pct"].includes(c) ? 2 : 1)}</td>`).join("")}${yc.map((c) => `<td class="n">${fmt(n[c], 0)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      ${[...home, ...away].map((n) => `<tr data-pid="${esc(n.pid)}" style="cursor:pointer${n.pid === selPid ? ";background:var(--accent-soft)" : ""}"><td>${esc(nice(n.player))}</td><td>${esc(n.team)}</td>${fc.map((c) => `<td class="n">${fmt(n[c], ["ts", "usg", "starter", "hist_E", "astd", "sh_rim", "sh_a3", "oreb_pct", "dreb_pct"].includes(c) ? 2 : ["height", "weight", "pos_g", "pos_f", "pos_c"].includes(c) ? 0 : 1)}</td>`).join("")}${yc.map((c) => `<td class="n">${fmt(n[c], 0)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     // λεπτομέρειες κόμβου
     const n = N.find((x) => x.pid === selPid);
     if (n) {
@@ -189,12 +189,15 @@ const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ"
       const am = Ed.filter((e) => e.teammate && (e.i === n.pid || e.j === n.pid) && e.ast_ij + e.ast_ji > 0).map((e) => {
         const out = e.i === n.pid ? e.ast_ij : e.ast_ji, inn = e.i === n.pid ? e.ast_ji : e.ast_ij;
         return { o: e.i === n.pid ? e.j : e.i, out, inn, net: e.net_with }; }).sort((a, b) => b.out + b.inn - a.out - a.inn).slice(0, 5);
+      const mm = Ed.filter((e) => !e.teammate && e.same_pos && (e.i === n.pid || e.j === n.pid)).map((e) => ({ o: e.i === n.pid ? e.j : e.i, d: e.i === n.pid ? e.d_height : -e.d_height }))
+        .sort((a, b) => Math.abs(a.d) - Math.abs(b.d)).slice(0, 3);
       const ex = Ed.filter((e) => !e.teammate && e.min_with_all > 0 && (e.i === n.pid || e.j === n.pid)).map((e) => ({ o: e.i === n.pid ? e.j : e.i, v: e.min_with_all })).sort((a, b) => b.v - a.v);
       $("#g-node").innerHTML = `<div class="tile" style="border-left:4px solid ${n.home ? ch : ca}"><div class="eyebrow">${esc(nice(n.player))} · ${esc(n.team)}</div>
         <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:6px;font-size:13px">${fc.map((c) => `<span><span class="muted">${F_LABEL[c]}</span> <b class="num">${fmt(n[c], 2)}</b></span>`).join("")}</div>
         <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:6px;font-size:13px">${yc.map((c) => `<span style="color:var(--c2)">${Y_LABEL[c]} <b class="num">${fmt(n[c], 1)}</b></span>`).join("")}</div>
         <div class="muted" style="margin-top:6px;font-size:13px">Πιο στενοί συμπαίκτες (λεπτά μαζί στο ιστορικό / σε αυτό το ματς): ${tm.map((t) => `${esc(name(t.o))} ${fmt(t.v, 0)}′ / ${fmt(t.g, 0)}′`).join(" · ")}</div>
         ${am.length ? `<div class="muted" style="margin-top:4px;font-size:13px">Ασίστ ανά 100 κοινές κατοχές (δίνει → / παίρνει ←) και net διδύμου: ${am.map((t) => `${esc(name(t.o))} ${fmt(t.out, 1)}→ / ${fmt(t.inn, 1)}← · ${fmt(t.net, 1)}`).join(" · ")}</div>` : ""}
+        ${mm.length ? `<div class="muted" style="margin-top:4px;font-size:13px">Ίδια θέση στην αντίπαλη ομάδα (διαφορά ύψους): ${mm.map((t) => `${esc(name(t.o))} ${t.d > 0 ? "+" : ""}${fmt(t.d, 0)} cm`).join(" · ")}</div>` : ""}
         ${ex.length ? `<div class="muted" style="margin-top:4px;font-size:13px">Πρώην συμπαίκτες στην αντίπαλη ομάδα (λεπτά μαζί στο ιστορικό): ${ex.map((t) => `${esc(name(t.o))} ${fmt(t.v, 0)}′`).join(" · ")}</div>` : ""}</div>`;
     } else $("#g-node").innerHTML = "";
   };

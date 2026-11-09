@@ -57,6 +57,11 @@ jobs:
         continue-on-error: true
         run: python scripts/scrapers/pbp.py
 
+      # Βιομετρικά παικτών EuroLeague/EuroCup (ύψος, βάρος, ηλικία, θέση) για το GNN
+      - name: Player bio (EuroLeague/EuroCup API)
+        continue-on-error: true
+        run: python scripts/scrapers/bio.py
+
       - name: NBA odds and injuries (ESPN)
         continue-on-error: true
         run: |
