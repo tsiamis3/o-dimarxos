@@ -66,8 +66,8 @@ const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ"
           <label>Ακμές<select id="e-mode"><option value="hist">Ιστορικό (χαρακτηριστικό εισόδου)</option><option value="game">Λεπτά στο ματς (αποτέλεσμα)</option></select></label>
         </div></div>
       <div class="chart" id="g-svg"></div>
-      <div class="legend"><span><i class="c1bg"></i>Γηπεδούχος</span><span><i class="c2bg"></i>Φιλοξενούμενος</span></div>
-      <p class="muted" style="margin:0;font-size:13px">Αριστερά ο γηπεδούχος, δεξιά ο φιλοξενούμενος. Μέγεθος κόμβου = αναμενόμενα λεπτά (από το ιστορικό). Συμπαίκτες: πάχος γραμμής = λεπτά μαζί στο παρκέ. Αντίπαλοι (λεπτές γραμμές στη μέση): λεπτά απέναντι. Πάτα έναν παίκτη για όλα του τα δεδομένα.</p>
+      <div class="legend"><span><i class="c1bg"></i>Γηπεδούχος</span><span><i class="c2bg"></i>Φιλοξενούμενος</span><span><i style="background:var(--accent)"></i>Πρώην συμπαίκτες (διακεκομμένη)</span></div>
+      <p class="muted" style="margin:0;font-size:13px">Αριστερά ο γηπεδούχος, δεξιά ο φιλοξενούμενος. Μέγεθος κόμβου = αναμενόμενα λεπτά (από το ιστορικό). Συμπαίκτες: πάχος γραμμής = λεπτά μαζί στο παρκέ. Αντίπαλοι (λεπτές γραμμές στη μέση): λεπτά απέναντι, μόνο τα 60 πιο «βαριά» ζεύγη για να διαβάζεται· στα δεδομένα κάθε παίκτης συνδέεται με όλους. Διακεκομμένη: αντίπαλοι που έχουν παίξει μαζί στο παρελθόν. Πάτα έναν παίκτη για όλα του τα δεδομένα.</p>
       <div id="g-node"></div>
       <h3>Κόμβοι του αγώνα</h3><div class="tbl-wrap" id="g-tab"></div>
     </section>
@@ -130,6 +130,10 @@ const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ"
     for (const e of opp) { const [x1, y1] = pos[e.i] || [], [x2, y2] = pos[e.j] || []; if (x1 == null || x2 == null) continue;
       const on = selPid && (e.i === selPid || e.j === selPid);
       s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--muted)" stroke-width="${0.5 + 2 * val(e) / mxO}" opacity="${selPid ? (on ? 0.7 : 0.04) : 0.12}"/>`; }
+    // πρώην συμπαίκτες που σήμερα είναι αντίπαλοι (λεπτά μαζί στο ιστορικό)
+    if (edgeMode === "hist") for (const e of Ed.filter((e) => !e.teammate && e.min_with_all > 0)) { const [x1, y1] = pos[e.i] || [], [x2, y2] = pos[e.j] || []; if (x1 == null || x2 == null) continue;
+      const on = selPid && (e.i === selPid || e.j === selPid);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="${1 + 3 * Math.min(1, e.min_with_all / 600)}" opacity="${selPid ? (on ? 0.95 : 0.08) : 0.7}"/>`; }
     for (const e of Ed.filter((e) => e.teammate && val(e) > 0)) { const [x1, y1] = pos[e.i] || [], [x2, y2] = pos[e.j] || []; if (x1 == null || x2 == null) continue;
       const isH = home.some((n) => n.pid === e.i), cx = isH ? Math.min(x1, x2) - W * 0.1 : Math.max(x1, x2) + W * 0.1;
       const on = selPid && (e.i === selPid || e.j === selPid);
@@ -148,10 +152,12 @@ const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ"
     if (n) {
       const tm = Ed.filter((e) => e.teammate && (e.i === n.pid || e.j === n.pid)).map((e) => ({ o: e.i === n.pid ? e.j : e.i, v: e.min_all, g: e.y_min_shared })).sort((a, b) => b.v - a.v).slice(0, 5);
       const name = (pid) => nice(N.find((x) => x.pid === pid)?.player || pid);
+      const ex = Ed.filter((e) => !e.teammate && e.min_with_all > 0 && (e.i === n.pid || e.j === n.pid)).map((e) => ({ o: e.i === n.pid ? e.j : e.i, v: e.min_with_all })).sort((a, b) => b.v - a.v);
       $("#g-node").innerHTML = `<div class="tile" style="border-left:4px solid ${n.home ? ch : ca}"><div class="eyebrow">${esc(nice(n.player))} · ${esc(n.team)}</div>
         <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:6px;font-size:13px">${fc.map((c) => `<span><span class="muted">${F_LABEL[c]}</span> <b class="num">${fmt(n[c], 2)}</b></span>`).join("")}</div>
         <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:6px;font-size:13px">${yc.map((c) => `<span style="color:var(--c2)">${Y_LABEL[c]} <b class="num">${fmt(n[c], 1)}</b></span>`).join("")}</div>
-        <div class="muted" style="margin-top:6px;font-size:13px">Πιο στενοί συμπαίκτες (λεπτά μαζί στο ιστορικό / σε αυτό το ματς): ${tm.map((t) => `${esc(name(t.o))} ${fmt(t.v, 0)}′ / ${fmt(t.g, 0)}′`).join(" · ")}</div></div>`;
+        <div class="muted" style="margin-top:6px;font-size:13px">Πιο στενοί συμπαίκτες (λεπτά μαζί στο ιστορικό / σε αυτό το ματς): ${tm.map((t) => `${esc(name(t.o))} ${fmt(t.v, 0)}′ / ${fmt(t.g, 0)}′`).join(" · ")}</div>
+        ${ex.length ? `<div class="muted" style="margin-top:4px;font-size:13px">Πρώην συμπαίκτες στην αντίπαλη ομάδα (λεπτά μαζί στο ιστορικό): ${ex.map((t) => `${esc(name(t.o))} ${fmt(t.v, 0)}′`).join(" · ")}</div>` : ""}</div>`;
     } else $("#g-node").innerHTML = "";
   };
   draw();
