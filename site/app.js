@@ -238,16 +238,20 @@ function aggregatePlayers(logs, bySeason, mode) {
  *    θόρυβος ~ N(0, SD) ανά ομάδα, ισοπαλία -> παράταση
  * ========================================================================= */
 class MatchSim {
-  static HCA = 3.0;      // πόντοι πλεονέκτημα έδρας
-  static SD = 10.0;      // τυπική απόκλιση σκορ ομάδας
-  static SHRINK = 4;     // "εικονικά" ματς μέσου όρου (σταθεροποίηση στην αρχή της σεζόν)
+  /* Monte Carlo αγώνα. Κύριος κινητήρας: το μοντέλο ratings + απουσίες (scripts/edge_model.py), που δίνει
+   * για κάθε επερχόμενο ματς αναμενόμενη διαφορά, σύνολο και την αβεβαιότητά τους (σ), εκτιμημένα ανά λίγκα.
+   * Αν ένα ματς δεν είναι εκεί (π.χ. πολύ μακριά), εφεδρικά: ratings της σεζόν με σταθερή έδρα/σ. */
+  static HCA = 3.0;      // εφεδρικό: πόντοι πλεονέκτημα έδρας
+  static SD = 10.0;      // εφεδρικό: τυπική απόκλιση σκορ ομάδας
+  static SHRINK = 4;     // εφεδρικό: "εικονικά" ματς μέσου όρου
 
-  constructor(season) {
+  constructor(season, edge = null) {
     const tg = season.teamGames;
     const poss = sum(tg.map((t) => t.POSS));
     this.lg = tg.length ? 100 * sum(tg.map((t) => t.PTS)) / poss : 110;
     this.lgPace = tg.length ? poss / tg.length : 75;
     this.agg = season.teamAgg;
+    this.ext = new Map((edge?.upcoming || []).map((u) => [String(u.gameCode), u]));
   }
   rating(code) {
     const a = this.agg.get(code), k = MatchSim.SHRINK;
@@ -255,32 +259,38 @@ class MatchSim {
     const sh = (v, lg) => (a.GP * v + k * lg) / (a.GP + k);
     return { o: sh(a.ORTG, this.lg), d: sh(a.DRTG, this.lg), p: sh(a.PACE, this.lgPace) };
   }
-  expected(home, away) {
+  /** -> {mh, ma, sdm (σ διαφοράς), sdt (σ συνόλου), src: "model" | "fallback"} */
+  expected(home, away, gameCode) {
+    const e = gameCode != null ? this.ext.get(String(gameCode)) : null;
+    if (e && e.home === home && e.away === away) {
+      return { mh: (e.total - e.line) / 2, ma: (e.total + e.line) / 2, sdm: e.sd_m, sdt: e.sd_t || 1.3 * e.sd_m, src: "model",
+        mv_h: e.mv_h || 0, mv_a: e.mv_a || 0 };
+    }
     const h = this.rating(home), a = this.rating(away), pace = (h.p + a.p) / 2;
-    return {
-      mh: pace * (h.o + a.d - this.lg) / 100 + MatchSim.HCA / 2,
-      ma: pace * (a.o + h.d - this.lg) / 100 - MatchSim.HCA / 2,
-    };
+    return { mh: pace * (h.o + a.d - this.lg) / 100 + MatchSim.HCA / 2, ma: pace * (a.o + h.d - this.lg) / 100 - MatchSim.HCA / 2,
+      sdm: MatchSim.SD * Math.SQRT2, sdt: MatchSim.SD * Math.SQRT2, src: "fallback", mv_h: 0, mv_a: 0 };
   }
-  once(home, away) {
-    const { mh, ma } = this.expected(home, away);
-    let hs = Math.round(mh + MatchSim.SD * randn()), as = Math.round(ma + MatchSim.SD * randn()), ot = 0;
+  once(home, away, gameCode) {
+    const x = this.expected(home, away, gameCode);
+    // διαφορά και σύνολο κληρώνονται ανεξάρτητα, η καθεμία με τη δική της σ -> σκορ κάθε ομάδας
+    const m = x.mh - x.ma + x.sdm * randn(), t = x.mh + x.ma + x.sdt * randn();
+    let hs = Math.round((t + m) / 2), as = Math.round((t - m) / 2), ot = 0;
     while (hs === as && ot < 5) {           // παράταση 5' ≈ 1/8 του αγώνα
       ot++;
-      hs += Math.max(0, Math.round(mh / 8 + 3 * randn()));
-      as += Math.max(0, Math.round(ma / 8 + 3 * randn()));
+      hs += Math.max(0, Math.round(x.mh / 8 + 3 * randn()));
+      as += Math.max(0, Math.round(x.ma / 8 + 3 * randn()));
     }
     if (hs === as) hs++;
     return { hs, as, ot };
   }
-  run(home, away, n = 5000) {
+  run(home, away, n = 5000, gameCode = null) {
     let w = 0; const margins = new Array(n); let sh = 0, sa = 0;
     for (let i = 0; i < n; i++) {
-      const r = this.once(home, away);
+      const r = this.once(home, away, gameCode);
       if (r.hs > r.as) w++;
       margins[i] = r.hs - r.as; sh += r.hs; sa += r.as;
     }
-    return { pHome: w / n, margins, avgH: sh / n, avgA: sa / n, ...this.expected(home, away) };
+    return { pHome: w / n, margins, avgH: sh / n, avgA: sa / n, ...this.expected(home, away, gameCode) };
   }
 }
 
@@ -632,10 +642,6 @@ const VIEWS = ["home", "teams", "players", "court", "analysis", "explorer", "pre
 const App = {
   manifest: null, section: "europe", comp: "E", season: null,
   cache: new Map(),       // "E2026" -> Season
-  preds: new Map(),       // "E" -> predictions json | null
-  evals: new Map(),       // "E" -> eval json (ζωντανή αξιολόγηση) | null
-  gamenn: new Map(),      // "E" -> νευρωνικό αγώνων (gamenn json) | null
-  master: undefined,      // master νευρωνικό όλων των λιγκών (master.json) | null
   analytics: new Map(),   // "E" -> αναλυτικά (analytics_E.json) | null
   edge: new Map(),        // "E" -> μοντέλο στοιχήματος (edge_E.json) | null
   shots: new Map(),       // "E2025" -> συγκεντρωτικά σουτ (shots_E2025.json) | null
@@ -661,27 +667,6 @@ const App = {
     if (!this.cache.has(k)) this.cache.set(k, new Season(await this.json(`data/${k}.json`)));
     return this.cache.get(k);
   },
-  async loadPreds(comp) {
-    if (!this.preds.has(comp)) {
-      const c = this.compInfo(comp);
-      this.preds.set(comp, c?.predictions ? await this.json(`data/predictions_${comp}.json`).catch(() => null) : null);
-    }
-    return this.preds.get(comp);
-  },
-  async loadEval(comp) {
-    if (!this.evals.has(comp)) {
-      const c = this.compInfo(comp);
-      this.evals.set(comp, c?.evaluation ? await this.json(`data/eval_${comp}.json`).catch(() => null) : null);
-    }
-    return this.evals.get(comp);
-  },
-  async loadGameNN(comp) {
-    if (!this.gamenn.has(comp)) {
-      const c = this.compInfo(comp);
-      this.gamenn.set(comp, c?.gamenn ? await this.json(`data/gamenn_${comp}.json`).catch(() => null) : null);
-    }
-    return this.gamenn.get(comp);
-  },
   async loadOpt(map, comp, flag, file) {
     if (!map.has(comp)) {
       const c = this.compInfo(comp);
@@ -694,12 +679,6 @@ const App = {
     if (!this.shots.has(k)) this.shots.set(k, await this.json(`data/shots_${k}.json`).catch(() => null));
     return this.shots.get(k);
   },
-  async loadMaster() {
-    if (this.master === undefined) this.master = this.manifest.master ? await this.json("data/master.json").catch(() => null) : null;
-    return this.master;
-  },
-  /** Το κομμάτι του master για μία διοργάνωση. */
-  masterFor(comp = this.comp) { return this.master?.comps?.[comp] || null; },
   compInfo(comp = this.comp) { return this.manifest.competitions.find((c) => c.code === comp); },
   latestSeason(comp = this.comp) { return Math.max(...this.compInfo(comp).seasons); },
   get S() { return this.cache.get(this.comp + this.season); },
@@ -771,7 +750,7 @@ const App = {
 
   async render() {
     const info = this.compInfo();
-    const off = { players: info.hasBox === false, court: info.hasBox === false, predictions: !info.predictions && !info.evaluation && !info.gamenn && !(this.manifest.master && info.hasBox), edge: !info.edge };
+    const off = { players: info.hasBox === false, court: info.hasBox === false, predictions: !info.edge, edge: !info.edge };
     $$("#tabs a").forEach((a) => (a.hidden = !!off[a.getAttribute("href").slice(1)]));
     if (off[this.route()]) { location.hash = "home"; return; }
     const v = this.route();
@@ -779,15 +758,12 @@ const App = {
     const view = $("#view");
     try {
       await this.loadSeason(this.comp, this.season);
-      await this.loadPreds(this.comp);
-      if (v === "predictions") await this.loadEval(this.comp);
-      if (v === "predictions" || v === "home") { await this.loadGameNN(this.comp); await this.loadMaster(); }
+      if (["home", "predictions", "game", "edge"].includes(v)) await this.loadOpt(this.edge, this.comp, "edge", "edge");
       if (["analysis", "teams", "players", "court", "game"].includes(v)) await this.loadOpt(this.analytics, this.comp, "analytics", "analytics");
-      if (v === "game") { await this.loadGameNN(this.comp); await this.loadMaster(); await this.loadOpt(this.edge, this.comp, "edge", "edge");
+      if (v === "game") {
         const prev = this.compInfo().seasons.filter((x) => x < this.latestSeason()).slice(-1);
         for (const s of prev) await this.loadSeason(this.comp, s).catch(() => null); }
-      if (v === "edge") { await this.loadOpt(this.edge, this.comp, "edge", "edge"); await this.loadSeason(this.comp, this.latestSeason()); }
-      if (this.preds.get(this.comp) || v === "predictions") await this.loadSeason(this.comp, this.latestSeason());
+      if (["edge", "predictions", "game"].includes(v)) await this.loadSeason(this.comp, this.latestSeason());
       await Views[v](view, this.S);
     } catch (e) {
       console.error(e);
@@ -812,23 +788,15 @@ document.addEventListener("click", (e) => {
 const Views = {
   /* ---------------- Αρχική: επερχόμενα + προσομοίωση + αποτελέσματα + βαθμολογία ---------------- */
   home(el, S) {
-    const sim = new MatchSim(S);
-    const preds = S.season === App.latestSeason() ? App.preds.get(App.comp) : null;
+    const sim = new MatchSim(S, S.season === App.latestSeason() ? App.edge.get(App.comp) : null);
     const nextRound = S.upcoming.length ? S.upcoming[0].round : null;
     const upcoming = S.upcoming.filter((g) => g.round === nextRound).slice(0, 12);
     const lastRound = S.games.length ? Math.max(...S.games.map((g) => g.round || 0)) : null;
     const results = S.games.filter((g) => g.round === lastRound);
-    const gnn = S.season === App.latestSeason() ? App.gamenn.get(App.comp) : null;
-    const nnBy = new Map(gnn ? rowsToObjs(gnn.next).map((r) => [r.gameCode, r]) : []);
-    const gms = S.season === App.latestSeason() ? App.masterFor() : null;
-    const msBy = new Map(gms?.next ? rowsToObjs(gms.next).map((r) => [r.gameCode, r]) : []);
-    const nnBar = (label, x) => { const q = Math.round(x.p * 100); return `<div class="probbar" aria-label="Πιθανότητα νίκης (${label})"><i style="width:${q}%"></i><i style="width:${100 - q}%"></i></div>
-        <div class="problabels"><span title="Αναμενόμενο σκορ ± τυπική απόκλιση">${label} · ${q}% · ${Math.round(x.mh)}–${Math.round(x.ma)} (±${Math.round((x.sh + x.sa) / 2)})</span><span>${100 - q}%</span></div>`; };
 
     const gameCard = (g, i) => {
-      const r = sim.run(g.home, g.away, 3000);
+      const r = sim.run(g.home, g.away, 3000, g.gameCode);
       const ph = Math.round(r.pHome * 100);
-      const nn = nnBy.get(g.gameCode), ms = msBy.get(g.gameCode);
       return `<article class="game" data-i="${i}" data-game="${esc(g.gameCode)}" style="cursor:pointer">
         <div class="meta"><span>${fmtDate(g.date)} ${esc(g.time || "")}</span><span>Αγ. ${g.round ?? "–"}</span></div>
         <div class="match">
@@ -836,9 +804,7 @@ const Views = {
           <span class="team">${App.teamLink(g.away, S)}</span><span class="score muted">${Math.round(r.ma)}</span>
         </div>
         <div class="probbar" aria-label="Πιθανότητα νίκης"><i style="width:${ph}%"></i><i style="width:${100 - ph}%"></i></div>
-        <div class="problabels"><span>${nn || ms ? "Monte Carlo · " : ""}${ph}% νίκη έδρας</span><span>${100 - ph}%</span></div>
-        ${nn ? nnBar("Νευρωνικό λίγκας", nn) : ""}
-        ${ms ? nnBar("Master", ms) : ""}
+        <div class="problabels"><span>${ph}% νίκη έδρας${r.mv_h || r.mv_a ? ` <span title="Μετρήθηκαν απουσίες βασικών">· απουσίες</span>` : ""}</span><span>${100 - ph}%</span></div>
         <div class="actions"><a class="btn primary" href="#game/${encodeURIComponent(g.gameCode)}" style="text-decoration:none">Ανάλυση αγώνα →</a><button class="btn" data-sim="${i}">Προσομοίωση</button><button class="btn" data-once="${i}">Παίξε ένα ματς</button></div>
         <div class="simbox" hidden></div>
       </article>`;
@@ -857,7 +823,7 @@ const Views = {
       <section>
         <div class="sec-head"><h2>${nextRound != null ? `Επόμενη αγωνιστική · ${nextRound}η` : "Δεν υπάρχουν επερχόμενα ματς"}</h2>
           <span class="muted">${esc(App.compInfo().name)} ${seasonLabel(S.season)}</span></div>
-        ${upcoming.length ? `<p class="muted" style="margin:0">Οι αριθμοί δίπλα στις ομάδες είναι το αναμενόμενο σκορ ${S.hasBox ? "από ratings επίθεσης/άμυνας και ρυθμού" : "από τους πόντους υπέρ/κατά κάθε ομάδας"}, με +${MatchSim.HCA} πόντους έδρα.${nnBy.size || msBy.size ? ` Κάτω από την μπάρα του Monte Carlo, οι πιθανότητες των νευρωνικών δικτύων (Keras) με το δικό τους αναμενόμενο σκορ: ${nnBy.size ? "«Νευρωνικό λίγκας» (εκπαιδεύεται μόνο σε αυτή τη διοργάνωση)" : ""}${nnBy.size && msBy.size ? " και " : ""}${msBy.size ? "«Master» (ένα δίκτυο για όλες τις λίγκες)" : ""}.` : ""}</p>
+        ${upcoming.length ? `<p class="muted" style="margin:0">Οι αριθμοί δίπλα στις ομάδες είναι το αναμενόμενο σκορ και η μπάρα η πιθανότητα νίκης από το Monte Carlo: ratings επίθεσης/άμυνας προσαρμοσμένα στον αντίπαλο (με μνήμη από την προηγούμενη σεζόν), έδρα και αβεβαιότητα μετρημένες σε αυτή τη λίγκα, και διόρθωση για απουσίες βασικών. Πάτα ένα ματς για την πλήρη ανάλυση.</p>
         <div class="games" id="up">${upcoming.map(gameCard).join("")}</div>` : `<div class="empty">Η σεζόν ${seasonLabel(S.season)} δεν έχει άλλα προγραμματισμένα ματς.</div>`}
       </section>
       ${results.length ? `<section><div class="sec-head"><h2>Αποτελέσματα · ${lastRound}η αγωνιστική</h2></div>
@@ -883,26 +849,19 @@ const Views = {
       const i = +(b.dataset.sim ?? b.dataset.once), g = upcoming[i], box = $(`.game[data-i="${i}"] .simbox`, up);
       box.hidden = false;
       if (b.dataset.once != null) {
-        const r = sim.once(g.home, g.away);
+        const r = sim.once(g.home, g.away, g.gameCode);
         const old = $(".single-result", box);
         const line = `<div class="single-result">${esc(S.teamName(g.home))} ${r.hs} – ${r.as} ${esc(S.teamName(g.away))}${r.ot ? ` (${r.ot > 1 ? r.ot + "×" : ""}παράταση)` : ""}</div>`;
         if (old) old.outerHTML = line; else box.insertAdjacentHTML("afterbegin", line);
         return;
       }
-      const r = sim.run(g.home, g.away, 10000);
-      const top = (team) => {
-        if (!preds) return "";
-        const rows = rowsToObjs(preds.next).filter((p) => p.team === team && p.gameCode === g.gameCode).sort((a, b) => b.PIR - a.PIR).slice(0, 3);
-        const L = App.cache.get(App.comp + App.latestSeason());
-        return `<div><div class="eyebrow">${esc(S.teamName(team))}</div><ol>${rows.map((p) => `<li>${App.playerLink(p.pid, L.playerName(p.pid))} <span class="num muted" style="display:block">${fmt(p.PTS)} π · ${fmt(p.PIR)} PIR</span></li>`).join("") || "<li class='muted'>—</li>"}</ol></div>`;
-      };
+      const r = sim.run(g.home, g.away, 10000, g.gameCode);
       const single = $(".single-result", box)?.outerHTML || "";
       box.innerHTML = `${single}
         <div class="row" style="justify-content:space-between"><span class="eyebrow">10.000 προσομοιώσεις</span>
           <span class="num">${fmt(r.avgH)} – ${fmt(r.avgA)}</span></div>
         <div class="chart">${Charts.marginHist(r.margins)}</div>
-        <div class="problabels"><span>νίκη έδρας ${fmtPct(r.pHome)}</span><span>διαφορά πόντων (έδρα − φιλοξ.)</span></div>
-        ${preds ? `<div class="eyebrow">Κορυφαίοι κατά το μοντέλο (PIR)</div><div class="performers">${top(g.home)}${top(g.away)}</div>` : ""}`;
+        <div class="problabels"><span>νίκη έδρας ${fmtPct(r.pHome)}</span><span>διαφορά πόντων (έδρα − φιλοξ.)</span></div>`;
     });
   },
 
@@ -1119,23 +1078,15 @@ const Views = {
 
     if (sel.length === 1) {
       const p = sel[0], lg = logsOf(p.pid);
-      const preds = S.season === App.latestSeason() ? App.preds.get(App.comp) : null;
-      const bt = preds ? rowsToObjs(preds.backtest).filter((r) => r.pid === p.pid && r.season === S.season) : [];
-      const nx = preds ? rowsToObjs(preds.next).find((r) => r.pid === p.pid) : null;
-      const idxOf = new Map(lg.map((r, i) => [r.gameCode, i + 1]));
       const series = [
         { k: "k1", dots: true, thin: true, pts: lg.map((r, i) => [i + 1, r[k]]) },
         { k: "k1", pts: lg.map((r, i) => [i + 1, mean(lg.slice(Math.max(0, i - 4), i + 1).map((x) => x[k]))]) },
       ];
-      const hasModel = preds && preds.targets.includes(k);
-      if (hasModel && bt.length) series.push({ k: "k2", dash: true, dots: true, r: 3, pts: bt.filter((r) => idxOf.has(r.gameCode)).map((r) => [idxOf.get(r.gameCode), r["p_" + k]]) });
-      if (hasModel && nx) series.push({ k: "k2", dotsOnly: true, r: 6, pts: [[lg.length + 1, nx[k]]] });
       pv.innerHTML = `
         <div class="grid2">
           <section>${card(p, 0)}</section>
           <section><h3>Τι ξεχωρίζει</h3>${insights(p)}
-            ${nx ? `<div class="tile" style="border-color:var(--c2);margin-top:10px"><div class="eyebrow">Πρόβλεψη μοντέλου · επόμενο ματς ${nx.home ? "vs" : "@"} ${esc(S.teamName(nx.opp))} (${fmtDate(nx.date)})</div>
-              <div class="row num" style="margin-top:6px;gap:18px">${preds.targets.map((t) => `<span><b>${fmt(nx[t])}</b> <span class="muted">${STAT[t].label}</span></span>`).join("")}</div></div>` : ""}</section>
+</section>
         </div>
         <div class="grid2">
           <section><h3>Προφίλ στη λίγκα</h3>${R.get(p.pid) ? metricTable([p]) : `<div class="empty">Δεν υπάρχουν αναλυτικά.</div>`}</section>
@@ -1143,8 +1094,8 @@ const Views = {
             ${SH?.players[p.pid] ? `<p class="muted" style="margin:0;font-size:13px">Μέγεθος εξαγώνου = πόσο συχνά σουτάρει από εκεί. Χρώμα = εύστοχα σε σχέση με τον μέσο όρο της λίγκας στο ίδιο σημείο (πράσινο καλύτερα, κόκκινο χειρότερα, πιο έντονο = μεγαλύτερη διαφορά).</p>` : ""}</section>
         </div>
         <section><div class="sec-head"><h3>Ανά αγώνα</h3>${statSelect}</div>
-          <div class="legend"><span><i class="c1bg" style="opacity:.5"></i>Αγώνας</span><span><i class="c1bg"></i>Μ.Ο. 5 αγώνων</span>${hasModel ? `<span><i class="c2bg"></i>Πρόβλεψη μοντέλου</span>` : ""}</div>
-          <div class="chart">${Charts.line({ series, xLabel: (x) => (x <= lg.length ? "Αγ." + (lg[x - 1].round ?? x) : "Επόμ."), yZero: k !== "PM" })}</div></section>
+          <div class="legend"><span><i class="c1bg" style="opacity:.5"></i>Αγώνας</span><span><i class="c1bg"></i>Μ.Ο. 5 αγώνων</span></div>
+          <div class="chart">${Charts.line({ series, xLabel: (x) => "Αγ." + (lg[x - 1]?.round ?? x), yZero: k !== "PM" })}</div></section>
         <section><h3>Game log</h3><div id="plog"></div></section>
         <p class="muted" style="margin:0;font-size:13px">* Θέση: εκτίμηση από το προφίλ (ασίστ, τρίποντα, ριμπάουντ, κοψίματα), όχι επίσημη. Βαθμολογίες τύπου 2K: 72 = μέσος παίκτης με ρόλο, κάθε 8 μονάδες = μία τυπική απόκλιση μέσα στη λίγκα (90+ ≈ κορυφαίο 1–2%), με διόρθωση για το επίπεδο της λίγκας ώστε να συγκρίνονται μεταξύ τους: EuroCup −7, GBL −3 σε σχέση με την EuroLeague (εκτίμηση από παίκτες που άλλαξαν λίγκα), NBA +5 (υπόθεση).</p>`;
       bindStat();
@@ -1685,23 +1636,18 @@ const Views = {
     const FF = new Map(AS?.four_factors ? rowsToObjs(AS.four_factors).map((t) => [t.team, t]) : []);
     const P = AS?.players ? rowsToObjs(AS.players).map((p) => ({ ...p, player: niceName(p.player) || p.player })) : [];
     const E = App.edge.get(App.comp), eg = E?.upcoming?.find((u) => String(u.gameCode) === code);
-    const gnn = App.gamenn.get(App.comp), nn = gnn ? rowsToObjs(gnn.next).find((r) => String(r.gameCode) === code) : null;
-    const ms = App.masterFor()?.next ? rowsToObjs(App.masterFor().next).find((r) => String(r.gameCode) === code) : null;
-    const preds = App.preds.get(App.comp), pp = preds ? rowsToObjs(preds.next).filter((r) => String(r.gameCode) === code) : [];
-    const mc = new MatchSim(S).run(H, A, 6000);
+    const mc = new MatchSim(S, E).run(H, A, 8000, g.gameCode);          // Monte Carlo (ratings + απουσίες)
+    const simple = new MatchSim(S).run(H, A, 4000);                       // απλό Monte Carlo (baseline)
     const sgn = (v, d = 1) => (isNum(v) ? (v > 0 ? "+" : "") + (+v).toFixed(d) : "–");
     const odds = (p) => (isNum(p) && p > 0.005 ? (1 / p).toFixed(2) : "–");
     const Phi = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
 
-    // ---- κύρια εκτίμηση: μοντέλο ratings + απουσίες (Στοίχημα) αν υπάρχει, αλλιώς Monte Carlo ----
-    const main = eg ? { src: "Ratings + απουσίες", p: eg.p_home, mu: -eg.line, tot: eg.total, sdm: eg.sd_m, sdt: eg.sd_t || 1.25 * eg.sd_m }
-      : { src: "Monte Carlo", p: mc.pHome, mu: mc.mh - mc.ma, tot: mc.mh + mc.ma, sdm: MatchSim.SD * Math.SQRT2, sdt: MatchSim.SD * Math.SQRT2 * 1.3 };
+    // ---- κύρια εκτίμηση: Monte Carlo πάνω στο μοντέλο ratings + απουσίες ----
+    const main = { src: mc.src === "model" ? "Monte Carlo · ratings + απουσίες" : "Monte Carlo (εφεδρικό)", p: mc.pHome, mu: mc.mh - mc.ma, tot: mc.mh + mc.ma, sdm: mc.sdm, sdt: mc.sdt };
     const models = [
-      eg && { name: "Ratings + απουσίες (κύριο)", p: eg.p_home, h: (eg.total - eg.line) / 2, a: (eg.total + eg.line) / 2 },
-      { name: "Monte Carlo", p: mc.pHome, h: mc.mh, a: mc.ma },
-      nn && { name: "Νευρωνικό λίγκας", p: nn.p, h: nn.mh, a: nn.ma },
-      ms && { name: "Master νευρωνικό", p: ms.p, h: ms.mh, a: ms.ma },
-    ].filter(Boolean);
+      { name: main.src + " (κύριο)", p: mc.pHome, h: mc.mh, a: mc.ma },
+      { name: "Απλό Monte Carlo (μόνο τρέχουσα σεζόν, σταθερή έδρα/σ)", p: simple.pHome, h: simple.mh, a: simple.ma },
+    ];
     const mkt = eg?.mkt;
 
     // ---- over/under και handicap γύρω από τη γραμμή του μοντέλου ----
@@ -1788,7 +1734,7 @@ const Views = {
           ${models.map((m) => `<tr><td>${esc(m.name)}</td><td class="n">${fmtPct(m.p)}</td><td class="n">${odds(m.p)} / ${odds(1 - m.p)}</td><td class="n">${Math.round(m.h)}–${Math.round(m.a)}</td></tr>`).join("")}
           ${mkt ? `<tr><td><b>Αγορά</b> (χωρίς γκανιότα)</td><td class="n">${fmtPct(mkt.p)}</td><td class="n">${odds(mkt.p)} / ${odds(1 - mkt.p)}</td><td class="n">hcp ${sgn(mkt.spread)}</td></tr>` : ""}
         </tbody></table></div>
-        <p class="muted" style="margin:0;font-size:13px">Οι πιθανότητες για over/under και handicap βγαίνουν από την αναμενόμενη διαφορά/σύνολο του κύριου μοντέλου και την αβεβαιότητά τους (σ διαφοράς ${fmt(main.sdm)}, σ συνόλου ${fmt(main.sdt)} π.). ${E?.market && !Object.values(E.market.verdict || {}).some((v) => v.edge) ? "Στο backtest αυτής της διοργάνωσης δεν αποδείχθηκε edge απέναντι στην αγορά: οι αριθμοί είναι εκτιμήσεις, όχι σύσταση." : !E?.market ? "Για αυτή τη διοργάνωση δεν υπάρχουν ιστορικές αποδόσεις, άρα το edge δεν έχει ελεγχθεί." : ""} Το στοίχημα ενέχει κίνδυνο· 18+.</p>
+        <p class="muted" style="margin:0;font-size:13px">Οι πιθανότητες για over/under και handicap βγαίνουν από την αναμενόμενη διαφορά/σύνολο του Monte Carlo και την αβεβαιότητά τους (σ διαφοράς ${fmt(main.sdm)}, σ συνόλου ${fmt(main.sdt)} π.). ${E?.market && !Object.values(E.market.verdict || {}).some((v) => v.edge) ? "Στο backtest αυτής της διοργάνωσης δεν αποδείχθηκε edge απέναντι στην αγορά: οι αριθμοί είναι εκτιμήσεις, όχι σύσταση." : !E?.market ? "Για αυτή τη διοργάνωση δεν υπάρχουν ιστορικές αποδόσεις, άρα το edge δεν έχει ελεγχθεί." : ""} Το στοίχημα ενέχει κίνδυνο· 18+.</p>
       </section>
 
       ${rowsT.length > 1 ? `<section><div class="sec-head"><h2>Σύγκριση ομάδων</h2><span class="muted">${seasonLabel(S.season)}</span></div>
@@ -1803,330 +1749,63 @@ const Views = {
             return `<div class="h2h-row"><span class="h2h-p">${Gfx.avatar(a.player, H, 34)} ${App.playerLink(a.pid, a.player)}</span><b class="${a.ovr > b.ovr ? "better" : ""}">${a.ovr}</b><span class="h2h-label">${pos}</span><b class="${b.ovr > a.ovr ? "better" : ""}">${b.ovr}</b><span class="h2h-p r">${App.playerLink(b.pid, b.player)} ${Gfx.avatar(b.player, A, 34)}</span></div>`; }).join("")}
         </div></section>` : ""}
 
-      ${pp.length ? `<section><div class="sec-head"><h2>Εκτίμηση απόδοσης παικτών</h2><span class="muted">μοντέλο παικτών (Keras)</span></div>
-        <div class="grid2"><div><h3>${esc(S.teamName(H))}</h3><div id="g-pp-h"></div></div><div><h3>${esc(S.teamName(A))}</h3><div id="g-pp-a"></div></div></div>
-        <p class="muted" style="margin:0;font-size:13px">Πρόβλεψη για αυτό το ματς από το μοντέλο απόδοσης παικτών· σε παρένθεση ο μέσος όρος των 10 τελευταίων αγώνων.</p></section>` : ""}
+      <section><div class="sec-head"><h2>Εκτίμηση απόδοσης παικτών</h2></div>
+        <div class="empty" style="text-align:left">Θα την υπολογίζει το graph neural network που στήνουμε (κάθε αγώνας = graph, κάθε παίκτης = κόμβος). <a href="gnn.html">Δες τα δεδομένα του →</a></div></section>
 
       ${meet.length ? `<section><h2>Προηγούμενες αναμετρήσεις</h2><div class="games">${meet.slice(0, 6).map((x) => { const hw = x.hs > x.as;
         return `<article class="game"><div class="meta"><span>${fmtDate(x.date)}</span><span>${seasonLabel(x.season)}</span></div>
           <div class="match"><span class="team ${hw ? "win" : "loss"}">${esc(S.teamName(x.home))}</span><span class="score">${x.hs ?? "–"}</span>
           <span class="team ${hw ? "loss" : "win"}">${esc(S.teamName(x.away))}</span><span class="score">${x.as ?? "–"}</span></div></article>`; }).join("")}</div></section>` : ""}`;
 
-    if (pp.length) {
-      const L2 = App.cache.get(App.comp + App.latestSeason());
-      const tab = (team, sel) => new SortTable($(sel, el), {
-        cols: [{ key: "pid", label: "Παίκτης", html: (r) => App.playerLink(r.pid, L2.playerName(r.pid)) },
-          ...["PTS", "REB", "AST", "PIR", "MIN"].filter((t) => preds.targets.includes(t)).map((t) => ({ key: t, label: STAT[t].label, n: true, fmt: (v, r) => `${fmt(v)} <span class="muted" style="font-size:12px">(${fmt(r["b_" + t])})</span>` }))],
-        rows: pp.filter((r) => r.team === team), sortKey: "PIR",
-      });
-      tab(H, "#g-pp-h"); tab(A, "#g-pp-a");
-    }
     const gc = $("#g-court", el);
     if (gc) gc.onclick = () => { App.ui.court = { a: H, b: A, lineups: {}, sel: 0 }; };
   },
 
-  /* ---------------- Μοντέλα: προβλέψεις + αξιολόγηση ---------------- */
+  /* ---------------- Μοντέλα: το Monte Carlo αγώνων (πάνω στο μοντέλο ratings + απουσίες) ---------------- */
   predictions(el) {
-    const P = App.preds.get(App.comp), E = App.evals.get(App.comp);
-    if (!P && !E && !App.gamenn.get(App.comp) && !App.masterFor()) { el.innerHTML = `<div class="empty">Δεν υπάρχουν ακόμα μοντέλα για αυτή τη διοργάνωση. Δημιουργούνται αυτόματα στο επόμενο ημερήσιο run.</div>`; return; }
-    const L = App.cache.get(App.comp + App.latestSeason());
-    const TG = P ? P.targets : ["PTS", "REB", "AST", "PIR", "MIN"];
-    if (!TG.includes(App.ui.predTarget)) App.ui.predTarget = TG.includes("PIR") ? "PIR" : TG[0];
-    const t = App.ui.predTarget;
-    const tSelect = (id) => `<label class="muted" style="font-size:12px">Στατιστικό <select id="${id}">${TG.map((x) => `<option value="${x}" ${x === t ? "selected" : ""}>${STAT[x].name}</option>`).join("")}</select></label>`;
-    const pctImp = (m, b) => (isNum(m) && isNum(b) && b ? (100 * (b - m)) / b : NaN);
-    const impCell = (i) => `<td class="n ${i > 0 ? "better" : ""}">${isNum(i) ? (i > 0 ? "+" : "") + fmt(i) + "%" : "–"}</td>`;
+    const E = App.edge.get(App.comp);
+    if (!E) { el.innerHTML = `<div class="empty">Δεν υπάρχει ακόμα μοντέλο αγώνων για αυτή τη διοργάνωση.</div>`; return; }
+    const ME = E.model_eval || {}, LV = E.live || {}, C = E.params?.calib || {};
     const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`;
-    const sections = [];
-
-    // ---- 1. Μοντέλο παικτών (αξιολόγηση στην εκπαίδευση) ----
-    if (P) {
-      sections.push(`
-      <section><div class="sec-head"><h2>Μοντέλο παικτών</h2><span class="muted">εκπαίδευση ${esc(P.trained)}</span></div>
-        <p style="margin:0;max-width:70ch">Feed-forward νευρωνικό δίκτυο (Keras, <span class="num">${esc(P.arch)}</span>) που προβλέπει ${TG.map((x) => STAT[x].label).join(", ")} του επόμενου αγώνα από ${P.n_features} χαρακτηριστικά (κυλιόμενοι μέσοι, φόρμα, έδρα, ξεκούραση, αντίπαλος). Ο πίνακας μετρά το σφάλμα στο τελευταίο ${Math.round(100 * P.n_test / (P.n_test + P.n_train))}% των αγώνων, που το μοντέλο δεν είδε στην εκπαίδευση.</p>
-        <div class="grid2">
-          <div class="tbl-wrap"><table><thead><tr><th>Στατιστικό</th><th class="n">MAE μοντέλου</th><th class="n">Μ.Ο. 10</th><th class="n">Μ.Ο. σεζόν</th><th class="n">Βελτίωση</th></tr></thead><tbody>
-            ${TG.map((x) => { const m = P.metrics[x]; return `<tr><td>${STAT[x].name}</td><td class="n"><b>${fmt(m.model, 2)}</b></td><td class="n">${fmt(m.last10, 2)}</td><td class="n">${fmt(m.season, 2)}</td>${impCell(pctImp(m.model, m.last10))}</tr>`; }).join("")}
-          </tbody></table></div>
-          <div><div class="legend"><span><i class="c1bg"></i>Training loss</span><span><i class="c2bg"></i>Validation loss</span></div>
-            <div class="chart">${P.loss ? Charts.line({ series: [{ k: "k1", pts: P.loss.train.map((v, i) => [i + 1, v]) }, { k: "k2", pts: P.loss.val.map((v, i) => [i + 1, v]) }], xLabel: (x) => "ep " + x, yFmt: (v) => v.toFixed(2), H: 200 }) : ""}</div></div>
+    const sgn = (v, d = 1) => (isNum(v) ? (v > 0 ? "+" : "") + (+v).toFixed(d) : "–");
+    const best = (a, b, low = true) => (isNum(a) && isNum(b) && (low ? a < b : a > b) ? "better" : "");
+    const row = (label, s, o, k, f, low = true) => `<tr><td>${label}</td><td class="n ${best(s?.[k], o?.[k], low)}">${f(s?.[k])}</td><td class="n ${best(o?.[k], s?.[k], low)}">${f(o?.[k])}</td></tr>`;
+    const table = (title, x) => !x ? "" : `<div><h3>${title} <span class="muted" style="font-size:13px">(${x.ratings.n} αγώνες)</span></h3><div class="tbl-wrap"><table><thead><tr><th>Μετρική</th><th class="n">Monte Carlo</th><th class="n">Απλό MC</th></tr></thead><tbody>
+      ${row("Σωστός νικητής", x.ratings, x.mc, "acc", fmtPct, false)}${row("Brier", x.ratings, x.mc, "brier", (v) => fmt(v, 3))}${row("Log loss", x.ratings, x.mc, "logloss", (v) => fmt(v, 3))}
+      ${row("Σφάλμα διαφοράς (π.)", x.ratings, x.mc, "mae_margin", (v) => fmt(v, 1))}${row("Σφάλμα συνόλου (π.)", x.ratings, x.mc, "mae_total", (v) => fmt(v, 1))}
+      ${row("Κάλυψη διαστήματος 80% (ιδανικά 80%)", x.ratings, x.mc, "cover80", fmtPct, false)}
+    </tbody></table></div></div>`;
+    const ha = isNum(C.a) ? C.a : null;
+    el.innerHTML = `
+      <section><div class="sec-head"><h2>Monte Carlo αγώνων</h2><span class="muted">ενημέρωση ${esc(E.updated)}</span></div>
+        <p style="margin:0;max-width:75ch">Το μοναδικό μοντέλο αγώνων του site. <b>Κινητήρας</b>: ratings επίθεσης/άμυνας/ρυθμού προσαρμοσμένα στον αντίπαλο (ridge regression), με εκθετική απόσβεση ώστε να μεταφέρεται πληροφορία από την προηγούμενη σεζόν, έδρα μετρημένη σε αυτή τη λίγκα και διόρθωση για απουσίες βασικών (στο NBA από τους τραυματίες του ESPN). <b>Προσομοίωση</b>: η διαφορά και το σύνολο κληρώνονται από κανονικές κατανομές με τη δική τους αβεβαιότητα (εκτιμημένη από τα σφάλματα του παρελθόντος), ισοπαλία → παράταση. Όλα επαναϋπολογίζονται κάθε μέρα μόνο με αγώνες που έχουν παιχτεί.</p>
+        <div class="tiles">
+          ${tile(`${E.params.tau} ημ.`, `Απόσβεση τ (μισή βαρύτητα κάθε ${Math.round(E.params.tau * Math.LN2)} ημέρες)`)}
+          ${tile(fmt(E.params.lam, 1), "Ποινή ridge λ")}
+          ${tile(fmt(C.sd_m, 1), "σ διαφοράς (π.)")}
+          ${tile(fmt(C.sd_t, 1), "σ συνόλου (π.)")}
+          ${tile(sgn(C.c, 2), "Πόντοι διαφοράς ανά μονάδα απουσίας")}
+          ${tile(isNum(C.n) ? C.n : "–", "Αγώνες βαθμονόμησης")}
         </div>
-        <p class="muted" style="margin:0;font-size:13px">MAE = μέσο απόλυτο σφάλμα (μικρότερο = καλύτερο). «Βελτίωση» = σε σχέση με τον μέσο όρο των 10 τελευταίων αγώνων.</p>
-      </section>`);
-    }
-
-    // ---- 2. Ζωντανή αξιολόγηση παικτών (προβλέψεις πριν το ματς vs αποτέλεσμα) ----
-    const LP = E?.players;
-    if (P || LP) {
-      if (!LP || !LP.n) {
-        sections.push(`<section><div class="sec-head"><h2>Ζωντανή αξιολόγηση παικτών</h2></div>
-          <div class="empty">Κάθε μέρα αποθηκεύονται οι προβλέψεις πριν από τα ματς. Μόλις παιχτούν, εμφανίζεται εδώ η σύγκριση με το πραγματικό αποτέλεσμα.</div></section>`);
-      } else {
-        const bd = LP.by_date || [];
-        sections.push(`
-        <section><div class="sec-head"><h2>Ζωντανή αξιολόγηση παικτών</h2>${tSelect("lt")}</div>
-          <p class="muted" style="margin:0;font-size:13px">Προβλέψεις που έγιναν πριν από κάθε ματς, συγκριμένες με το τι έγινε. ${LP.n} προβλέψεις σε ${LP.games} αγώνες.</p>
-          <div class="grid2">
-            <div class="tbl-wrap"><table><thead><tr><th>Στατιστικό</th><th class="n">MAE μοντέλου</th><th class="n">MAE Μ.Ο. 10</th><th class="n">Βελτίωση</th><th class="n" title="Μέση (πρόβλεψη − πραγματικό): θετικό = υπερεκτιμά">Τάση</th></tr></thead><tbody>
-              ${TG.map((x) => { const m = LP.metrics[x] || {}; return `<tr><td>${STAT[x].name}</td><td class="n"><b>${fmt(m.model, 2)}</b></td><td class="n">${fmt(m.base, 2)}</td>${impCell(pctImp(m.model, m.base))}<td class="n">${isNum(m.bias) ? (m.bias > 0 ? "+" : "") + fmt(m.bias, 2) : "–"}</td></tr>`; }).join("")}
-            </tbody></table></div>
-            <div><div class="legend"><span><i class="c1bg"></i>Μοντέλο</span><span><i class="c2bg"></i>Μ.Ο. 10 αγώνων</span></div>
-              <div class="chart">${bd.length > 1 ? Charts.line({ series: [{ k: "k1", dots: true, pts: bd.map((r, i) => [i + 1, r[t]]) }, { k: "k2", dots: true, pts: bd.map((r, i) => [i + 1, r["b_" + t]]) }], xLabel: (x) => fmtDate(bd[x - 1]?.date).slice(0, 5), yFmt: (v) => v.toFixed(1), H: 200, yZero: true }) : `<div class="empty">Το γράφημα εμφανίζεται από τη 2η ημέρα αγώνων.</div>`}</div>
-              <p class="muted" style="margin:0;font-size:13px">MAE ${STAT[t].label} ανά ημέρα αγώνων.</p></div>
-          </div>
-          <h3>Τελευταίες προβλέψεις</h3><div id="live-tab"></div>
-        </section>`);
-      }
-    }
-
-    // ---- 3. Ιστορικό εκπαιδεύσεων ----
-    const H = E?.history ? rowsToObjs(E.history) : [];
-    if (P) {
-      sections.push(`<section><div class="sec-head"><h2>Ιστορικό εκπαιδεύσεων</h2>${tSelect("ht")}</div>
-        ${H.length > 1 ? `<div class="legend"><span><i class="c1bg"></i>Μοντέλο (test MAE)</span><span><i class="c2bg"></i>Μ.Ο. 10 αγώνων</span></div>
-          <div class="chart">${Charts.line({ series: [{ k: "k1", dots: true, pts: H.map((r, i) => [i + 1, r[t + "_model"]]) }, { k: "k2", dots: true, pts: H.map((r, i) => [i + 1, r[t + "_last10"]]) }], xLabel: (x) => (H[x - 1]?.trained || "").slice(5, 10), yFmt: (v) => v.toFixed(2), H: 200 })}</div>
-          <p class="muted" style="margin:0;font-size:13px">Κάθε σημείο είναι μία εκπαίδευση (μία ανά ημέρα). Αν η μπλε γραμμή ανεβαίνει, το μοντέλο χειροτερεύει.</p>`
-        : `<div class="empty">${H.length ? "Μία εκπαίδευση μέχρι στιγμής" : "Δεν υπάρχει ακόμα ιστορικό"}. Από την επόμενη ημέρα εμφανίζεται εδώ η πορεία του σφάλματος ανά εκπαίδευση.</div>`}
-      </section>`);
-    }
-
-    // ---- 4. Προβλέψεις επόμενου αγώνα + scatter ----
-    let next = [], games = [], bt = [];
-    if (P) {
-      next = rowsToObjs(P.next).map((r) => ({ ...r, player: L.playerName(r.pid) }));
-      games = [...new Map(next.map((r) => [r.gameCode, r])).values()]
-        .map((r) => ({ gc: r.gameCode, date: r.date, h: r.home ? r.team : r.opp, a: r.home ? r.opp : r.team }))
-        .sort((a, b) => a.date.localeCompare(b.date) || a.gc - b.gc);
-      bt = rowsToObjs(P.backtest);
-      sections.push(`
-      <section><div class="sec-head"><h2>Προβλέψεις επόμενου αγώνα</h2>
-          <label class="muted" style="font-size:12px">Αγώνας <select id="pg"><option value="">Όλοι (${games.length})</option>${games.map((g) => `<option value="${g.gc}" ${String(g.gc) === String(App.ui.predGame) ? "selected" : ""}>${fmtDate(g.date)} ${esc(L.teamName(g.h))} – ${esc(L.teamName(g.a))}</option>`).join("")}</select></label></div>
-        ${next.length ? `<div id="ptab"></div>` : `<div class="empty">Δεν υπάρχουν προγραμματισμένα ματς για νέες προβλέψεις.</div>`}
+        ${ha == null ? `<p class="muted" style="margin:0;font-size:13px">Λίγα δεδομένα για βαθμονόμηση· χρησιμοποιούνται προεπιλεγμένες τιμές (σ διαφοράς 12, σ συνόλου 16).</p>` : ""}
       </section>
-      <section><div class="sec-head"><h2>Πρόβλεψη vs πραγματικό (test)</h2>${tSelect("pt")}</div>
-        <p class="muted" style="margin:0;font-size:13px">${bt.length} αγώνες της τρέχουσας σεζόν εκτός training. Όσο πιο κοντά στη διαγώνιο, τόσο καλύτερα.</p>
-        <div class="chart" style="max-width:620px">${Charts.scatter({ pts: bt.map((r) => [r["p_" + t], r[t]]), xLabel: "Πρόβλεψη " + STAT[t].label, yLabel: "Πραγματικό " + STAT[t].label })}</div>
-      </section>`);
-    }
-
-    // ---- 5. Προσομοίωση αγώνων ----
-    const SM = E?.sim;
-    if (SM) {
-      const b = SM.backtest || {}, bc = SM.backtest_current || {}, lv = SM.live || {};
-      const pc = (v) => (isNum(v) ? (100 * v).toFixed(1) + "%" : "–");
-      sections.push(`
-      <section><div class="sec-head"><h2>Προσομοίωση αγώνων</h2><span class="muted">πλεονέκτημα έδρας ${SM.params?.hca} π. · σ = ${SM.params?.sd}</span></div>
-        <p style="margin:0;max-width:70ch">Backtest: για κάθε ματς των σεζόν που υπάρχουν, η πιθανότητα νίκης υπολογίστηκε μόνο με τα ματς που είχαν παιχτεί πριν από αυτό, με τον ίδιο τύπο που χρησιμοποιεί η αρχική σελίδα.</p>
-        ${b.n ? `<div class="tiles">
-          ${tile(pc(b.acc), `Σωστός νικητής (${b.n} ματς)`)}
-          ${tile(pc(b.home_rate), "Αν έλεγε πάντα «γηπεδούχος»")}
-          ${tile(fmt(b.brier, 3), "Brier score (0.250 = κορώνα-γράμματα)")}
-          ${tile(fmt(b.mae_margin, 1), "Μέσο σφάλμα διαφοράς (π.)")}
-          ${tile(fmt(b.mae_total, 1), "Μέσο σφάλμα συνόλου (π.)")}
-          ${tile(pc(bc.acc), `Τρέχουσα σεζόν (${bc.n || 0} ματς)`)}
-        </div>
-        <div class="grid2">
-          <div><h3>Βαθμονόμηση</h3>
-            <div class="chart" style="max-width:520px">${Charts.calibration(b.calibration || [])}</div>
-            <p class="muted" style="margin:0;font-size:13px">Οριζόντια: η πιθανότητα που έδωσε για νίκη γηπεδούχου. Κάθετα: πόσο συχνά κέρδισε πράγματι. Πάνω από τη διαγώνιο = το μοντέλο υποτιμά τον γηπεδούχο. Το μέγεθος του κύκλου δείχνει πόσα ματς έχει κάθε ομάδα.</p></div>
-          <div><h3>Ζωντανά (προβλέψεις πριν το ματς)</h3>
-            ${lv.n ? `<div class="tiles">${tile(pc(lv.acc), `Σωστός νικητής (${lv.n} ματς)`)}${tile(fmt(lv.brier, 3), "Brier score")}${tile(fmt(lv.mae_margin, 1), "Σφάλμα διαφοράς (π.)")}</div><div id="sim-live" style="margin-top:10px"></div>`
-              : `<div class="empty">Κάθε μέρα αποθηκεύονται οι πιθανότητες για τα ματς των επόμενων 10 ημερών. Μόλις παιχτούν, εμφανίζονται εδώ.</div>`}
-          </div>
-        </div>` : `<div class="empty">Δεν υπάρχουν ακόμα αρκετά ματς για αξιολόγηση.</div>`}
-      </section>`);
-    }
-
-    // ---- 6. Νευρωνικό αγώνων vs Monte Carlo (ίδια ματς) ----
-    const GN = App.gamenn.get(App.comp);
-    const metrics = [
-      ["acc", "Σωστός νικητής", (v) => fmtPct(v), 1],
-      ["brier", "Brier score", (v) => fmt(v, 3), -1],
-      ["logloss", "Log loss", (v) => fmt(v, 3), -1],
-      ["mae_home", "Σφάλμα πόντων γηπεδούχου", (v) => fmt(v, 1), -1],
-      ["mae_away", "Σφάλμα πόντων φιλοξενούμενου", (v) => fmt(v, 1), -1],
-      ["mae_margin", "Σφάλμα διαφοράς", (v) => fmt(v, 1), -1],
-      ["mae_total", "Σφάλμα συνόλου", (v) => fmt(v, 1), -1],
-      ["cover80", "Κάλυψη διαστήματος 80%", (v) => fmtPct(v), 0],
-      ["sd", "Μέση αβεβαιότητα σ (π.)", (v) => fmt(v, 1), null],
-    ];
-    // ποιο είναι καλύτερο: dir 1 = μεγαλύτερο, -1 = μικρότερο, 0 = πιο κοντά στο 80%
-    const beats = (a, b, dir) => isNum(a) && isNum(b) && dir != null && (dir === 0 ? Math.abs(a - 0.8) < Math.abs(b - 0.8) : dir * (a - b) > 0);
-    const cell = (a, b, dir, f) => `<td class="n ${beats(a, b, dir) ? "better" : ""}">${isNum(a) ? f(a) : "–"}</td>`;
-
-    // ---- 5β. Σύγκριση όλων των μοντέλων αγώνων (ίδια ματς) ----
-    const MS = App.master, CMP = App.masterFor()?.compare || [];
-    const modelName = (r, prim) => r.model === "mc" ? "Monte Carlo"
-      : `${{ master: "Master", single: "Μόνο λίγκα", nn: "Νευρωνικό λίγκας" }[r.model] || r.model} · ${r.arch}${r.arch === prim ? " (κύρια)" : ""}`;
-    const CM_COLS = metrics.filter(([k]) => ["acc", "brier", "logloss", "mae_margin", "mae_total", "cover80"].includes(k));
-    // στήλες για SortTable με πράσινο στο καλύτερο της στήλης
-    const cmpCols = (rows) => [{ key: "name", label: "Μοντέλο" }, ...CM_COLS.map(([k, label, f, d]) => {
-      const vals = rows.map((r) => r[k]).filter(isNum);
-      const best = d === 0 ? vals.reduce((b, v) => (Math.abs(v - 0.8) < Math.abs(b - 0.8) ? v : b), vals[0])
-        : d > 0 ? Math.max(...vals) : Math.min(...vals);
-      return { key: k, label, n: true, html: (r) => (isNum(r[k]) ? `<span class="${f(r[k]) === f(best) ? "better" : ""}">${f(r[k])}</span>` : "–") };
-    })];
-    if (CMP.length) {
-      const mc = App.masterFor();
-      if (!App.ui.cmpModel || !CMP.some((r) => r.model + r.arch === App.ui.cmpModel)) App.ui.cmpModel = "master" + MS.arch;
-      const pick = CMP.find((r) => r.model + r.arch === App.ui.cmpModel) || CMP[0];
-      const leagues = Object.entries(MS.comps).filter(([, x]) => x.compare?.length);
-      sections.push(`
-      <section><div class="sec-head"><h2>Σύγκριση όλων των μοντέλων αγώνων</h2><span class="muted">${esc(App.compInfo().name)} · φετινή σεζόν · ${CMP[0].n} ματς</span></div>
-        <p style="margin:0;max-width:70ch">Όλες οι αρχιτεκτονικές νευρωνικών (${MS.compare_archs.map((a) => `<span class="num">${esc(a)}</span>`).join(", ")}), εκπαιδευμένες σε προηγούμενες σεζόν, είτε ως ένα master δίκτυο για όλες τις λίγκες είτε μόνο σε αυτή τη λίγκα, μαζί με το Monte Carlo. Όλα μετριούνται στα ίδια φετινά ματς${mc.test_from ? ` (${fmtDate(mc.test_from)}–${fmtDate(mc.test_to)})` : ""}. «Κύρια» είναι η αρχιτεκτονική που δίνει τις προβλέψεις στην αρχική. Πατήστε μια στήλη για ταξινόμηση.</p>
-        <div id="cmp-tab"></div>
-          <div><h3>Όλες οι λίγκες · Brier score</h3>
-            <div class="tbl-wrap"><table><thead><tr><th>Μοντέλο</th>${leagues.map(([c, x]) => `<th class="n">${esc(App.compInfo(c)?.name || c)} <span class="muted">(${x.compare[0].n})</span></th>`).join("")}<th class="n">Μέσος</th></tr></thead><tbody>
-              ${(() => {
-                const ids = CMP.map((r) => [r.model, r.arch]);
-                const val = (c, m, a) => MS.comps[c].compare.find((r) => r.model === m && r.arch === a)?.brier;
-                const avg = (m, a) => mean(leagues.map(([c]) => val(c, m, a)).filter(isNum));
-                const best = (vals) => Math.min(...vals.filter(isNum));
-                const colBest = leagues.map(([c]) => best(ids.map(([m, a]) => val(c, m, a))));
-                const avgBest = best(ids.map(([m, a]) => avg(m, a)));
-                const td = (v, b) => `<td class="n ${isNum(v) && fmt(v, 3) === fmt(b, 3) ? "better" : ""}">${fmt(v, 3)}</td>`;
-                return ids.map(([m, a]) => `<tr><td>${esc(modelName({ model: m, arch: a }, MS.arch))}</td>${leagues.map(([c], i) => td(val(c, m, a), colBest[i])).join("")}${td(avg(m, a), avgBest)}</tr>`).join("");
-              })()}
-            </tbody></table></div>
-            <p class="muted" style="margin:0;font-size:13px">Brier score ανά λίγκα στα φετινά ματς (μικρότερο = καλύτερο, 0.250 = κορώνα-γράμματα). Σε παρένθεση ο αριθμός των ματς: όσο λιγότερα, τόσο πιο αβέβαιη η σύγκριση. «Μέσος» = απλός μέσος όρος των λιγκών.</p></div>
-        <div><h3>Βαθμονόμηση</h3>
-          <label class="muted" style="font-size:12px">Μοντέλο <select id="cmp-sel">${CMP.map((r) => `<option value="${esc(r.model + r.arch)}" ${r === pick ? "selected" : ""}>${esc(modelName(r, MS.arch))}</option>`).join("")}</select></label>
-          <div class="chart" style="max-width:520px">${Charts.calibration(pick.calibration || [])}</div></div>
-      </section>`);
-    }
-
-    if (GN) {
-      const T = GN.test || {}, LV = GN.live || {};
-      const pair = (o) => metrics.map(([k, , f, d]) => [cell(o.nn?.[k], o.mc?.[k], d, f), cell(o.mc?.[k], o.nn?.[k], d, f)]);
-      const tp = pair(T), lp = LV.n ? pair(LV) : null;
-      sections.push(`
-      <section><div class="sec-head"><h2>Νευρωνικό λίγκας vs Monte Carlo</h2><span class="muted">εκπαίδευση ${esc(GN.trained)} · <span class="num">${esc(GN.arch)}</span> × ${GN.seeds}</span></div>
-        <p style="margin:0;max-width:70ch">Νευρωνικό δίκτυο (Keras) που τρέχει δίπλα στην προσομοίωση. Από ${GN.features.length} χαρακτηριστικά ${GN.has_box ? "(ratings επίθεσης/άμυνας, ρυθμός, φόρμα 5 αγώνων, four factors, ξεκούραση, έδρα)" : "(πόντοι υπέρ/κατά, φόρμα 5 αγώνων, ξεκούραση, έδρα — χωρίς box scores)"}, όλα από αγώνες πριν από το ματς, προβλέπει τους πόντους γηπεδούχου και φιλοξενούμενου μαζί με την αβεβαιότητά τους (Gaussian loss). Η πιθανότητα νίκης είναι η πιθανότητα η διαφορά να βγει θετική. Ένα μοντέλο ανά διοργάνωση, χρονικό split: test = ${GN.n_test} αγώνες από ${fmtDate(GN.test_from)} έως ${fmtDate(GN.test_to)}, που το δίκτυο δεν είδε. Το Monte Carlo αξιολογείται στους ίδιους αγώνες με το walk-forward backtest.</p>
-        <div class="tbl-wrap"><table><thead>
-          <tr><th></th><th class="n" colspan="2">Test (${T.nn?.n || 0} ματς)</th><th class="n" colspan="2">Ζωντανά (${LV.n || 0} ματς)</th></tr>
-          <tr><th>Μετρική</th><th class="n">Νευρωνικό</th><th class="n">Monte Carlo</th><th class="n">Νευρωνικό</th><th class="n">Monte Carlo</th></tr></thead><tbody>
-          ${metrics.map(([, label], i) => `<tr><td>${label}</td>${tp[i].join("")}${lp ? lp[i].join("") : `<td class="n">–</td><td class="n">–</td>`}</tr>`).join("")}
-        </tbody></table></div>
-        ${GN.compare?.length > 2 ? `<h3>Αρχιτεκτονικές στο ίδιο test</h3><div id="gn-cmp"></div>` : ""}
-        <p class="muted" style="margin:0;font-size:13px">Πράσινο = καλύτερο από τα δύο. Brier: 0.250 = κορώνα-γράμματα. Κάλυψη 80%: πόσο συχνά οι πόντοι κάθε ομάδας έπεσαν μέσα στο διάστημα 80% του μοντέλου (ιδανικά 80%· το Monte Carlo έχει σταθερό σ = ${MatchSim.SD} π.).</p>
-        <div class="grid2">
-          <div><h3>Βαθμονόμηση · νευρωνικό</h3><div class="chart" style="max-width:520px">${Charts.calibration(T.nn?.calibration || [])}</div></div>
-          <div><h3>Βαθμονόμηση · Monte Carlo</h3><div class="chart" style="max-width:520px">${Charts.calibration(T.mc?.calibration || [])}</div></div>
-        </div>
-        <div class="grid2">
-          <div><h3>Εκπαίδευση</h3><div class="legend"><span><i class="c1bg"></i>Training loss</span><span><i class="c2bg"></i>Validation loss</span></div>
-            <div class="chart">${GN.loss?.train?.length ? Charts.line({ series: [{ k: "k1", pts: GN.loss.train.map((v, i) => [i + 1, v]) }, { k: "k2", pts: GN.loss.val.map((v, i) => [i + 1, v]) }], xLabel: (x) => "ep " + x, yFmt: (v) => v.toFixed(2), H: 200 }) : ""}</div>
-            <p class="muted" style="margin:0;font-size:13px">Gaussian negative log-likelihood (κανονικοποιημένοι πόντοι), 1ο δίκτυο του ensemble.</p></div>
-          <div><h3>Αρχιτεκτονική</h3><p style="margin:0">Ενεργή: <span class="num">${esc(GN.arch)}</span>, ensemble ${GN.seeds} δικτύων. Διαθέσιμες: ${(GN.archs || []).map((a) => `<span class="num">${esc(a)}</span>`).join(", ")} (<span class="num">--arch</span> στο scripts/game_model.py).</p></div>
-        </div>
-        <h3>Ζωντανά (προβλέψεις πριν το ματς)</h3>
-        ${LV.n ? `<div id="nn-live"></div>` : `<div class="empty">Κάθε μέρα αποθηκεύονται οι προβλέψεις του νευρωνικού για τα ματς των επόμενων 10 ημερών, δίπλα σε αυτές του Monte Carlo. Μόλις παιχτούν, εμφανίζεται εδώ η σύγκριση.</div>`}
-      </section>`);
-    }
-
-    // ---- 7. Master νευρωνικό (όλες οι λίγκες) vs νευρωνικό λίγκας vs Monte Carlo ----
-    const M = App.master, MC = App.masterFor();
-    if (MC) {
-      const T = MC.test || {}, LV = MC.live || {};
-      const names = { master: "Master", single: "Μόνο λίγκα", mc: "Monte Carlo" }, keys = Object.keys(names);
-      // καλύτερο από τα τρία
-      const tri = (o, k, f, d) => keys.map((m) => {
-        const v = o[m]?.[k], best = keys.every((x) => x === m || !isNum(o[x]?.[k]) || beats(v, o[x][k], d) || v === o[x][k]);
-        return `<td class="n ${d != null && isNum(v) && best ? "better" : ""}">${isNum(v) ? f(v) : "–"}</td>`;
-      }).join("");
-      const comps = Object.entries(M.comps).map(([c, x]) => `${esc(App.compInfo(c)?.name || c)} ${x.n_train}`).join(" · ");
-      sections.push(`
-      <section><div class="sec-head"><h2>Master νευρωνικό · όλες οι λίγκες</h2><span class="muted">εκπαίδευση ${esc(M.trained)} · <span class="num">${esc(M.arch)}</span> × ${M.seeds}</span></div>
-        <p style="margin:0;max-width:70ch">Ένα δίκτυο για όλες τις διοργανώσεις με box scores, ώστε να μαθαίνει από περισσότερους αγώνες. Τα χαρακτηριστικά είναι τα ίδια με του νευρωνικού λίγκας, αλλά εκφρασμένα σε σχέση με τη λίγκα (π.χ. πόντοι ανά 100 κατοχές πάνω από τον μέσο όρο της), μαζί με τη διοργάνωση. Έτσι το NBA και η Ευρώπη μπαίνουν στην ίδια κλίμακα. Εκπαίδευση σε όλες τις προηγούμενες σεζόν (${M.n_train} αγώνες: ${comps}). Test = τα φετινά ματς${MC.test_from ? ` (${fmtDate(MC.test_from)}–${fmtDate(MC.test_to)})` : ""}. Στα ίδια ματς συγκρίνονται ένα δίκτυο που εκπαιδεύτηκε μόνο σε αυτή τη λίγκα με το ίδιο split${MC.n_train_single ? ` (${MC.n_train_single} αγώνες)` : ""} και το Monte Carlo.</p>
-        ${T.master?.n ? `<div class="tbl-wrap"><table><thead>
-          <tr><th></th><th class="n" colspan="3">Φετινή σεζόν (${T.master.n} ματς)</th><th class="n" colspan="3">Ζωντανά (${LV.n || 0} ματς)</th></tr>
-          <tr><th>Μετρική</th>${keys.map((m) => `<th class="n">${names[m]}</th>`).join("")}${keys.map((m) => `<th class="n">${names[m]}</th>`).join("")}</tr></thead><tbody>
-          ${metrics.map(([k, label, f, d]) => `<tr><td>${label}</td>${tri(T, k, f, d)}${LV.n ? tri(LV, k, f, d) : keys.map(() => `<td class="n">–</td>`).join("")}</tr>`).join("")}
-        </tbody></table></div>
-        <p class="muted" style="margin:0;font-size:13px">Πράσινο = καλύτερο από τα τρία. Τα φετινά ματς είναι λίγα, οπότε μικρές διαφορές (π.χ. 0.005 στο Brier) δεν είναι σημαντικές.</p>
-        <div class="grid2">
-          <div><h3>Βαθμονόμηση · master</h3><div class="chart" style="max-width:520px">${Charts.calibration(T.master?.calibration || [])}</div></div>
-          <div><h3>Εκπαίδευση</h3><div class="legend"><span><i class="c1bg"></i>Training loss</span><span><i class="c2bg"></i>Validation loss</span></div>
-            <div class="chart">${M.loss?.train?.length ? Charts.line({ series: [{ k: "k1", pts: M.loss.train.map((v, i) => [i + 1, v]) }, { k: "k2", pts: M.loss.val.map((v, i) => [i + 1, v]) }], xLabel: (x) => "ep " + x, yFmt: (v) => v.toFixed(2), H: 200 }) : ""}</div></div>
-        </div>` : `<div class="empty">Δεν έχουν παιχτεί ακόμα φετινά ματς σε αυτή τη διοργάνωση.</div>`}
-        <h3>Ζωντανά (προβλέψεις πριν το ματς)</h3>
-        ${LV.n ? `<div id="ms-live"></div>` : `<div class="empty">Κάθε μέρα αποθηκεύονται οι προβλέψεις του master για τα ματς των επόμενων 10 ημερών, δίπλα σε αυτές του νευρωνικού λίγκας και του Monte Carlo. Μόλις παιχτούν, εμφανίζεται εδώ η σύγκριση.</div>`}
-      </section>`);
-    }
-
-    el.innerHTML = sections.join("");
-
-    // ---- πίνακες / events ----
-    if (LP?.n) {
-      const rec = rowsToObjs(LP.recent).map((r) => ({ ...r, player: niceName(r.player) || L.playerName(r.pid), err: Math.abs(r[t + "_p"] - r[t]) }));
-      new SortTable($("#live-tab", el), {
-        cols: [{ key: "date", label: "Ημ/νία", fmt: fmtDate }, { key: "player", label: "Παίκτης", html: (r) => App.playerLink(r.pid, r.player) },
-          { key: "opp", label: "Αντίπ.", fmt: (v, r) => (r.home ? "vs " : "@ ") + esc(L.teamName(v)) },
-          { key: t + "_p", label: `${STAT[t].label} πρόβλ.`, n: true, fmt: (v) => fmt(v) },
-          { key: t, label: `${STAT[t].label} πραγμ.`, n: true, fmt: (v) => fmt(v, 0) },
-          { key: "err", label: "Σφάλμα", n: true, fmt: (v) => fmt(v) }],
-        rows: rec, sortKey: "date", sortDir: -1, pageSize: 25,
-      });
-    }
-    if (SM?.live?.n) {
-      const rows = (SM.recent || []).map(([date, h, a, p, mh, ma, hs, as]) => ({ date, h, a, p, mh, ma, hs, as, ok: (p > 0.5) === (hs > as) }));
-      new SortTable($("#sim-live", el), {
-        cols: [{ key: "date", label: "Ημ/νία", fmt: fmtDate },
-          { key: "h", label: "Αγώνας", html: (r) => `${esc(L.teamName(r.h))} – ${esc(L.teamName(r.a))}` },
-          { key: "p", label: "Νίκη γηπ.", n: true, fmt: (v) => fmtPct(v) },
-          { key: "mh", label: "Πρόβλ.", fmt: (v, r) => `${Math.round(r.mh)}–${Math.round(r.ma)}` },
-          { key: "hs", label: "Τελικό", fmt: (v, r) => `${r.hs}–${r.as}` },
-          { key: "ok", label: "", html: (r) => `<span class="pill ${r.ok ? "w" : "l"}">${r.ok ? "✓" : "✗"}</span>` }],
-        rows, sortKey: "date", sortDir: -1, pageSize: 15,
-      });
-    }
-    if (CMP.length) {
-      const rows = CMP.map((r) => ({ ...r, name: modelName(r, MS.arch) }));
-      new SortTable($("#cmp-tab", el), { cols: cmpCols(rows), rows, sortKey: "brier", sortDir: 1 });
-      $("#cmp-sel", el).onchange = (e) => { App.ui.cmpModel = e.target.value; Views.predictions(el); };
-    }
-    if (GN?.compare?.length > 2) {
-      const rows = GN.compare.map((r) => ({ ...r, name: modelName(r, GN.arch) }));
-      new SortTable($("#gn-cmp", el), { cols: cmpCols(rows), rows, sortKey: "brier", sortDir: 1 });
-    }
-    if (GN?.live?.n) {
-      const rows = rowsToObjs(GN.recent).map((r) => ({ ...r, w: r.hs > r.as }));
-      const mark = (p, w) => `<span class="pill ${(p > 0.5) === w ? "w" : "l"}">${(p > 0.5) === w ? "✓" : "✗"}</span>`;
-      new SortTable($("#nn-live", el), {
-        cols: [{ key: "date", label: "Ημ/νία", fmt: fmtDate },
-          { key: "home", label: "Αγώνας", html: (r) => `${esc(L.teamName(r.home))} – ${esc(L.teamName(r.away))}` },
-          { key: "p_mc", label: "MC", n: true, html: (r) => `${fmtPct(r.p_mc)} ${mark(r.p_mc, r.w)}` },
-          { key: "p", label: "Νευρ.", n: true, html: (r) => `${fmtPct(r.p)} ${mark(r.p, r.w)}` },
-          { key: "mh", label: "Σκορ νευρ.", fmt: (v, r) => `${Math.round(r.mh)}–${Math.round(r.ma)}` },
-          { key: "hs", label: "Τελικό", fmt: (v, r) => `${r.hs}–${r.as}` }],
-        rows, sortKey: "date", sortDir: -1, pageSize: 15,
-      });
-    }
-    if (MC?.live?.n) {
-      const rows = rowsToObjs(MC.recent).map((r) => ({ ...r, w: r.hs > r.as }));
-      const mark = (p, w) => (isNum(p) ? `${fmtPct(p)} <span class="pill ${(p > 0.5) === w ? "w" : "l"}">${(p > 0.5) === w ? "✓" : "✗"}</span>` : "–");
-      new SortTable($("#ms-live", el), {
-        cols: [{ key: "date", label: "Ημ/νία", fmt: fmtDate },
-          { key: "home", label: "Αγώνας", html: (r) => `${esc(L.teamName(r.home))} – ${esc(L.teamName(r.away))}` },
-          { key: "p_mc", label: "MC", n: true, html: (r) => mark(r.p_mc, r.w) },
-          { key: "p_one", label: "Λίγκα", n: true, html: (r) => mark(r.p_one, r.w) },
-          { key: "p", label: "Master", n: true, html: (r) => mark(r.p, r.w) },
-          { key: "mh", label: "Σκορ master", fmt: (v, r) => `${Math.round(r.mh)}–${Math.round(r.ma)}` },
-          { key: "hs", label: "Τελικό", fmt: (v, r) => `${r.hs}–${r.as}` }],
-        rows, sortKey: "date", sortDir: -1, pageSize: 15,
-      });
-    }
-    if (next.length) {
-      const tab = new SortTable($("#ptab", el), {
-        cols: [{ key: "player", label: "Παίκτης", html: (r) => App.playerLink(r.pid, r.player) }, { key: "team", label: "Ομάδα" },
-          { key: "opp", label: "Αντίπ.", fmt: (v, r) => (r.home ? "vs " : "@ ") + esc(v) }, { key: "date", label: "Ημ/νία", fmt: fmtDate },
-          ...TG.map(statCol)],
-        rows: next.filter((r) => !App.ui.predGame || String(r.gameCode) === String(App.ui.predGame)), sortKey: "PIR", pageSize: 40,
-      });
-      $("#pg", el).onchange = (e) => { App.ui.predGame = e.target.value; tab.setRows(next.filter((r) => !App.ui.predGame || String(r.gameCode) === App.ui.predGame)); };
-    }
-    ["pt", "lt", "ht"].forEach((id) => { const x = $("#" + id, el); if (x) x.onchange = (e) => { App.ui.predTarget = e.target.value; Views.predictions(el); }; });
+      <section><div class="sec-head"><h2>Ποιότητα (walk-forward)</h2></div>
+        <p class="muted" style="margin:0;font-size:13px">Κάθε αγώνας προβλέφθηκε μόνο με όσα είχαν παιχτεί πριν από την ημέρα του. «Monte Carlo» = το μοντέλο του site (ratings + απουσίες)· «Απλό MC» = η παλιά εκδοχή (μόνο τρέχουσα σεζόν, σταθερή έδρα 3 π. και σ = 10), για σύγκριση. Πράσινο = καλύτερο από τα δύο.</p>
+        <div class="grid2">${table("Φετινή σεζόν", ME.current)}${table("Όλες οι σεζόν", ME.all)}</div>
+        ${ME.all ? `<div class="grid2">
+          <div><h3>Βαθμονόμηση · Monte Carlo</h3><div class="chart" style="max-width:520px">${Charts.calibration(ME.all.ratings.calibration || [])}</div></div>
+          <div><h3>Βαθμονόμηση · απλό Monte Carlo</h3><div class="chart" style="max-width:520px">${Charts.calibration(ME.all.mc.calibration || [])}</div></div>
+        </div>` : `<div class="empty">Δεν υπάρχουν ακόμα αρκετοί παιγμένοι αγώνες για αξιολόγηση.</div>`}
+      </section>
+      <section><div class="sec-head"><h2>Ζωντανή καταγραφή</h2></div>
+        ${LV.n ? `<div class="tiles">${tile(LV.n, "Αγώνες που κρίθηκαν")}${tile(fmt(LV.brier_model, 3), "Brier (προβλέψεις πριν το ματς)")}${LV.n_mkt ? tile(`${fmt(LV.brier_model_same, 3)} / ${fmt(LV.brier_market, 3)}`, `Brier μοντέλο / αγορά (${LV.n_mkt})`) : ""}</div>`
+          : `<div class="empty">Κάθε μέρα αποθηκεύονται οι προβλέψεις πριν από τα ματς${LV.archived ? ` (${LV.archived} σε αναμονή αποτελέσματος)` : ""}. Μόλις παιχτούν, εμφανίζεται εδώ η σύγκριση.</div>`}
+      </section>
+      <section><div class="sec-head"><h2>Επόμενο: graph neural network</h2></div>
+        <p style="margin:0;max-width:75ch">Κάθε αγώνας ως graph: κόμβοι οι παίκτες, ακμές οι συμπαίκτες και οι αντίπαλοι (με τα λεπτά που μοιράζονται στο παρκέ). Θα προβλέπει την απόδοση κάθε παίκτη (box score και συνεισφορά στο σκορ) και, αθροιστικά, το αποτέλεσμα. <a href="gnn.html">Δες τα δεδομένα →</a></p>
+      </section>`;
   },
+
 };
 
 App.init();

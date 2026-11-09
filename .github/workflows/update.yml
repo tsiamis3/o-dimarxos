@@ -1,4 +1,4 @@
-name: Update data, train model, deploy site
+name: Update data, models, deploy site
 
 on:
   schedule:
@@ -74,22 +74,12 @@ jobs:
         continue-on-error: true
         run: python scripts/scrapers/eok_apps.py --comp 5 --code WBL2
 
-      - name: Train player-form model (Keras)
-        run: python scripts/train_model.py
-
-      - name: Evaluate models (prediction archive, simulation backtest, history)
-        run: python scripts/evaluate.py
-
-      # Νευρωνικό αγώνων δίπλα στο Monte Carlo (μετά το evaluate: συγκρίνεται με το αρχείο προβλέψεών του)
-      - name: Train game model (Keras) and compare with Monte Carlo
-        run: python scripts/game_model.py
-
-      # Ένα master δίκτυο για όλες τις λίγκες (εκτός Α2 γυναικών), δίπλα στα δίκτυα λίγκας και στο Monte Carlo
-      - name: Train master game model (all leagues)
-        run: python scripts/master_model.py
-
       - name: Analytics (adjusted ratings, four factors, players)
         run: python scripts/analytics.py
+
+      - name: GNN dataset (graphs per game, EuroLeague + EuroCup)
+        continue-on-error: true
+        run: python scripts/gnn_data.py
 
       - name: Betting model (edge vs market)
         run: python scripts/edge_model.py
@@ -101,13 +91,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/raw data/predictions models
+          git add data/raw data/predictions
           git diff --cached --quiet || git commit -m "Data update $(date -u +'%Y-%m-%d')"
           git pull --rebase -X theirs origin main   # αν άλλαξε κώδικας στο μεταξύ, μην αποτύχει το push
           git push
 
       - name: Cache busting (κάθε deploy φορτώνει αμέσως τα νέα αρχεία)
-        run: sed -i "s/__BUILD__/${GITHUB_RUN_ID}/g" site/index.html site/notes.html
+        run: sed -i "s/__BUILD__/${GITHUB_RUN_ID}/g" site/index.html site/notes.html site/gnn.html
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

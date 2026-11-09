@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"          # ακατέργαστα CSV από το API (commit-άρονται στο repo)
 SITE_DIR = ROOT / "site"                 # ό,τι ανεβαίνει στο GitHub Pages
 SITE_DATA = SITE_DIR / "data"            # JSON βάση που διαβάζει το site
-MODEL_DIR = ROOT / "models"              # αποθηκευμένο Keras μοντέλο + scalers
+MODEL_DIR = ROOT / "models"              # αποθηκευμένα μοντέλα (GNN)
 PRED_DIR = ROOT / "data" / "predictions"  # αρχείο προβλέψεων + ιστορικό (για ζωντανή αξιολόγηση)
 
 # Όλες οι διοργανώσεις του site (κωδικός -> όνομα). Τα αρχεία είναι data/raw/{κωδικός}{σεζόν}_*.csv

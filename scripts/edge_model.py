@@ -31,10 +31,10 @@ import pandas as pd
 from config import COMPETITIONS, PRED_DIR, RAW_DIR, SITE_DATA
 from dataset import CompetitionData
 from evaluate import TODAY, GameSimulator, _keep_pregame, _r
-from game_model import score
 from ratings import RidgeRatings, availability, regulars, team_games
 
-COMPS = ["E", "U", "GBL", "NBA"]
+COMPS = ["E", "U", "GBL", "NBA", "WBL2"]
+Z80 = 1.2815516
 GRID = [(120, 1.0), (365, 2.0), (730, 4.0)]
 MIN_PAST = 150                 # team-games πριν αρχίσουν οι προβλέψεις (πρώτη σεζόν)
 MIN_CALIB = 200                # αγώνες πριν την online βαθμονόμηση
@@ -46,9 +46,25 @@ UPCOMING_DAYS = 14
 RNG = np.random.default_rng(0)
 
 
+def score(df: pd.DataFrame) -> dict:
+    """Μετρικές ενός μοντέλου αγώνων: df με mh, ma, p, hs, as_ και προαιρετικά sh, sa (σ ανά ομάδα)."""
+    if df.empty:
+        return {"n": 0}
+    s = GameSimulator.score(df)
+    y = (df.hs > df.as_).astype(float)
+    p = df.p.astype(float).clip(1e-4, 1 - 1e-4)
+    sh = df["sh"] if "sh" in df else GameSimulator.SD
+    sa = df["sa"] if "sa" in df else GameSimulator.SD
+    cover = ((np.abs(df.hs - df.mh) <= Z80 * sh).mean() + (np.abs(df.as_ - df.ma) <= Z80 * sa).mean()) / 2
+    s.update({"logloss": _r(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)), 4),
+              "mae_home": _r(np.mean(np.abs(df.mh - df.hs)), 2), "mae_away": _r(np.mean(np.abs(df.ma - df.as_)), 2),
+              "cover80": _r(cover)})
+    return s
+
+
 def _phi(x):
     x = np.asarray(x, float)
-    return 0.5 * (1 + np.vectorize(math.erf)(x / math.sqrt(2)))
+    return 0.5 * (1 + np.vectorize(math.erf, otypes=[float])(x / math.sqrt(2)))
 
 
 def _phinv(p):
@@ -137,7 +153,7 @@ class EdgeModel:
         all_days = sorted(set(days) | set(up.date.unique() if len(up) else []))
         for d in all_days:
             past = tg[tg.date < d]
-            if len(past) < MIN_PAST:
+            if len(past) < min(MIN_PAST, 6 * tg.team.nunique()):
                 continue
             m = RidgeRatings(tau, lam).fit(past, asof=d)
             for r in games[games.date == d].itertuples():

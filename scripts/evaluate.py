@@ -1,18 +1,7 @@
 """
-Αξιολόγηση μοντέλων: τρέχει μετά το train_model.py και πριν το build_site.py.
-
-Τρία πράγματα, για κάθε διοργάνωση:
-  1. Αρχείο προβλέψεων παικτών (data/predictions/{C}_players.csv.gz)
-     Κρατά την τελευταία πρόβλεψη ΠΡΙΝ από κάθε ματς και, όταν παιχτεί το ματς,
-     τη συγκρίνει με το πραγματικό (ζωντανή αξιολόγηση, όχι backtest).
-  2. Προσομοίωση αγώνων (ίδιο μοντέλο ratings με το site)
-     - backtest walk-forward: για κάθε ματς, ratings μόνο από τα προηγούμενα ματς της σεζόν
-     - αρχείο προβλέψεων αγώνων (data/predictions/{C}_games.csv) + ζωντανή αξιολόγηση
-  3. Ιστορικό εκπαιδεύσεων (data/predictions/{C}_history.csv): MAE κάθε εκπαίδευσης.
-
-Έξοδος για το site: site/data/eval_{C}.json
-
-    python scripts/evaluate.py
+Βοηθητικά για την αξιολόγηση + το ΑΠΛΟ Monte Carlo (ratings μόνο της τρέχουσας σεζόν, σταθερή έδρα/σ).
+Το απλό Monte Carlo κρατιέται ως baseline σύγκρισης· το Monte Carlo του site τρέχει πάνω στο μοντέλο
+ratings + απουσίες (edge_model.py). Το παλιό μοντέλο παικτών και τα νευρωνικά αγώνων αφαιρέθηκαν.
 """
 import json
 import math
@@ -21,7 +10,6 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-from config import COMPETITIONS, PRED_DIR, SITE_DATA, TARGETS
 from dataset import CompetitionData
 
 TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -40,57 +28,6 @@ def _r(x, d=3):
 # ----------------------------------------------------------------------------
 # 1) Προβλέψεις παικτών
 # ----------------------------------------------------------------------------
-class PlayerPredictionLog:
-    def __init__(self, comp: str, data: CompetitionData):
-        self.comp, self.data = comp, data
-        self.path = PRED_DIR / f"{comp}_players.csv.gz"
-
-    def update(self) -> pd.DataFrame:
-        old = pd.read_csv(self.path) if self.path.exists() else pd.DataFrame()
-        pf = SITE_DATA / f"predictions_{self.comp}.json"
-        if pf.exists():
-            p = json.loads(pf.read_text())
-            new = pd.DataFrame(p["next"]["rows"], columns=p["next"]["cols"])
-            new.insert(0, "made_at", TODAY)
-            new.insert(1, "season", max(self.data.seasons))     # οι κωδικοί αγώνων επαναλαμβάνονται ανά σεζόν
-            log = pd.concat([old, new], ignore_index=True) if len(old) else new
-        else:
-            log = old
-        if len(log):
-            log = _keep_pregame(log, ["season", "gameCode", "pid"])
-            PRED_DIR.mkdir(parents=True, exist_ok=True)
-            log.to_csv(self.path, index=False, compression="gzip")
-        return log
-
-    def evaluate(self, log: pd.DataFrame) -> dict | None:
-        if log.empty or self.data.logs.empty:
-            return None
-        act = self.data.logs[["season", "gameCode", "pid", "player", *TARGETS]]
-        m = log.merge(act, on=["season", "gameCode", "pid"], suffixes=("_p", ""))
-        if m.empty:
-            return {"n": 0, "metrics": {}, "by_date": [], "recent": {"cols": [], "rows": []}}
-        metrics = {}
-        for t in TARGETS:
-            e = (m[f"{t}_p"] - m[t]).abs()
-            b = (m[f"b_{t}"] - m[t]).abs() if f"b_{t}" in m else pd.Series(np.nan, index=m.index)
-            metrics[t] = {"model": _r(e.mean()), "base": _r(b.mean()), "bias": _r((m[f"{t}_p"] - m[t]).mean())}
-        # MAE ανά ημέρα αγώνων (για γράφημα)
-        by_date = []
-        for d, g in m.groupby("date"):
-            row = {"date": d, "n": len(g)}
-            for t in TARGETS:
-                row[t] = _r((g[f"{t}_p"] - g[t]).abs().mean(), 2)
-                if f"b_{t}" in g:
-                    row[f"b_{t}"] = _r((g[f"b_{t}"] - g[t]).abs().mean(), 2)
-            by_date.append(row)
-        recent = m[m["date"] >= sorted(m["date"].unique())[-min(3, m["date"].nunique())]]
-        cols = ["date", "pid", "player", "team", "opp", "home"] + [c for t in TARGETS for c in (f"{t}_p", t)]
-        rows = [[_r(v, 1) if isinstance(v, float) else (int(v) if isinstance(v, (np.integer,)) else v)
-                 for v in r] for r in recent[cols].itertuples(index=False, name=None)]
-        return {"n": int(len(m)), "games": int(m["gameCode"].nunique()), "metrics": metrics,
-                "by_date": by_date, "recent": {"cols": cols, "rows": rows}}
-
-
 # ----------------------------------------------------------------------------
 # 2) Προσομοίωση αγώνων (ίδιος τύπος με την MatchSim του site/app.js)
 # ----------------------------------------------------------------------------
@@ -198,111 +135,3 @@ class GameSimulator:
                 "mae_margin": _r(np.mean(np.abs((df.mh - df.ma) - (df.hs - df.as_))), 2),
                 "mae_total": _r(np.mean(np.abs((df.mh + df.ma) - (df.hs + df.as_))), 2),
                 "calibration": calib}
-
-
-class GamePredictionLog:
-    def __init__(self, comp: str, sim: GameSimulator):
-        self.comp, self.sim = comp, sim
-        self.path = PRED_DIR / f"{comp}_games.csv"
-
-    def update(self) -> pd.DataFrame:
-        old = pd.read_csv(self.path) if self.path.exists() else pd.DataFrame()
-        new = self.sim.upcoming()
-        log = pd.concat([old, new], ignore_index=True) if len(old) else new
-        if len(log):
-            log = _keep_pregame(log, ["season", "gameCode"])
-            PRED_DIR.mkdir(parents=True, exist_ok=True)
-            log.to_csv(self.path, index=False)
-        return log
-
-    def evaluate(self, log: pd.DataFrame) -> tuple[dict, list]:
-        g = self.sim.data.games
-        done = g[g.played & g.homescore.notna()][["season", "gameCode", "homescore", "awayscore"]]
-        if len(self.sim.data.logs):           # σκορ από τα box scores όπου υπάρχουν
-            pts = self.sim.data.logs.groupby(["season", "gameCode", "home"]).PTS.sum().unstack()
-            done = pd.DataFrame({"homescore": pts.get(1), "awayscore": pts.get(0)}).reset_index()
-        m = log.merge(done, on=["season", "gameCode"]).rename(columns={"homescore": "hs", "awayscore": "as_"}) \
-            if len(log) else pd.DataFrame()
-        recent = []
-        if len(m):
-            for r in m.sort_values("date", ascending=False).head(40).itertuples():
-                recent.append([r.date, r.home, r.away, _r(r.p, 3), _r(r.mh, 1), _r(r.ma, 1), int(r.hs), int(r.as_)])
-        return GameSimulator.score(m), recent
-
-
-# ----------------------------------------------------------------------------
-# 3) Ιστορικό εκπαιδεύσεων
-# ----------------------------------------------------------------------------
-class TrainHistory:
-    def __init__(self, comp: str):
-        self.comp = comp
-        self.path = PRED_DIR / f"{comp}_history.csv"
-
-    def update(self) -> pd.DataFrame:
-        old = pd.read_csv(self.path) if self.path.exists() else pd.DataFrame()
-        pf = SITE_DATA / f"predictions_{self.comp}.json"
-        if not pf.exists():
-            return old
-        p = json.loads(pf.read_text())
-        if len(old) and p["trained"] in set(old["trained"]):
-            return old
-        row = {"trained": p["trained"], "arch": p.get("arch"), "n_train": p["n_train"], "n_test": p["n_test"]}
-        for t, m in p["metrics"].items():
-            row[f"{t}_model"], row[f"{t}_last10"] = m["model"], m["last10"]
-        hist = pd.concat([old, pd.DataFrame([row])], ignore_index=True)
-        PRED_DIR.mkdir(parents=True, exist_ok=True)
-        hist.to_csv(self.path, index=False)
-        return hist
-
-
-# ----------------------------------------------------------------------------
-class Evaluator:
-    def __init__(self, comp: str):
-        self.comp = comp
-        self.data = CompetitionData(comp)
-
-    def run(self):
-        print(f"== {COMPETITIONS[self.comp]}")
-        out = {"comp": self.comp, "updated": TODAY}
-
-        # παίκτες
-        pl = PlayerPredictionLog(self.comp, self.data)
-        plog = pl.update()
-        out["players"] = pl.evaluate(plog)
-        if out["players"]:
-            print(f"   players: {len(plog)} archived, {out['players']['n']} evaluated")
-
-        # αγώνες
-        sim = GameSimulator(self.data)
-        bt = sim.backtest()
-        cur = max(self.data.seasons)
-        out["sim"] = {"backtest": GameSimulator.score(bt),
-                      "backtest_current": GameSimulator.score(bt[bt.season == cur]) if len(bt) else {"n": 0},
-                      "params": {"hca": sim.HCA, "sd": sim.SD, "shrink": sim.SHRINK}}
-        glog = GamePredictionLog(self.comp, sim)
-        live, recent = glog.evaluate(glog.update())
-        out["sim"]["live"], out["sim"]["recent"] = live, recent
-        b = out["sim"]["backtest"]
-        if b.get("n"):
-            print(f"   sim backtest: {b['n']} games, acc {b['acc']:.3f}, brier {b['brier']:.4f} "
-                  f"(home wins {b['home_rate']:.3f})  | live {live.get('n', 0)} games")
-
-        # ιστορικό
-        hist = TrainHistory(self.comp).update()
-        out["history"] = {"cols": list(hist.columns), "rows": hist.astype(object).where(hist.notna(), None)
-                          .values.tolist()} if len(hist) else None
-
-        SITE_DATA.mkdir(parents=True, exist_ok=True)
-        (SITE_DATA / f"eval_{self.comp}.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
-
-
-def main():
-    for c in COMPETITIONS:
-        try:
-            Evaluator(c).run()
-        except (FileNotFoundError, ValueError) as e:
-            print(f"  ! {c}: {e}")
-
-
-if __name__ == "__main__":
-    main()

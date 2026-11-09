@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Δεδομένα GNN · Προγνωστικά</title>
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="stylesheet" href="style.css?v=__BUILD__">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand-row"><div class="brand"><h1>Προγνωστικά</h1><small>δεδομένα για το graph neural network</small></div></div>
+    <nav class="tabs">
+      <a href="index.html#home">Αρχική</a>
+      <a href="index.html#players">Παίκτες</a>
+      <a href="index.html#analysis">Ανάλυση</a>
+      <a href="notes.html">Σημειώσεις</a>
+      <a href="gnn.html" aria-current="page">Δεδομένα GNN</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="view" style="display:flex;flex-direction:column;gap:28px;padding-block:20px 40px"><div class="empty">Φόρτωση…</div></main>
+<footer class="wrap">EuroLeague + EuroCup · κάθε αγώνας = graph, κάθε παίκτης = κόμβος. Τα χαρακτηριστικά βγαίνουν μόνο από προηγούμενους αγώνες.</footer>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isNum = (v) => v != null && Number.isFinite(+v);
+const fmt = (v, d = 2) => (isNum(v) ? (+v).toFixed(d) : "–");
+const objs = (o) => o.rows.map((r) => Object.fromEntries(o.cols.map((c, i) => [c, r[i]])));
+const nice = (n) => { const s = String(n || ""); if (!s.includes(",")) return s; const [a, b] = s.split(",").map((x) => x.trim()); const t = (w) => w.toLowerCase().replace(/(^|[\s-])\S/g, (m) => m.toUpperCase()); return `${t(b)} ${t(a)}`; };
+const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+const F_LABEL = { r_pts: "Πόντοι/100", r_reb: "Ριμπ./100", r_ast: "Ασίστ/100", r_pir: "PIR/100", ts: "TS%", usg: "Usage", min: "Λεπτά", starter: "Βασικός", pm100: "+/-/100", log_games: "log αγώνες", rest: "Ξεκούραση", hist_E: "Ιστορικό EL", no_hist: "Χωρίς ιστ." };
+const Y_LABEL = { y_pts: "Πόντοι", y_reb: "Ριμπ.", y_ast: "Ασίστ", y_pir: "PIR", y_min: "Λεπτά", y_pm100: "+/-/100", y_on_poss: "Κατοχές" };
+
+(async () => {
+  const view = $("#view");
+  let D, M = {};
+  try { D = await (await fetch("data/gnn_preview.json", { cache: "no-cache" })).json(); }
+  catch (e) { view.innerHTML = `<div class="empty">Δεν βρέθηκε το data/gnn_preview.json (scripts/gnn_data.py).</div>`; return; }
+  try { M = await (await fetch("data/teams_meta.json", { cache: "no-cache" })).json(); } catch (e) { /* χωρίς χρώματα */ }
+  const color = (comp, team) => M?.[comp]?.[team]?.c1 || "var(--muted)";
+  const ids = Object.keys(D.sample).sort((a, b) => D.sample[b].date.localeCompare(D.sample[a].date));
+  let gid = ids[0], edgeMode = "hist", selPid = null;
+
+  const sp = D.splits;
+  const splitRows = Object.entries(sp).map(([s, v]) => `<tr><td>${{ train: "Εκπαίδευση (train)", val: "Επικύρωση (validation)", test: "Έλεγχος (test)" }[s] || s}</td><td class="n">${v.E || 0}</td><td class="n">${v.U || 0}</td><td class="n">${(v.E || 0) + (v.U || 0)}</td></tr>`).join("");
+
+  view.innerHTML = `
+    <section><div class="sec-head"><h2>Σύνοψη</h2><span class="muted">μισή βαρύτητα ιστορικού κάθε ${D.half_life} αγώνες</span></div>
+      <div class="tiles">
+        ${tile(D.graphs.toLocaleString("el"), "Graphs (αγώνες)")}${tile(D.nodes.toLocaleString("el"), "Κόμβοι (παίκτης σε αγώνα)")}
+        ${tile(D.edges.toLocaleString("el"), "Ακμές (ζεύγη παικτών)")}${tile(fmt(D.avg_nodes, 1), "Κόμβοι ανά graph")}
+        ${tile(fmt(D.avg_edges, 0), "Ακμές ανά graph")}${tile((100 * D.no_hist_rate).toFixed(1) + "%", "Κόμβοι χωρίς ιστορικό")}
+        ${tile((100 * D.stint_coverage).toFixed(1) + "%", "Κόμβοι με plus-minus από stints")}${tile(D.cross.rows.length, "Παίκτες και στις 2 λίγκες")}
+      </div>
+      <div class="grid2">
+        <div class="tbl-wrap"><table><thead><tr><th>Split (χρονικό)</th><th class="n">EuroLeague</th><th class="n">EuroCup</th><th class="n">Σύνολο</th></tr></thead><tbody>${splitRows}</tbody></table></div>
+        <p class="muted" style="margin:0;font-size:13px">Train = σεζόν 2023–24 και 2024–25, validation = 2025–26, test = τρέχουσα. Ποτέ τυχαίο ανακάτεμα: το δίκτυο κρίνεται σε αγώνες που έγιναν μετά από όσους είδε. ${D.same_season_moves} περιπτώσεις παίκτη που άλλαξε λίγκα μέσα στην ίδια σεζόν· το ιστορικό του είναι ενιαίο.</p>
+      </div>
+    </section>
+
+    <section><div class="sec-head"><h2>Εξερευνητής graph</h2>
+        <div class="filters" style="margin:0">
+          <label>Αγώνας<select id="g-sel">${ids.map((k) => { const g = D.sample[k]; return `<option value="${k}">${g.date} · ${g.comp === "E" ? "EL" : "EC"} · ${esc(g.home)}–${esc(g.away)} ${g.hs}-${g.as}</option>`; }).join("")}</select></label>
+          <label>Ακμές<select id="e-mode"><option value="hist">Ιστορικό (χαρακτηριστικό εισόδου)</option><option value="game">Λεπτά στο ματς (αποτέλεσμα)</option></select></label>
+        </div></div>
+      <div class="chart" id="g-svg"></div>
+      <div class="legend"><span><i class="c1bg"></i>Γηπεδούχος</span><span><i class="c2bg"></i>Φιλοξενούμενος</span></div>
+      <p class="muted" style="margin:0;font-size:13px">Αριστερά ο γηπεδούχος, δεξιά ο φιλοξενούμενος. Μέγεθος κόμβου = αναμενόμενα λεπτά (από το ιστορικό). Συμπαίκτες: πάχος γραμμής = λεπτά μαζί στο παρκέ. Αντίπαλοι (λεπτές γραμμές στη μέση): λεπτά απέναντι. Πάτα έναν παίκτη για όλα του τα δεδομένα.</p>
+      <div id="g-node"></div>
+      <h3>Κόμβοι του αγώνα</h3><div class="tbl-wrap" id="g-tab"></div>
+    </section>
+
+    <section><h2>Χαρακτηριστικά κόμβων (είσοδος)</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>Όνομα</th><th>Τι είναι</th><th class="n">Μέσος</th><th class="n">Τυπ. απόκλιση</th><th class="n">Ελάχ.</th><th class="n">Μέγ.</th></tr></thead><tbody>
+        ${D.features.map((f) => `<tr><td class="num">${esc(f.name)}</td><td style="white-space:normal">${esc(f.desc)}</td><td class="n">${fmt(f.mean)}</td><td class="n">${fmt(f.std)}</td><td class="n">${fmt(f.min)}</td><td class="n">${fmt(f.max)}</td></tr>`).join("")}
+      </tbody></table></div>
+      <h3>Χαρακτηριστικά ακμών</h3>
+      <div class="tbl-wrap"><table><thead><tr><th>Όνομα</th><th>Τι είναι</th><th class="n">Μέσος</th><th class="n">Τυπ. απόκλιση</th><th class="n">Μέγ.</th></tr></thead><tbody>
+        ${D.edge_features.map((f) => `<tr><td class="num">${esc(f.name)}</td><td style="white-space:normal">${esc(f.desc)}</td><td class="n">${fmt(f.mean)}</td><td class="n">${fmt(f.std)}</td><td class="n">${fmt(f.max, 1)}</td></tr>`).join("")}
+      </tbody></table></div>
+    </section>
+
+    <section><h2>Στόχοι (τι θα προβλέπει)</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>Στόχος</th><th class="n">Μέσος</th><th class="n">Τυπ. απόκλιση</th><th class="n">Λείπει</th></tr></thead><tbody>
+        ${D.targets.map((t) => `<tr><td class="num">${esc(t.name)}</td><td class="n">${fmt(t.mean)}</td><td class="n">${fmt(t.std)}</td><td class="n">${(100 * t.missing).toFixed(1)}%</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="grid2" id="hists"></div>
+      <p class="muted" style="margin:0;font-size:13px">(A) box score του αγώνα ανά παίκτη· (B) plus-minus στο παρκέ ανά 100 κατοχές, με βάρος τις κατοχές (πολύ θορυβώδες σε έναν αγώνα, γι' αυτό η απλή συσχέτιση με το ιστορικό είναι ~0.1)· σε επίπεδο graph: διαφορά και σύνολο πόντων.</p>
+    </section>
+
+    <section><div class="sec-head"><h2>Παίκτες και στις δύο λίγκες</h2><input type="search" id="x-q" placeholder="αναζήτηση" style="max-width:220px"></div>
+      <div class="tbl-wrap" id="x-tab"></div>
+      <p class="muted" style="margin:0;font-size:13px">Το ιστορικό τους είναι ενιαίο χρονολογικά· το χαρακτηριστικό hist_E λέει στο δίκτυο τι ποσοστό των λεπτών τους ήταν στην EuroLeague.</p>
+    </section>`;
+
+  // ---- ιστογράμματα ----
+  $("#hists").innerHTML = Object.entries(D.hist).map(([k, h]) => {
+    const W = 360, H = 140, n = h.counts.length, mx = Math.max(...h.counts), bw = (W - 20) / n;
+    const bars = h.counts.map((c, i) => `<rect class="k1" x="${10 + i * bw}" y="${H - 22 - (c / mx) * (H - 34)}" width="${bw - 1}" height="${(c / mx) * (H - 34)}" opacity=".7"/>`).join("");
+    return `<div><div class="eyebrow">${Y_LABEL[k] || k}</div><div class="chart"><svg viewBox="0 0 ${W} ${H}">${bars}<text x="10" y="${H - 6}">${h.lo}</text><text x="${W - 10}" y="${H - 6}" text-anchor="end">${h.hi}</text></svg></div></div>`;
+  }).join("");
+
+  // ---- παίκτες σε δύο λίγκες ----
+  const X = objs(D.cross);
+  const drawX = (q = "") => {
+    const rows = X.filter((r) => !q || nice(r.player).toLowerCase().includes(q.toLowerCase()) || r.team.toLowerCase() === q.toLowerCase()).slice(0, 60);
+    $("#x-tab").innerHTML = `<table><thead><tr><th>Παίκτης</th><th>Τελ. ομάδα</th><th class="n">Αγώνες EL</th><th class="n">Αγώνες EC</th><th class="n">Λεπτά EL</th><th class="n">Λεπτά EC</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr><td>${esc(nice(r.player))}</td><td>${esc(r.team)} <span class="muted">${r.comp === "E" ? "EL" : "EC"}</span></td><td class="n">${r.g_E}</td><td class="n">${r.g_U}</td><td class="n">${fmt(r.min_E, 0)}</td><td class="n">${fmt(r.min_U, 0)}</td></tr>`).join("")}</tbody></table>`;
+  };
+  drawX();
+  $("#x-q").oninput = (e) => drawX(e.target.value.trim());
+
+  // ---- graph ----
+  const draw = () => {
+    const g = D.sample[gid], N = objs(g.nodes), Ed = objs(g.edges);
+    const W = Math.max(340, Math.min(980, window.innerWidth - 52)), small = W < 600;
+    const home = N.filter((n) => n.home === 1).sort((a, b) => b.min - a.min), away = N.filter((n) => n.home === 0).sort((a, b) => b.min - a.min);
+    const rows = Math.max(home.length, away.length), H = Math.max(320, rows * (small ? 34 : 40) + 40);
+    const pos = {};
+    const place = (list, x0, dir) => list.forEach((n, i) => { const t = (i + 0.5) / list.length; pos[n.pid] = [x0 + dir * Math.sin(Math.PI * t) * W * 0.08, 24 + t * (H - 48)]; });
+    place(home, W * (small ? 0.2 : 0.24), -1); place(away, W * (small ? 0.8 : 0.76), 1);
+    const val = (e) => (edgeMode === "hist" ? e.min_all : e.y_min_shared);
+    const mxT = Math.max(1, ...Ed.filter((e) => e.teammate).map(val)), mxO = Math.max(1, ...Ed.filter((e) => !e.teammate).map(val));
+    const ch = "var(--c1)", ca = "var(--c2)";   // σταθερά χρώματα: ομάδες με ίδιο χρώμα (π.χ. OLY–RED) πρέπει να ξεχωρίζουν
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Graph αγώνα">`;
+    // αντίπαλοι: μόνο τα πιο «βαριά» για να διαβάζεται
+    const opp = Ed.filter((e) => !e.teammate && val(e) > 0).sort((a, b) => val(b) - val(a)).slice(0, 60);
+    for (const e of opp) { const [x1, y1] = pos[e.i] || [], [x2, y2] = pos[e.j] || []; if (x1 == null || x2 == null) continue;
+      const on = selPid && (e.i === selPid || e.j === selPid);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--muted)" stroke-width="${0.5 + 2 * val(e) / mxO}" opacity="${selPid ? (on ? 0.7 : 0.04) : 0.12}"/>`; }
+    for (const e of Ed.filter((e) => e.teammate && val(e) > 0)) { const [x1, y1] = pos[e.i] || [], [x2, y2] = pos[e.j] || []; if (x1 == null || x2 == null) continue;
+      const isH = home.some((n) => n.pid === e.i), cx = isH ? Math.min(x1, x2) - W * 0.1 : Math.max(x1, x2) + W * 0.1;
+      const on = selPid && (e.i === selPid || e.j === selPid);
+      s += `<path d="M${x1} ${y1} Q${cx} ${(y1 + y2) / 2} ${x2} ${y2}" fill="none" stroke="${isH ? ch : ca}" stroke-width="${0.4 + 5 * val(e) / mxT}" opacity="${selPid ? (on ? 0.9 : 0.06) : 0.35}"/>`; }
+    for (const n of N) { const [x, y] = pos[n.pid]; const rr = 6 + 12 * Math.sqrt(Math.max(0, n.min) / 40); const col = n.home ? ch : ca, sel = n.pid === selPid;
+      s += `<g data-pid="${esc(n.pid)}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="${rr}" fill="${col}" stroke="${sel ? "var(--accent)" : "var(--surface)"}" stroke-width="${sel ? 3 : 1.5}" opacity="${n.no_hist ? 0.45 : 0.95}"/>
+        <text x="${n.home ? x - rr - 6 : x + rr + 6}" y="${y + 4}" text-anchor="${n.home ? "end" : "start"}" style="font-size:${small ? 10.5 : 12}px;fill:var(--fg)">${esc(nice(n.player).split(" ").slice(-1)[0])}</text></g>`; }
+    s += `<text x="${W * 0.24}" y="14" text-anchor="middle" style="font-weight:700;fill:var(--fg)">${esc(g.home)} ${g.hs}</text><text x="${W * 0.76}" y="14" text-anchor="middle" style="font-weight:700;fill:var(--fg)">${esc(g.away)} ${g.as}</text>`;
+    $("#g-svg").innerHTML = s + "</svg>";
+    // πίνακας κόμβων
+    const fc = Object.keys(F_LABEL), yc = Object.keys(Y_LABEL);
+    $("#g-tab").innerHTML = `<table><thead><tr><th>Παίκτης</th><th>Ομ.</th>${fc.map((c) => `<th class="n" title="${c}">${F_LABEL[c]}</th>`).join("")}${yc.map((c) => `<th class="n" title="${c}" style="color:var(--c2)">${Y_LABEL[c]}</th>`).join("")}</tr></thead><tbody>
+      ${[...home, ...away].map((n) => `<tr data-pid="${esc(n.pid)}" style="cursor:pointer${n.pid === selPid ? ";background:var(--accent-soft)" : ""}"><td>${esc(nice(n.player))}</td><td>${esc(n.team)}</td>${fc.map((c) => `<td class="n">${fmt(n[c], ["ts", "usg", "starter", "hist_E"].includes(c) ? 2 : 1)}</td>`).join("")}${yc.map((c) => `<td class="n">${fmt(n[c], 0)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    // λεπτομέρειες κόμβου
+    const n = N.find((x) => x.pid === selPid);
+    if (n) {
+      const tm = Ed.filter((e) => e.teammate && (e.i === n.pid || e.j === n.pid)).map((e) => ({ o: e.i === n.pid ? e.j : e.i, v: e.min_all, g: e.y_min_shared })).sort((a, b) => b.v - a.v).slice(0, 5);
+      const name = (pid) => nice(N.find((x) => x.pid === pid)?.player || pid);
+      $("#g-node").innerHTML = `<div class="tile" style="border-left:4px solid ${n.home ? ch : ca}"><div class="eyebrow">${esc(nice(n.player))} · ${esc(n.team)}</div>
+        <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:6px;font-size:13px">${fc.map((c) => `<span><span class="muted">${F_LABEL[c]}</span> <b class="num">${fmt(n[c], 2)}</b></span>`).join("")}</div>
+        <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:6px;font-size:13px">${yc.map((c) => `<span style="color:var(--c2)">${Y_LABEL[c]} <b class="num">${fmt(n[c], 1)}</b></span>`).join("")}</div>
+        <div class="muted" style="margin-top:6px;font-size:13px">Πιο στενοί συμπαίκτες (λεπτά μαζί στο ιστορικό / σε αυτό το ματς): ${tm.map((t) => `${esc(name(t.o))} ${fmt(t.v, 0)}′ / ${fmt(t.g, 0)}′`).join(" · ")}</div></div>`;
+    } else $("#g-node").innerHTML = "";
+  };
+  draw();
+  $("#g-sel").onchange = (e) => { gid = e.target.value; selPid = null; draw(); };
+  $("#e-mode").onchange = (e) => { edgeMode = e.target.value; draw(); };
+  view.addEventListener("click", (e) => { const t = e.target.closest("#g-svg [data-pid], #g-tab [data-pid]"); if (!t) return; selPid = t.dataset.pid === selPid ? null : t.dataset.pid; draw(); });
+  window.addEventListener("resize", () => draw());
+})();
+</script>
+</body>
+</html>

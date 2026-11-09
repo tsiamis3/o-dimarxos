@@ -1,7 +1,7 @@
 # o-dimarxos
 
-Στατιστικά EuroLeague / EuroCup σε GitHub Pages, με επερχόμενα ματς, προσομοίωση αγώνων,
-σύγκριση ομάδων/παικτών, πλήρη βάση με φίλτρα και πρόβλεψη απόδοσης παικτών (Keras).
+Στατιστικά EuroLeague / EuroCup / GBL / NBA σε GitHub Pages, με επερχόμενα ματς, Monte Carlo αγώνων,
+σύγκριση ομάδων/παικτών, αναλύσεις, πλήρη βάση με φίλτρα και (σε εξέλιξη) graph neural network.
 
 ## Ενότητες του site
 
@@ -21,11 +21,11 @@ scripts/
   config.py          ρυθμίσεις (διοργανώσεις, σεζόν, στόχοι μοντέλου)
   fetch_data.py      κατέβασμα από το EuroLeague API (incremental) -> data/raw/
   dataset.py         raw CSV -> καθαρό game log (κοινό για site + μοντέλο)
-  train_model.py     feed-forward δίκτυο Keras -> models/ + site/data/predictions_*.json
-  evaluate.py        αρχείο προβλέψεων, ζωντανή αξιολόγηση, backtest προσομοίωσης -> site/data/eval_*.json
-  game_model.py      νευρωνικό αγώνων Keras (δίπλα στο Monte Carlo) -> site/data/gamenn_*.json
-  master_model.py    ένα νευρωνικό αγώνων για όλες τις λίγκες -> site/data/master.json
+  evaluate.py        βοηθητικά αξιολόγησης + απλό Monte Carlo (baseline σύγκρισης)
   ratings.py         κοινή μηχανή ratings (προσαρμοσμένα στον αντίπαλο, απόσβεση, απουσίες)
+  gnn_data.py        δεδομένα για το graph neural network (graphs ανά αγώνα) -> data/gnn/, site/data/gnn_preview.json
+  stints.py, rapm.py play-by-play -> διαστήματα με σταθερές πεντάδες -> RAPM
+  scrapers/pbp.py    play-by-play EuroLeague/EuroCup
   shots_agg.py       σουτ -> εξάγωνα/ζώνες για τα shot charts -> site/data/shots_*.json
   team_meta.py       «βάση» σημάτων ομάδων (συντομογραφία, χρώματα, μελλοντικά εικόνες) -> site/data/teams_meta.json
   scrapers/shots.py  σουτ με συντεταγμένες (EuroLeague/EuroCup API, NBA από ESPN)
@@ -60,59 +60,20 @@ site/                index.html, style.css, app.js (στατικό, χωρίς b
 ```bash
 pip install -r requirements.txt
 python scripts/fetch_data.py          # ή: python scripts/make_demo_data.py
-python scripts/train_model.py         # --arch ffn_wide --epochs 80 για άλλη αρχιτεκτονική
+python scripts/analytics.py           # σελίδες Ανάλυση / Παίκτες
+python scripts/edge_model.py          # Monte Carlo αγώνων (ratings + απουσίες) και Στοίχημα
+python scripts/gnn_data.py            # δεδομένα GNN (χρειάζεται το play-by-play: scripts/scrapers/pbp.py)
 python scripts/build_site.py
 python -m http.server -d site 8000    # http://localhost:8000
 ```
 
-## Μοντέλο
+## Monte Carlo αγώνων
 
-Για κάθε (παίκτη, αγώνα) τα features βγαίνουν μόνο από προηγούμενους αγώνες: lag-1, κυλιόμενοι μέσοι
-3/5/10, EWM, μέσος σεζόν, πόσα ματς έχει παίξει, ποσοστό βασικού, ξεκούραση, έδρα, και η απόδοση
-ομάδας/αντιπάλου μέχρι εκείνη τη στιγμή (πόντοι που δέχεται, PIR που δέχεται, ρυθμός).
-Στόχοι: PTS, REB, AST, PIR, MIN του επόμενου αγώνα. Χρονικό split (τελευταίο 15% = test) και σύγκριση
-με baselines (μέσος 10 αγώνων, μέσος σεζόν). Νέες αρχιτεκτονικές: πρόσθεσε συνάρτηση στο `ARCHS`
-του `train_model.py`.
-
-## Προσομοίωση αγώνα
-
-Monte Carlo στον browser: αναμενόμενοι πόντοι = ρυθμός × (ORTG ομάδας + DRTG αντιπάλου − μέσος όρος)/100,
-±1.5 πόντοι για έδρα, θόρυβος N(0, 10) ανά ομάδα, παράταση στην ισοπαλία. Τα ratings «τραβιούνται» προς τον
-μέσο όρο στην αρχή της σεζόν (4 εικονικά ματς). Παράμετροι στην κλάση `MatchSim` του `site/app.js`.
-
-## Νευρωνικό αγώνων (δίπλα στο Monte Carlo)
-
-`scripts/game_model.py`, ένα μοντέλο ανά διοργάνωση. Για κάθε ομάδα, μόνο από αγώνες πριν από το ματς:
-ratings επίθεσης/άμυνας και ρυθμός (με το ίδιο «τράβηγμα» προς τον μέσο όρο), φόρμα 5 αγώνων, four factors
-επίθεσης και άμυνας (eFG%, TOV%, OREB%, FT rate), ξεκούραση, back-to-back, απόδοση εντός/εκτός έδρας.
-Έξοδος: πόντοι γηπεδούχου και φιλοξενούμενου ως διμεταβλητή κανονική (μέσοι, σ, συσχέτιση), με Gaussian
-negative log-likelihood. Πιθανότητα νίκης = P(διαφορά > 0). Χρονικό split (τελευταίο 15% = test), ensemble
-3 seeds, και για τα επερχόμενα επανεκπαίδευση σε όλους τους αγώνες.
-
-Σύγκριση με το Monte Carlo στα ίδια ματς (test: walk-forward backtest, ζωντανά: `data/predictions/{C}_games_nn.csv`
-απέναντι στο `{C}_games.csv`): σωστός νικητής, Brier, log loss, βαθμονόμηση, σφάλμα σκορ, κάλυψη 80%.
-Φαίνεται στη σελίδα «Μοντέλα», και στην αρχική κάθε ματς δείχνει και τις δύο πιθανότητες.
-
-```bash
-python scripts/game_model.py --comp E --arch mlp_wide --seeds 5   # αρχιτεκτονικές: GARCHS (linear, mlp_small, mlp_wide)
-```
-
-### Master δίκτυο (όλες οι λίγκες)
-
-`scripts/master_model.py`: ένα δίκτυο για EuroLeague, EuroCup, GBL και NBA (η Α2 γυναικών δεν μπαίνει), ώστε να
-εκπαιδεύεται σε περισσότερους αγώνες. Ίδια features με το δίκτυο λίγκας, αλλά σχετικά με τη λίγκα ως εκείνη την
-ημέρα (ratings/φόρμα = πόντοι ανά 100 κατοχές πάνω από τον μέσο όρο, ρυθμός ως λόγος, four factors ως διαφορά)
-+ one-hot διοργάνωσης. Στόχος: πόντοι / αναμενόμενοι πόντοι λίγκας. Εκπαίδευση σε όλες τις προηγούμενες σεζόν,
-test = τα φετινά ματς κάθε λίγκας, όπου συγκρίνεται με δίκτυο μόνο της λίγκας (ίδιο split) και με το Monte Carlo.
-Μετά ξαναεκπαιδεύεται σε όλα και προβλέπει τα επερχόμενα φετινά ματς. Ζωντανά: `data/predictions/{C}_games_master.csv`.
-
-### Σύγκριση αρχιτεκτονικών
-
-Σε κάθε run εκπαιδεύονται ΟΛΕΣ οι αρχιτεκτονικές του `GARCHS` (`linear`, `mlp_small`, `mlp_wide`):
-στο `master_model.py` ως master και ως δίκτυο μόνο της λίγκας, και μετριούνται μαζί με το Monte Carlo στα ίδια
-φετινά ματς. Στο `game_model.py` μετριούνται στο ίδιο test (τελευταίο 15%). Η σελίδα «Μοντέλα» έχει την ενότητα
-«Σύγκριση όλων των μοντέλων αγώνων» (ταξινομήσιμος πίνακας, βαθμονόμηση ανά μοντέλο, Brier ανά λίγκα).
-Η `--arch` ορίζει ποια αρχιτεκτονική δίνει τις προβλέψεις της αρχικής. Με `--compare` περιορίζεται η σύγκριση.
+Το μοναδικό μοντέλο αγώνων. Το `edge_model.py` υπολογίζει κάθε μέρα, walk-forward, για κάθε επερχόμενο ματς
+αναμενόμενη διαφορά και σύνολο από ratings επίθεσης/άμυνας/ρυθμού προσαρμοσμένα στον αντίπαλο (ridge με χρονική
+απόσβεση, `ratings.py`), με έδρα μετρημένη ανά λίγκα και διόρθωση για απουσίες, και τις αβεβαιότητές τους (σ).
+Ο browser (`MatchSim` στο `site/app.js`) προσομοιώνει: διαφορά ~ N(μ, σ_διαφ.), σύνολο ~ N(T, σ_συν.), ισοπαλία ->
+παράταση. Το απλό Monte Carlo (μόνο τρέχουσα σεζόν, σταθερή έδρα/σ, `evaluate.py`) μένει ως baseline σύγκρισης.
 
 ## Ανάλυση (`scripts/analytics.py`)
 
@@ -162,3 +123,10 @@ Walk-forward πρόβλεψη από:
   - Πιθανότητα νίκης από τα προσαρμοσμένα ratings ομάδων.
 - **Σήματα ομάδων**: δικά μας SVG από το `teams_meta.json` (χρώματα, συντομογραφία).
   - Για πραγματικές εικόνες στο μέλλον: συμπλήρωσε το πεδίο `img` στο `scripts/team_meta.py`.
+
+## Αλλαγή (Νοέμβριος 2026): ένα μοντέλο αγώνων
+
+Τα νευρωνικά αγώνων (λίγκας, master), η σύγκριση αρχιτεκτονικών και το μοντέλο απόδοσης παικτών αφαιρέθηκαν.
+Το μοναδικό μοντέλο αγώνων είναι το **Monte Carlo** πάνω στο μοντέλο ratings + απουσίες (`edge_model.py`):
+αναμενόμενη διαφορά/σύνολο και σ ανά λίγκα -> προσομοίωση στον browser (`MatchSim` στο `site/app.js`).
+Σε εξέλιξη: graph neural network (κάθε αγώνας = graph παικτών)· δεδομένα στη σελίδα `gnn.html`.
