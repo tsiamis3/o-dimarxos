@@ -1134,7 +1134,7 @@ const Views = {
           <div class="legend"><span><i class="c1bg" style="opacity:.5"></i>Αγώνας</span><span><i class="c1bg"></i>Μ.Ο. 5 αγώνων</span>${hasModel ? `<span><i class="c2bg"></i>Πρόβλεψη μοντέλου</span>` : ""}</div>
           <div class="chart">${Charts.line({ series, xLabel: (x) => (x <= lg.length ? "Αγ." + (lg[x - 1].round ?? x) : "Επόμ."), yZero: k !== "PM" })}</div></section>
         <section><h3>Game log</h3><div id="plog"></div></section>
-        <p class="muted" style="margin:0;font-size:13px">* Θέση: εκτίμηση από το προφίλ (ασίστ, τρίποντα, ριμπάουντ, κοψίματα), όχι επίσημη. Βαθμολογίες 0–99: εκατοστημόρια στη λίγκα, 40 = χαμηλότερος, 99 = κορυφαίος.</p>`;
+        <p class="muted" style="margin:0;font-size:13px">* Θέση: εκτίμηση από το προφίλ (ασίστ, τρίποντα, ριμπάουντ, κοψίματα), όχι επίσημη. Βαθμολογίες τύπου 2K: 72 = μέσος παίκτης με ρόλο, κάθε 8 μονάδες = μία τυπική απόκλιση μέσα στη λίγκα (90+ ≈ κορυφαίο 1–2%), με διόρθωση για το επίπεδο της λίγκας ώστε να συγκρίνονται μεταξύ τους: EuroCup −7, GBL −3 σε σχέση με την EuroLeague (εκτίμηση από παίκτες που άλλαξαν λίγκα), NBA +5 (υπόθεση).</p>`;
       bindStat();
       new SortTable($("#plog", pv), {
         cols: [{ key: "round", label: "Αγ.", n: true }, { key: "date", label: "Ημ/νία", fmt: fmtDate },

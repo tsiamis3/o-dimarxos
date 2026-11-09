@@ -69,13 +69,22 @@ def bh_qvalues(z) -> np.ndarray:
 
 
 RATING_KEYS = ["ovr", "r_sco", "r_sho", "r_pla", "r_reb", "r_def", "r_imp"]
+# Κλίμακα τύπου 2K: 72 = μέσος παίκτης με ρόλο, κάθε τυπική απόκλιση = 8 μονάδες (90+ ≈ κορυφαίο 1–2%).
+RATING_MID, RATING_SD = 72.0, 8.0
+# Επίπεδο λίγκας σε τυπικές αποκλίσεις, σε σχέση με την EuroLeague. Εκτίμηση από παίκτες που άλλαξαν λίγκα:
+#   EuroCup -> EuroLeague (σεζόν s -> s+1): -6.3 PIR/100 (n=36)· EuroLeague -> EuroCup: +8.9 (n=20)
+#   (ίδια λίγκα χρονιά με χρονιά: ~0) => EuroCup ≈ -0.9 sd
+#   ίδιοι παίκτες την ίδια σεζόν σε GBL και EuroLeague: +2.8 PIR/100 στη GBL (n=31) => GBL ≈ -0.35 sd
+#   NBA: δεν υπάρχουν αρκετές μεταγραφές στα δεδομένα -> ΥΠΟΘΕΣΗ +0.6 sd (ισχυρότερη από την EuroLeague),
+#   ρυθμισμένη ώστε ~5% των παικτών με ρόλο να είναι 90+ (όπως στην κλίμακα του 2K)
+LEAGUE_OFFSET = {"E": 0.0, "U": -0.9, "GBL": -0.35, "NBA": 0.6}
 SHRINK_MIN = 250.0                 # εικονικά λεπτά μέσου όρου (μικρό δείγμα -> προς τον μέσο)
 POS = ["PG", "SG", "SF", "PF", "C"]
 
 
-def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None) -> pd.DataFrame:
-    """Βαθμολογίες 0–99 τύπου 2K: εκατοστημόρια μέσα στη λίγκα (παίκτες με αρκετά λεπτά), πάνω σε
-    μεγέθη συρρικνωμένα προς τον μέσο όρο για μικρά δείγματα. 40 = χαμηλότερος, 99 = κορυφαίος."""
+def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str = "E") -> pd.DataFrame:
+    """Βαθμολογίες τύπου 2K (40–99): τυπικές αποκλίσεις μέσα στη λίγκα (παίκτες με αρκετά λεπτά), πάνω σε
+    μεγέθη συρρικνωμένα για μικρά δείγματα, + διόρθωση επιπέδου λίγκας. rating = 72 + 8·(z + offset)."""
     p = p.copy()
     maxmin = p.MIN.max()
     qual = p.MIN >= max(100.0, 0.15 * maxmin)
@@ -104,7 +113,7 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None) -> pd.Dat
     S = {c: shr(c) for c in ["pts100", "usg", "ts_adj", "fg3_adj", "ft_adj", "ast_pct", "tov_pct", "orb_pct", "drb_pct",
                              "stl100", "blk100", "pf100", "pir100", "fg3_rate"]}
     shooter = (S["fg3_rate"] > 0.2).astype(float)
-    comp = {
+    cmp_ = {
         "r_sco": z(S["pts100"]) + 0.5 * z(S["usg"]),
         "r_sho": z(S["ts_adj"]) + 0.5 * shooter * z(S["fg3_adj"]) + 0.3 * z(S["ft_adj"]),
         "r_pla": z(S["ast_pct"]) - 0.4 * z(S["tov_pct"]),
@@ -112,14 +121,14 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None) -> pd.Dat
         "r_def": z(S["stl100"]) + z(S["blk100"]) + 0.5 * z(S["drb_pct"]) - 0.3 * z(S["pf100"]),
     }
     has_oo = p.onoff.notna().mean() > 0.5
-    comp["r_imp"] = z(p.onoff.fillna(0)) + 0.5 * z(S["pir100"]) if has_oo else z(S["pir100"])
-    zs = {k: z(v) for k, v in comp.items()}
-    comp["ovr"] = (0.24 * zs["r_sco"] + 0.12 * zs["r_sho"] + 0.12 * zs["r_pla"] + 0.1 * zs["r_reb"]
+    cmp_["r_imp"] = z(p.onoff.fillna(0)) + 0.5 * z(S["pir100"]) if has_oo else z(S["pir100"])
+    zs = {k: z(v) for k, v in cmp_.items()}
+    cmp_["ovr"] = (0.24 * zs["r_sco"] + 0.12 * zs["r_sho"] + 0.12 * zs["r_pla"] + 0.1 * zs["r_reb"]
                    + 0.1 * zs["r_def"] + 0.17 * zs["r_imp"] + 0.15 * z(shr("mpg")))
-    for k, v in comp.items():
-        ref = np.sort(v[qual].to_numpy())
-        pct = np.searchsorted(ref, v.to_numpy(), side="right") / len(ref)
-        p[k] = np.round(40 + 59 * np.clip(pct, 0, 1)).astype(int)
+    off = LEAGUE_OFFSET.get(comp, 0.0)
+    for k, v in cmp_.items():
+        zz = (v - v[qual].mean()) / (v[qual].std() + 1e-9)
+        p[k] = np.round(np.clip(RATING_MID + RATING_SD * (zz + off), 40, 99)).astype(int)
     # θέση (εκτίμηση από το προφίλ): πάσα και τρίποντα -> guard, επιθ. ριμπάουντ και κοψίματα -> ψηλός
     # (τα ριμπάουντ ζυγίζουν περισσότερο από τις ασίστ, ώστε οι ψηλοί-πασέρ τύπου Jokić να μένουν ψηλοί)
     guard = 0.6 * z(S["ast_pct"]) + 0.7 * z(S["fg3_rate"]) - z(S["orb_pct"]) - 0.8 * z(S["blk100"]) - 0.9 * z(S["drb_pct"])
@@ -306,7 +315,7 @@ class SeasonAnalytics:
         p["gp5"] = rec.groupby("pid").size().reindex(p.index).fillna(0)
         p["min5"] = rec.groupby("pid").MIN.mean().reindex(p.index)
         p = p.reset_index()
-        p = player_ratings(p, self.prior)
+        p = player_ratings(p, self.prior, self.data.comp)
 
         # σημαντικές μεταβολές: τελευταίοι 5 αγώνες vs υπόλοιπη σεζόν (PIR ανά 100 κατοχές)
         lg = lg.sort_values("date")
