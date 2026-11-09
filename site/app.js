@@ -107,6 +107,8 @@ class Season {
     this.season = raw.season;
     this.teams = raw.teams;
     this.playerNames = raw.players;
+    const bc = raw.bio_cols || [];
+    this.bio = Object.fromEntries(Object.entries(raw.bio || {}).map(([pid, v]) => [pid, Object.fromEntries(bc.map((c, i) => [c, v[i]]))]));
     this.games = rowsToObjs(raw.games);
     this.upcoming = rowsToObjs(raw.upcoming);
     const gmap = new Map(this.games.map((g) => [g.gameCode, g]));
@@ -467,6 +469,11 @@ const Gfx = {
       `<circle cx="${cx}" cy="${cy}" r="${r * 0.78}" fill="${m.c1}" opacity=".14"/>` +
       `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" style="fill:var(--fg);font:700 ${(r * 0.72).toFixed(1)}px var(--font-display)">${esc(this.initials(name))}</text>`;
   },
+  /** Φωτογραφία παίκτη (αν υπάρχει) πάνω από το avatar με τα αρχικά, που μένει αν η εικόνα δεν φορτώσει. */
+  photo(src, name, code, size = 56) {
+    if (!src) return this.avatar(name, code, size);
+    return `<span class="photo" style="width:${size}px;height:${size}px">${this.avatar(name, code, size)}<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></span>`;
+  },
   avatar(name, code, size = 56) {
     return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="flex:none">${this.avatarG(name, code, size / 2, size / 2, size / 2 - 3)}</svg>`;
   },
@@ -652,7 +659,7 @@ const App = {
   roles: new Map(),       // "E" -> ρόλοι παικτών (roles_E.json) | null
   teamMeta: null,         // σήματα ομάδων (teams_meta.json)
   ui: {
-    team: null, team2: "", players: [], pstat: "PTS",
+    team: null, team2: "", players: [], pstat: "PTS", pteam: "",
     an2: { team: "", minPct: null },
     court: { a: "", b: "", lineups: {}, sel: 0 },
     ex: { level: "players", all: false, mode: "avg", team: "", minGP: 1, minMIN: 0, q: "", cs: "PTS", co: ">=", cv: "",
@@ -765,7 +772,7 @@ const App = {
       await this.loadSeason(this.comp, this.season);
       if (["home", "predictions", "game", "edge"].includes(v)) await this.loadOpt(this.edge, this.comp, "edge", "edge");
       if (["analysis", "teams", "players", "court", "game"].includes(v)) await this.loadOpt(this.analytics, this.comp, "analytics", "analytics");
-      if (v === "players") await this.loadOpt(this.roles, this.comp, "roles", "roles");
+      if (v === "players" || v === "teams") await this.loadOpt(this.roles, this.comp, "roles", "roles");
       if (v === "game") {
         const prev = this.compInfo().seasons.filter((x) => x < this.latestSeason()).slice(-1);
         for (const s of prev) await this.loadSeason(this.comp, s).catch(() => null); }
@@ -791,6 +798,35 @@ document.addEventListener("click", (e) => {
 /* =========================================================================
  * 8. Σελίδες
  * ========================================================================= */
+/* ---------------- Κοινά: ρόστερ, πλέγμα ομάδων (πρόσβαση με ένα κλικ σε ομάδες και παίκτες) ---------------- */
+const POS_GR = { Guard: "Guard", Forward: "Forward", Center: "Center" };
+/** Πληροφορίες παίκτη για κάρτες: αναλυτικά (OVR), ρόλος, βιομετρικά. */
+function playerMeta(S, pid) {
+  const A = App.analytics.get(App.comp)?.seasons?.[String(S.season)];
+  if (A?.players && !A._idx) A._idx = new Map(rowsToObjs(A.players).map((r) => [r.pid, r]));
+  const RJ = App.roles.get(App.comp);
+  if (RJ && !RJ._idx) RJ._idx = {};
+  const key = String(S.season);
+  if (RJ && !RJ._idx[key]) RJ._idx[key] = new Map((RJ.players?.[key] || []).map((row) => { const o = Object.fromEntries(RJ.cols.map((c, i) => [c, row[i]])); return [o.pid, o]; }));
+  const o = RJ?._idx[key]?.get(pid);
+  const role = o ? o.probs.map((q, k) => [k, q]).sort((a, b) => b[1] - a[1])[0] : null;
+  return { r: A?._idx?.get(pid), o, role: role ? { name: RJ.roles[role[0]].name, p: role[1] } : null, b: S.bio?.[pid] || {} };
+}
+function teamGrid(S, active, attr = "data-team") {
+  const codes = [...new Set(S.playerAgg.map((p) => p.team))].sort((a, b) => S.teamName(a).localeCompare(S.teamName(b)));
+  return `<div class="team-grid">${codes.map((c) => `<button ${attr}="${esc(c)}" class="${c === active ? "on" : ""}" title="${esc(S.teamName(c))}">${Gfx.badge(c, 22)}<span>${esc(S.teamName(c))}</span></button>`).join("")}</div>`;
+}
+function rosterCards(S, code, attr = "data-pid") {
+  const ps = S.playerAgg.filter((p) => p.team === code).sort((a, b) => b.MIN_AVG - a.MIN_AVG);
+  return `<div class="roster">${ps.map((p) => {
+    const m = playerMeta(S, p.pid), b = m.b;
+    const sub = [b.number ? "#" + b.number : "", b.pos || m.r?.pos || "", b.height ? b.height + " cm" : "", `${fmt(p.MIN_AVG, 0)}′ · ${fmt(p.PTS, 1)} π.`].filter(Boolean).join(" · ");
+    return `<button class="rcard" ${attr}="${esc(p.pid)}">${Gfx.photo(b.photo, p.player, p.team, 44)}
+      <span style="min-width:0"><span class="nm">${esc(p.player)}</span><br><span class="sub">${esc(sub)}</span>${m.role ? `<br><span class="sub" style="color:var(--fg)">${esc(m.role.name)}</span>` : ""}</span>
+      ${isNum(m.r?.ovr) ? `<span class="ovr-s" title="OVR">${m.r.ovr}</span>` : ""}</button>`;
+  }).join("")}</div>`;
+}
+
 const Views = {
   /* ---------------- Αρχική: επερχόμενα + προσομοίωση + αποτελέσματα + βαθμολογία ---------------- */
   home(el, S) {
@@ -882,6 +918,7 @@ const Views = {
       [...list].sort((a, b) => a.name.localeCompare(b.name)).map((t) => `<option value="${t.code}" ${t.code === sel ? "selected" : ""}>${esc(t.name)}</option>`).join("");
 
     el.innerHTML = `
+      ${S.hasBox ? `<section>${teamGrid(S, App.ui.team)}</section>` : ""}
       <section><div class="filters">
         <label>Ομάδα<select id="t1">${opts(App.ui.team)}</select></label>
         <label>Σύγκριση με<select id="t2">${opts(App.ui.team2, true)}</select></label>
@@ -912,7 +949,8 @@ const Views = {
             { k: "k1", dots: true, pts: gs.map((g, i) => [i + 1, g.PTS]) },
             { k: "k2", dots: true, pts: gs.map((g, i) => [i + 1, g.o.PTS]) }],
             xLabel: (x) => "Αγ." + (gs[x - 1]?.round ?? x) })}</div></section>
-        ${S.hasBox ? `<section><h3>Ρόστερ (μέσοι όροι)</h3><div id="roster"></div></section>` : ""}
+        ${S.hasBox ? `<section><h3>Ρόστερ</h3><p class="muted" style="margin:0 0 8px;font-size:13px">Πάτα έναν παίκτη για την κάρτα του.</p>${rosterCards(S, A.code)}</section>
+          <section><h3>Ρόστερ (μέσοι όροι)</h3><div id="roster"></div></section>` : ""}
         <section><h3>Αγώνες</h3><div id="glog"></div></section>`;
       if (S.hasBox) new SortTable($("#roster", tv), {
         cols: [{ key: "player", label: "Παίκτης", html: (r) => App.playerLink(r.pid, r.player) },
@@ -973,31 +1011,59 @@ const Views = {
     const rAxes = () => RJ.axes.map((a) => SHORT[a] || a);
     const topRoles = (o) => o.probs.map((q, k) => [k, q]).sort((a, b) => b[1] - a[1]);
     const roleNote = `<p class="muted" style="margin:0;font-size:12px">Το σχήμα δείχνει <b>πώς</b> παίζει, όχι πόσο καλός είναι: οι 6 άξονες (από SVD 14 μεγεθών στυλ και σώματος) μετρούν την απόκλιση από τον μέσο όρο της λίγκας του (διακεκομμένος κύκλος), και όλο το σχήμα κανονικοποιείται σε μήκος 1, ώστε δύο παίκτες με ίδιο στυλ να πέφτουν ο ένας πάνω στον άλλο. Ρόλοι: soft clustering σε ${RJ?.n_fit ?? ""} παίκτες-σεζόν EuroLeague, EuroCup και NBA (≥${RJ?.min_fit ?? 300}′).</p>`;
-    const roleBlock = (p) => {
+    const similarBlock = (p) => {
       const o = RO.get(p.pid);
-      if (!RJ) return `<div class="empty">Δεν υπάρχουν ρόλοι για αυτή τη λίγκα (χρειάζονται ζώνες σουτ).</div>`;
-      if (!o) return `<div class="empty">Δεν υπάρχει προφίλ ρόλου: χρειάζονται τουλάχιστον ${RJ.min_show}′ στη σεζόν.</div>`;
-      const tr = topRoles(o), [k1, p1] = tr[0], [k2, p2] = tr[1];
-      const series = [{ k: "k1", vals: rv(o.shape) }, { k: "k3", dash: true, vals: rv(RJ.roles[k1].center) }];
-      if (p2 >= 0.15) series.push({ k: "k4", dash: true, vals: rv(RJ.roles[k2].center) });
-      const inten = o.intensity >= 0.6 ? `Ξεκάθαρο προφίλ: πιο έντονο από το ${Math.round(100 * o.intensity)}% των παικτών.`
-        : o.intensity < 0.25 ? "Ισορροπημένο προφίλ: κοντά στον μέσο όρο σε όλα, οπότε το σχήμα (και ο ρόλος) είναι λιγότερο σίγουρο." : "";
+      if (!o) return "";
       const sim = o.similar.map(([pid, name, comp, season, c]) => {
         const nm = comp === App.comp && season === S.season ? App.playerLink(pid, niceName(name)) : esc(niceName(name));
         return `<li>${nm} <span class="muted">${LG[comp] || comp} ${seasonLbl(season)}</span> <b class="num" title="ομοιότητα σχήματος (100 = ίδιο στυλ)">${Math.round(100 * c)}</b></li>`; }).join("");
-      return `<div class="grid2">
-        <div><div class="chart">${Charts.radar({ axes: rAxes(), series, mid: true, W: 480 })}</div>
-          <div class="legend"><span><i class="c1bg"></i>${esc(p.player)}</span><span><i style="background:var(--c3)"></i>${esc(RJ.roles[k1].name)} (κέντρο)</span>${p2 >= 0.15 ? `<span><i style="background:var(--c4)"></i>${esc(RJ.roles[k2].name)} (κέντρο)</span>` : ""}</div></div>
-        <div>
-          <div class="eyebrow">Ρόλος</div>
-          <div style="font-size:20px;font-weight:700;margin:2px 0 4px">${esc(RJ.roles[k1].name)}${p2 >= 0.25 ? ` <span class="muted" style="font-weight:400;font-size:15px">+ ${esc(RJ.roles[k2].name)}</span>` : ""}</div>
-          <p class="muted" style="margin:0 0 8px;font-size:13px">${esc(RJ.roles[k1].desc)}</p>
-          <div class="rbars">${tr.filter(([, q]) => q >= 0.03).map(([k, q]) => `<div class="rbar"><span>${esc(RJ.roles[k].name)}</span><b>${Math.round(100 * q)}%</b><span class="pbar"><i style="width:${Math.max(2, 100 * q)}%"></i></span></div>`).join("")}</div>
-          <p class="muted" style="margin:8px 0 0;font-size:13px">${o.fit ? "" : `Μικρό δείγμα (κάτω από ${RJ.min_fit}′): εκτίμηση. `}${inten}</p>
-          <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;font-size:12px">${RJ.axes.map((a, i) => `<span class="chip" title="ποσοστημόριο στη λίγκα">${esc(a)} <b class="num">${Math.round(100 * o.pct[i])}</b></span>`).join("")}</div>
-          <h3 style="margin-top:14px">Παίζουν με παρόμοιο τρόπο</h3>
-          <ul class="insights" style="margin:0">${sim}</ul>
-        </div></div>${roleNote}`;
+      return `<h3 style="margin-top:14px">Παίζουν με παρόμοιο τρόπο</h3><ul class="insights" style="margin:0">${sim}</ul>`;
+    };
+    // ---- κάρτα παίκτη (τύπου manager): στοιχεία, radar ρόλου, χαρακτηριστικά όπως είναι στη βάση ----
+    const poolBox = pa.filter((x) => x.GP >= Math.max(3, 0.3 * Math.max(...pa.map((y) => y.GP))) && x.MIN_AVG >= 10);
+    const poolAn = [...R.values()].filter((x) => x.qual);
+    const tier = (pool, key, v, low) => {
+      const vals = pool.map((x) => x[key]).filter(isNum);
+      if (!vals.length || !isNum(v)) return "";
+      const q = vals.filter((x) => (low ? x > v : x < v)).length / vals.length;
+      return q >= 0.95 ? "top" : q >= 0.8 ? "hi" : q <= 0.15 ? "lo" : "";
+    };
+    const ATTRS = [
+      ["Επίθεση", [["Πόντοι", "PTS"], ["2π %", "FG2P", "pct"], ["3π %", "FG3P", "pct"], ["Βολές %", "FTP", "pct"], ["True shooting %", "TS", "pct"], ["Τρίποντα εύστοχα", "FG3M"], ["Βολές (προσπάθειες)", "FTA"]]],
+      ["Δημιουργία", [["Ασίστ", "AST"], ["Λάθη", "TOV", null, true], ["Usage %", "usg", "pct", false, "an"], ["Ασίστ % (AST%)", "ast_pct", "pct", false, "an"]]],
+      ["Άμυνα και ριμπάουντ", [["Ριμπάουντ", "REB"], ["Επιθετικά ριμπάουντ", "OREB"], ["Κλεψίματα", "STL"], ["Κοψίματα", "BLK"]]],
+      ["Γενικά", [["Λεπτά", "MIN_AVG"], ["Αγώνες (βασικός)", "GP"], ["PIR", "PIR"], ["+/−", "PM"]]],
+    ];
+    const fmCard = (p) => {
+      const m = playerMeta(S, p.pid), r = m.r, o = m.o, b = m.b;
+      const age = b.birth ? Math.floor((Date.now() - Date.parse(b.birth)) / 3.15576e10) : null;
+      const facts = [["Θέση", b.pos ? POS_GR[b.pos] || b.pos : r?.pos ? r.pos + "*" : null], ["Ηλικία", age], ["Ύψος", b.height ? b.height + " cm" : null],
+        ["Βάρος", b.weight ? b.weight + " kg" : null], ["Εθνικότητα", b.country], ["Αριθμός", b.number ? "#" + b.number : null], ["Ομάδα", App.teamLink(p.team, S)]]
+        .filter(([, v]) => v != null && v !== "").map(([k, v]) => `<dt>${k}</dt><dd>${k === "Ομάδα" ? v : esc(v)}</dd>`).join("");
+      const tr = o ? topRoles(o) : [];
+      const roles = o ? `<div class="eyebrow" style="margin-top:12px">Ρόλος</div>
+        <div style="font-weight:700;margin:2px 0 6px">${esc(RJ.roles[tr[0][0]].name)}</div>
+        <div class="rbars">${tr.filter(([, q]) => q >= 0.08).slice(0, 3).map(([k, q]) => `<div class="rbar"><span>${esc(RJ.roles[k].name)}</span><b>${Math.round(100 * q)}%</b><span class="pbar"><i style="width:${Math.max(2, 100 * q)}%"></i></span></div>`).join("")}</div>
+        ${o.fit ? "" : `<p class="muted" style="margin:6px 0 0;font-size:12px">Μικρό δείγμα (κάτω από ${RJ.min_fit}′): εκτίμηση.</p>`}` : "";
+      const radar = o ? `<div class="chart">${Charts.radar({ axes: rAxes(), series: [{ k: "k1", vals: rv(o.shape) }, { k: "k3", dash: true, vals: rv(RJ.roles[tr[0][0]].center) }], mid: true, W: 480 })}</div>
+          <div class="legend"><span><i class="c1bg"></i>${esc(p.player)}</span><span><i style="background:var(--c3)"></i>${esc(RJ.roles[tr[0][0]].name)} (κέντρο ρόλου)</span></div>`
+        : `<div class="empty">${RJ ? `Δεν υπάρχει σχήμα ρόλου: χρειάζονται τουλάχιστον ${RJ.min_show}′.` : "Δεν υπάρχουν ρόλοι για αυτή τη λίγκα (χρειάζονται ζώνες σουτ)."}</div>`;
+      const val = ([label, key, kind, low, src]) => {
+        const v = key === "GP" ? `${p.GP} (${p.GS})` : src === "an" ? r?.[key] : p[key];
+        const txt = key === "GP" ? v : !isNum(v) ? "–" : kind === "pct" ? (100 * v).toFixed(1) + "%" : key === "PM" ? (v > 0 ? "+" : "") + fmt(v, 1) : fmt(v, 1);
+        const cls = key === "GP" ? "" : tier(src === "an" ? poolAn : poolBox, key, v, low);
+        return `<div class="fm-attr"><span>${label}</span><b class="${cls}">${txt}</b></div>`;
+      };
+      return `<div class="fm" style="border-left:4px solid var(--c1)">
+        <div><div class="fm-head">${Gfx.photo(b.photo, p.player, p.team, 76)}
+            <div style="min-width:0"><div class="fm-name">${esc(p.player)}</div>
+              <div class="row muted" style="gap:6px;font-size:13px">${Gfx.badge(p.team, 18)} ${esc(S.teamName(p.team))}</div></div>
+            ${r && isNum(r.ovr) ? `<div class="ovr ${ovrCls(r.ovr)}" style="margin-left:auto" title="Συνολική βαθμολογία: επιρροή στη διαφορά πόντων${isNum(r.pc_ovr) ? " · " + topPct(r.pc_ovr) + " της λίγκας" : ""}"><b>${r.ovr}</b><span>OVR</span></div>` : ""}</div>
+          <dl class="fm-facts">${facts}</dl>${roles}</div>
+        <div>${radar}</div>
+        <div class="fm-attrs">${ATTRS.map(([g, list]) => `<div class="fm-group"><h4>${g}</h4>${list.map(val).join("")}</div>`).join("")}
+          <p class="muted" style="grid-column:1/-1;margin:2px 0 0;font-size:12px">Μέσοι όροι ανά αγώνα στη σεζόν, όπως είναι στη βάση. <span style="color:var(--good)">Πράσινο</span>: στο κορυφαίο 20% της λίγκας (υπογραμμισμένο: 5%), <span style="color:var(--bad)">κόκκινο</span>: στο χαμηλότερο 15%.</p></div>
+      </div>${o ? roleNote : ""}`;
     };
     const roleCompare = (sel) => {
       const os = sel.map((p) => RO.get(p.pid));
@@ -1105,6 +1171,9 @@ const Views = {
             <input type="search" id="psearch" placeholder="π.χ. όνομα ή ομάδα" autocomplete="off"></label>
         </div>
         <div class="chips" id="presults"></div>
+        <details id="pbrowse" ${App.ui.pteam ? "open" : ""}><summary style="cursor:pointer;font-size:14px">Ομάδες και ρόστερ</summary>
+          <div style="margin-top:8px">${teamGrid(S, App.ui.pteam, "data-pteam")}</div>
+          ${App.ui.pteam ? `<div style="margin-top:10px">${rosterCards(S, App.ui.pteam, "data-add")}</div>` : ""}</details>
         <div class="row">${sel.map((p, i) => `<span class="sel-chip" style="border-color:var(--c${i + 1})">${esc(p.player)} <span class="muted">${esc(p.team)}</span><button data-rm="${p.pid}" aria-label="Αφαίρεση ${esc(p.player)}">×</button></span>`).join("")}
           ${sel.length === 1 ? `<span class="muted" style="font-size:13px">Πρόσθεσε δεύτερο παίκτη για σύγκριση</span>` : ""}</div>
       </section>
@@ -1123,6 +1192,13 @@ const Views = {
       const id = b.dataset.add;
       if (!App.ui.players.includes(id)) App.ui.players = App.ui.players.length >= 2 ? [App.ui.players[0], id] : [...App.ui.players, id];
       Views.players(el, S);
+    };
+    $("#pbrowse", el).onclick = (e) => {
+      const t = e.target.closest("[data-pteam]");
+      if (t) { e.preventDefault(); App.ui.pteam = App.ui.pteam === t.dataset.pteam ? "" : t.dataset.pteam; Views.players(el, S); return; }
+      const b = e.target.closest("[data-add]"); if (!b) return;
+      App.ui.players = [b.dataset.add];                       // ένα κλικ στο ρόστερ = η κάρτα του παίκτη
+      Views.players(el, S); window.scrollTo({ top: $("#pv", el).offsetTop - 60, behavior: "smooth" });
     };
     el.querySelector(".row").onclick = (e) => {
       const b = e.target.closest("[data-rm]"); if (!b) return;
@@ -1143,12 +1219,11 @@ const Views = {
         { k: "k1", pts: lg.map((r, i) => [i + 1, mean(lg.slice(Math.max(0, i - 4), i + 1).map((x) => x[k]))]) },
       ];
       pv.innerHTML = `
+        <section>${fmCard(p)}</section>
         <div class="grid2">
           <section>${card(p, 0)}</section>
-          <section><h3>Τι ξεχωρίζει</h3>${insights(p)}
-</section>
+          <section><h3>Τι ξεχωρίζει</h3>${insights(p)}${similarBlock(p)}</section>
         </div>
-        <section><h3>Ρόλος και στυλ</h3>${roleBlock(p)}</section>
         <div class="grid2">
           <section><h3>Προφίλ στη λίγκα</h3>${R.get(p.pid) ? metricTable([p]) : `<div class="empty">Δεν υπάρχουν αναλυτικά.</div>`}</section>
           <section><h3>Από πού σουτάρει</h3>${shotBlock(p, shotW)}
