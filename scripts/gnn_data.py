@@ -15,6 +15,7 @@ EuroLeague + EuroCup μαζί: το ιστορικό κάθε παίκτη εί�
 Ακμές (ζεύγη παικτών στον ίδιο αγώνα):
   - συμπαίκτες: λεπτά μαζί στο παρκέ σε προηγούμενους αγώνες (σεζόν και συνολικά), αγώνες μαζί
   - αντίπαλοι: λεπτά απέναντι σε προηγούμενους αγώνες
+  - και για κάθε ζεύγος, ανεξάρτητα από τη σημερινή σχέση: λεπτά μαζί / λεπτά απέναντι σε όλο το ιστορικό
 Στόχοι:
   - ανά κόμβο (A): πόντοι, ριμπάουντ, ασίστ, PIR, λεπτά του αγώνα
   - ανά κόμβο (B): plus-minus στο παρκέ ανά 100 κατοχές (+ κατοχές, ως βάρος)
@@ -69,6 +70,10 @@ EDGE_FEATURES = {
     "min_season": "Λεπτά μαζί (συμπαίκτες) ή απέναντι (αντίπαλοι) στο παρκέ, ίδια σεζόν, σε προηγούμενους αγώνες",
     "min_all": "Το ίδιο, σε όλο το ιστορικό",
     "games_all": "Αγώνες όπου βρέθηκαν μαζί στο παρκέ (ή απέναντι)",
+    "min_with_all": "Λεπτά ΜΑΖΙ στο παρκέ σε όλο το ιστορικό, ανεξάρτητα από τη σημερινή σχέση (πρώην συμπαίκτες)",
+    "min_vs_all": "Λεπτά ΑΠΕΝΑΝΤΙ στο παρκέ σε όλο το ιστορικό, ανεξάρτητα από τη σημερινή σχέση",
+    "games_with": "Αγώνες μαζί στο παρκέ (όλο το ιστορικό)",
+    "games_vs": "Αγώνες απέναντι στο παρκέ (όλο το ιστορικό)",
 }
 
 
@@ -240,6 +245,22 @@ def edge_features(N, pairs, games):
     E["min_all"] = E.min_all.fillna(0)
     E["games_all"] = E.games_all.fillna(0)
     E["y_min_shared"] = E.y_min_shared.fillna(0)
+    # ιστορικό ανεξάρτητα από τη σημερινή σχέση: λεπτά ΜΑΖΙ και λεπτά ΑΠΕΝΑΝΤΙ σε όλους τους προηγούμενους αγώνες
+    # (π.χ. πρώην συμπαίκτες που σήμερα είναι αντίπαλοι κρατούν τα κοινά τους λεπτά)
+    h = pairs[["date", "pid", "pid_j", "teammate", "secs"]].copy()
+    h["w"], h["v"] = h.secs * h.teammate / 60, h.secs * (1 - h.teammate) / 60
+    h["gw"], h["gv"] = h.teammate, 1 - h.teammate
+    h = h.groupby(["date", "pid", "pid_j"], as_index=False)[["w", "v", "gw", "gv"]].sum().sort_values("date")
+    gk2 = h.groupby(["pid", "pid_j"], sort=False)
+    for c, o in (("w", "min_with_all"), ("v", "min_vs_all"), ("gw", "games_with"), ("gv", "games_vs")):
+        h[o] = gk2[c].cumsum()
+    q = E[["gid", "pid", "pid_j"]].copy()
+    q["date"] = q.gid.map(gd)
+    q = q.reset_index().sort_values("date")
+    m = pd.merge_asof(q, h[["date", "pid", "pid_j", "min_with_all", "min_vs_all", "games_with", "games_vs"]],
+                      on="date", by=["pid", "pid_j"], allow_exact_matches=False).set_index("index")
+    for c in ("min_with_all", "min_vs_all", "games_with", "games_vs"):
+        E[c] = m[c].reindex(E.index).fillna(0).values
     return E
 
 
@@ -290,14 +311,16 @@ def preview(N, E, G, logs):
                              "rows": [[r.pid, r.player, r.team, int(r.home), *[_r(getattr(r, "f_" + f), 3) for f in show_f],
                                        _r(r.y_pts, 0), _r(r.y_reb, 0), _r(r.y_ast, 0), _r(r.y_pir, 0), _r(r.y_min, 1), _r(r.y_pm100, 1), _r(r.y_on_poss, 1)]
                                       for r in nd.itertuples()]},
-                   "edges": {"cols": ["i", "j", "teammate", "min_season", "min_all", "games_all", "y_min_shared"],
-                             "rows": [[r.pid, r.pid_j, int(r.teammate), _r(r.min_season, 1), _r(r.min_all, 1), int(r.games_all), _r(r.y_min_shared, 1)]
+                   "edges": {"cols": ["i", "j", "teammate", "min_season", "min_all", "games_all", "min_with_all", "min_vs_all", "y_min_shared"],
+                             "rows": [[r.pid, r.pid_j, int(r.teammate), _r(r.min_season, 1), _r(r.min_all, 1), int(r.games_all),
+                                       _r(r.min_with_all, 1), _r(r.min_vs_all, 1), _r(r.y_min_shared, 1)]
                                       for r in ed.itertuples()]}}
     splits = G.groupby(["split", "comp"]).size().unstack(fill_value=0)
     out = {
         "graphs": int(len(G)), "nodes": int(len(N)), "edges": int(len(E)),
         "avg_nodes": _r(G.n_nodes.mean(), 1), "avg_edges": _r(len(E) / max(1, len(G)), 1),
-        "teammate_edges": int(E.teammate.sum()), "no_hist_rate": _r(N.f_no_hist.mean()),
+        "teammate_edges": int(E.teammate.sum()),
+        "ex_teammates": int(((E.teammate == 0) & (E.min_with_all > 0)).sum()), "no_hist_rate": _r(N.f_no_hist.mean()),
         "stint_coverage": _r(N.y_pm100.notna().mean()),
         "splits": {s: {c: int(v) for c, v in row.items()} for s, row in splits.iterrows()},
         "seasons": {f"{c}{s}": int(n) for (c, s), n in G.groupby(["comp", "season"]).size().items()},
