@@ -86,6 +86,42 @@ class SiteBuilder:
                         out[str(row[i])] = out[row[j]]
         return out
 
+    def collect_career(self, data: CompetitionData) -> None:
+        """Σεζόν κάθε παίκτη σε αυτή τη διοργάνωση, με τον ενιαίο κωδικό (uid) από τα analytics."""
+        lg = data.logs
+        if lg.empty:
+            return
+        uid = {}
+        f = SITE_DATA / f"analytics_{data.comp}.json"
+        if f.exists():
+            A = json.loads(f.read_text())
+            for v in A.get("seasons", {}).values():
+                P = v.get("players")
+                if P and "uid" in P["cols"]:
+                    i, j = P["cols"].index("pid"), P["cols"].index("uid")
+                    uid.update({str(r[i]): str(r[j]) for r in P["rows"]})
+        g = (lg.sort_values("date").groupby(["season", "pid"])
+               .agg(team=("team", "last"), GP=("gameCode", "size"), MIN=("MIN", "sum"), PTS=("PTS", "sum"),
+                    REB=("REB", "sum"), AST=("AST", "sum"), PIR=("PIR", "sum")).reset_index())
+        names = data.team_names()
+        careers = getattr(self, "careers", {})
+        aliases = getattr(self, "career_uid", {})
+        for r in g.itertuples():
+            u = uid.get(str(r.pid), str(r.pid))
+            careers.setdefault(u, []).append([data.comp, int(r.season), str(r.pid), names.get(r.team, r.team), int(r.GP),
+                                              *[round(float(getattr(r, k)) / r.GP, 1) for k in ("MIN", "PTS", "REB", "AST", "PIR")]])
+            if u != str(r.pid):
+                aliases.setdefault(data.comp, {})[str(r.pid)] = u
+        self.careers, self.career_uid = careers, aliases
+
+    def write_careers(self) -> None:
+        """site/data/careers.json: όλες οι σεζόν κάθε παίκτη σε όλες τις λίγκες (μόνο όσοι έχουν πάνω από μία)."""
+        car = {u: sorted(v, key=lambda x: (x[1], x[0])) for u, v in getattr(self, "careers", {}).items() if len(v) > 1}
+        out = {"cols": ["comp", "season", "pid", "team", "GP", "MIN", "PTS", "REB", "AST", "PIR"],
+               "uid": getattr(self, "career_uid", {}), "careers": car}
+        (SITE_DATA / "careers.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+        print(f"  careers.json: {len(car)} players with more than one season/league")
+
     def build_season(self, data: CompetitionData, season: int) -> None:
         logs = data.logs[data.logs.season == season]
         games = data.games[(data.games.season == season)]
@@ -138,6 +174,7 @@ class SiteBuilder:
             seasons = [s for s in data.seasons if (data.logs.season == s).any() or s == max(data.seasons)]
             for s in seasons:
                 self.build_season(data, s)
+            self.collect_career(data)
             self.manifest["competitions"].append({
                 "code": comp, "name": name, "seasons": seasons, "hasBox": data.has_box,
                 "section": next(k for k, (_, cs) in SECTIONS.items() if comp in cs),
@@ -150,6 +187,8 @@ class SiteBuilder:
                                      for k, (n, cs) in SECTIONS.items() if any(c in have for c in cs)]
         import team_meta                                         # σήματα ομάδων (συντομογραφία + χρώματα)
         team_meta.build()
+        self.write_careers()
+        self.manifest["careers"] = (SITE_DATA / "careers.json").exists()
         (SITE_DATA / "manifest.json").write_text(json.dumps(self.manifest, indent=1))
         print("  manifest.json written")
 
