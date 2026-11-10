@@ -257,3 +257,6 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401910043,5,2026-11-23,20:30,HOU,Houston Rockets,LAC,LA Clippers,,,False
 401910044,5,2026-11-23,22:00,LAL,Los Angeles Lakers,UTAH,Utah Jazz,,,False
 401910045,5,2026-11-23,22:00,SAC,Sacramento Kings,SA,San Antonio Spurs,,,False
+401909314,6,2026-11-24,19:00,ORL,Orlando Magic,DET,Detroit Pistons,,,False
+401909315,6,2026-11-24,20:00,WSH,Washington Wizards,BOS,Boston Celtics,,,False
+401909316,6,2026-11-24,22:00,DEN,Denver Nuggets,DAL,Dallas Mavericks,,,False
