@@ -1,20 +1,26 @@
 """
-Ρόλοι παικτών (unsupervised): ΣΧΗΜΑ του παίκτη, όχι πόσο καλός είναι.
+Ρόλοι παικτών (unsupervised): ΠΩΣ παίζει ο παίκτης, όχι πόσο καλός είναι.
 
-1. Χαρακτηριστικά στυλ + σώματος ανά παίκτη-σεζόν (EuroLeague, EuroCup, NBA):
-   usage, AST%, OREB%, DREB%, κλεψίματα/100, κοψίματα/100, FT rate (βολές/σουτ),
-   σουτ σε επίπεδα (τρίποντα/σουτ, καλάθι και μέση/δίποντα, γωνία/τρίποντα), ύψος, βάρος.
-   Χωρίς ποιότητα (TS%, RAPM, OVR) και χωρίς λάθη/φάουλ.
-2. z-score μέσα σε κάθε λίγκα-σεζόν (ο ρόλος κρίνεται σε σχέση με τη λίγκα του), βάρος = λεπτά.
-3. SVD -> 6 διανύσματα (~83% της διακύμανσης), varimax περιστροφή -> 6 ερμηνεύσιμοι άξονες.
-4. Σχήμα = οι 6 αποκλίσεις από τον μέσο όρο της λίγκας (με πρόσημο), κανονικοποιημένες σε μήκος 1.
-   Στο radar: μεσαίος κύκλος = μέσος όρος, έξω = πάνω από τον μέσο, μέσα = κάτω.
-   (Με ποσοστημόρια 0–1 ο «παντού ψηλά» σταρ και ο «παντού μέτριος» έβγαιναν ίδιο σχήμα: 0.5 = μέσος όρος, όχι «μισό».)
-   Ομοιότητα δύο παικτών = συνημίτονο της γωνίας ανάμεσα στα σχήματά τους.
-5. Soft clustering στη σφαίρα (spherical k-means, K = 7 ρόλοι, βάρος = λεπτά) και πιθανότητα ρόλου
-   p ∝ exp(κ · συνημίτονο) (κατανομή von Mises–Fisher). K από silhouette + σταθερότητα σε υποδείγματα.
+Δύο ξεχωριστές δουλειές, με διαφορετικά εργαλεία:
 
-    python scripts/roles.py            # -> site/data/roles_{E,U,NBA}.json
+A. Clustering (ρόλοι, ομοιότητα) — να είναι σταθερό και «δίκαιο» ανάμεσα στα μεγέθη
+   1. 13 μεγέθη ανά παίκτη-σεζόν (EuroLeague, EuroCup, NBA): usage, AST%, OREB%, DREB%, κλεψίματα/100, κοψίματα/100,
+      ύψος, βάρος, και τα σουτ ως ΡΥΘΜΟΙ ανά 36′: τρίποντα, σουτ στο καλάθι, άλλα δίποντα (ρακέτα + μέση), βολές,
+      συν το μερίδιο των τριπόντων από τη γωνία. Χωρίς ποιότητα (TS%, RAPM, OVR), λάθη, φάουλ.
+   2. z-score μέσα σε κάθε λίγκα-σεζόν (ο ρόλος κρίνεται σε σχέση με τη λίγκα του), βάρος = λεπτά.
+   3. SVD -> 6 ανεξάρτητες κατευθύνσεις (~84% της διακύμανσης), «λευκασμένες» (ίδιο βάρος η καθεμιά): έτσι τα
+      μεγέθη που λένε το ίδιο (ύψος, βάρος, ριμπάουντ) μετρούν μία φορά και όχι τέσσερις.
+   4. Σχήμα = το διάνυσμα των 6 κατευθύνσεων σε μήκος 1. Ομοιότητα = συνημίτονο. Ρόλοι = spherical k-means (K = 8)
+      με πιθανότητες von Mises–Fisher, p ∝ exp(κ · συνημίτονο).
+   5. Όνομα ρόλου: από το «προφίλ» του, τον μέσο όρο των μελών του στα 13 μεγέθη (σε τυπικές αποκλίσεις).
+
+B. Radar και ετικέτες — να διαβάζεται από άνθρωπο
+   8 σταθεροί, ονομασμένοι άξονες, ο καθένας από συγκεκριμένα μεγέθη (RADAR). Τιμή = ποσοστημόριο στη λίγκα.
+   Ετικέτα (π.χ. «Σουτέρ») όταν ο παίκτης είναι στο κορυφαίο 20% ενός άξονα: ένας παίκτης μπορεί να έχει πολλές.
+
+Και τα δύο με το προφίλ καριέρας (σταθμισμένος μέσος όλων των σεζόν του ως τότε).
+
+    python scripts/roles.py            # -> site/data/roles_{E,U,NBA,GBL}.json
 """
 import json
 import math
@@ -31,40 +37,52 @@ HIST_COMPS = ["GBL"]               # μόνο ως ιστορία (χωρίς ζ
 MIN_MIN = 300.0                    # λεπτά για να μπει παίκτης-σεζόν στην εκπαίδευση (άξονες, ρόλοι)
 MIN_SHOW = 120.0                   # φετινά λεπτά για σχήμα όταν δεν υπάρχει ιστορία (με ιστορία: πάντα)
 MIN_LOAD = 1.0                     # κάθε σεζόν με λεπτά μπαίνει στο προφίλ καριέρας (λίγα λεπτά = λίγο βάρος)
-# Λάθη και φάουλ έξω: μετρούν περισσότερο ποιότητα/θόρυβο παρά στυλ, και έβγαζαν έναν ασαφή «ρόλο».
-# Σουτ σε επίπεδα (όχι 5 μερίδια που αθροίζουν σε 1, όπου «λίγα τρίποντα» φούσκωνε αυτόματα κάθε ζώνη μέσα):
-#   sh3 = τρίποντα / όλα τα σουτ · rim2, mid2 = καλάθι, μέση / δίποντα (ρακέτα = το υπόλοιπο) · cor3 = γωνία / τρίποντα
-STYLE = ["usg", "ast_pct", "orb_pct", "drb_pct", "stl100", "blk100", "ftr", "sh3", "rim2", "mid2", "cor3"]
-NESTED = ["sh3", "rim2", "mid2", "cor3"]
+# Σουτ ως ρυθμοί ανά 36′ (όχι μερίδια): ο «σουτέρ με την μπάλα» (πολλά τρίποντα ΚΑΙ πολλές βολές) φαίνεται και στα δύο.
+# Με μερίδια που αθροίζουν σε 1, τα τρίποντα και οι βολές/σουτ μέσα αλληλοαναιρούνταν.
+STYLE = ["usg", "ast_pct", "orb_pct", "drb_pct", "stl100", "blk100", "r3", "rrim", "rmid", "rfta", "cor3"]
 BODY = ["height", "weight"]
 FEATS = STYLE + BODY
-N_AXES = 6                         # SVD: 6 διανύσματα εξηγούν ~83% της διακύμανσης
-AXIS_NAMES = ["Σώμα/ριμπάουντ", "Κοψίματα", "Βολές/διείσδυση", "Δημιουργία", "Κλεψίματα", "Μέση απόσταση"]
-ZONES = ["rim", "paint", "mid", "c3", "a3"]
-K = 7                              # ρόλοι: καλύτερο silhouette (0.32) με σταθερότητα 0.97 στα K = 5..9
-# ποια χαρακτηριστικά «ορίζουν» κάθε άξονα (για σταθερή σειρά/όνομα αξόνων από run σε run)
-AXIS_FEATS = [["drb_pct", "height", "weight", "orb_pct"], ["blk100"], ["ftr"], ["usg", "ast_pct"],
-              ["stl100"], ["mid2"]]
-ROLES = [   # όνομα, περιγραφή, κέντρο αναφοράς (Νοέμβριος 2026, σουτ σε επίπεδα) για σταθερά ονόματα από run σε run
-    ("Δημιουργός με την μπάλα", "Έχει την μπάλα στα χέρια: πολλές ασίστ και μεγάλο usage, μικρόσωμος.",
-     [-0.633, -0.353, 0.274, 0.631, 0.024, -0.036]),
-    ("Σουτέρ τριπόντων", "Spot-up: τα περισσότερα σουτ του είναι τρίποντα, λίγες βολές, λίγη δημιουργία.",
-     [-0.051, -0.188, -0.708, -0.086, -0.493, -0.458]),
-    ("Ψηλός μακριά από το καλάθι", "Ψηλός με ριμπάουντ που παίζει έξω και μοιράζει: stretch / point-forward, λίγα κοψίματα.",
-     [0.794, -0.487, -0.049, 0.323, 0.031, 0.156]),
-    ("3&D αμυντικός", "Κλεψίματα και τρίποντα, λίγη μπάλα στα χέρια.",
-     [-0.285, 0.131, -0.338, -0.066, 0.859, -0.212]),
-    ("Σκόρερ μέσης απόστασης", "Δημιουργεί δικό του σουτ: από τα δίποντά του, πολλά από μέση απόσταση.",
-     [-0.25, 0.217, -0.207, -0.094, -0.22, 0.889]),
-    ("Φόργουορντ ρόλου", "Χαμηλό usage, λίγες ασίστ, τρίποντα κυρίως από τη γωνία· κινείται χωρίς μπάλα και βρίσκει βολές.",
-     [0.071, -0.367, 0.311, -0.858, -0.056, -0.153]),
-    ("Ψηλός του καλαθιού", "Τελειώνει στο καλάθι: κοψίματα, επιθετικά ριμπάουντ, βολές, καθόλου τρίποντα.",
-     [0.421, 0.754, 0.335, 0.174, -0.159, -0.295]),
+EXTRA = ["rmid2"]                  # μόνο για το radar: σουτ μέσης απόστασης ανά 36′ (χωρίς τη ρακέτα)
+FEAT_GR = {"usg": "usage", "ast_pct": "ασίστ", "orb_pct": "επιθ. ριμπάουντ", "drb_pct": "αμυντ. ριμπάουντ",
+           "stl100": "κλεψίματα", "blk100": "κοψίματα", "r3": "τρίποντα", "rrim": "σουτ στο καλάθι",
+           "rmid": "άλλα δίποντα", "rfta": "βολές", "cor3": "τρίποντα από γωνία", "height": "ύψος", "weight": "βάρος"}
+N_AXES = 6                         # SVD για το clustering: 6 κατευθύνσεις, ~84% της διακύμανσης
+K = 8                              # ρόλοι (K = 7..8: silhouette ~0.31, σταθερότητα ~0.90)
+# Radar: (όνομα, σύντομο, ετικέτα για το κορυφαίο 20%, μεγέθη που τον ορίζουν)
+RADAR = [
+    ("Μέγεθος/ριμπάουντ", "Μέγεθος/ριμπ.", "Σωματώδης", ["height", "weight", "drb_pct", "orb_pct"]),
+    ("Κοψίματα", "Κοψίματα", "Rim protector", ["blk100"]),
+    ("Καλάθι/βολές", "Διείσδυση", "Διεισδυτής", ["rrim", "rfta"]),
+    ("Μέση απόσταση", "Μέση απόστ.", "Mid-range", ["rmid2"]),
+    ("Τρίποντα", "Τρίποντα", "Σουτέρ", ["r3"]),
+    ("Σκοράρισμα (usage)", "Usage", "Σκόρερ", ["usg"]),
+    ("Δημιουργία", "Δημιουργία", "Δημιουργός", ["ast_pct"]),
+    ("Κλεψίματα", "Κλεψίματα", "Ενεργά χέρια", ["stl100"]),
+]
+TAG_MIN = 0.80
+ROLES = [   # όνομα, περιγραφή, προφίλ αναφοράς (z στα 13 μεγέθη, Νοέμβριος 2026) για σταθερά ονόματα από run σε run
+    ("Σουτέρ spot-up", "Τρίποντα χωρίς μπάλα: λίγο usage, λίγες ασίστ, σχεδόν καθόλου σουτ στο καλάθι και βολές.",
+     {'usg': -0.6, 'ast_pct': -0.64, 'orb_pct': -0.45, 'drb_pct': -0.5, 'stl100': -0.72, 'blk100': -0.45, 'r3': 0.6, 'rrim': -0.92, 'rmid': -0.54, 'rfta': -0.79, 'cor3': 0.09, 'height': -0.08, 'weight': -0.14}),
+    ("Σκόρερ γκαρντ", "Σκοράρει με την μπάλα, κυρίως από τα τρία: μεγάλο usage, πολλά τρίποντα και βολές, μικρόσωμος.",
+     {'usg': 1.08, 'ast_pct': 0.42, 'orb_pct': -0.71, 'drb_pct': -0.7, 'stl100': -0.0, 'blk100': -0.35, 'r3': 1.02, 'rrim': 0.04, 'rmid': 0.39, 'rfta': 0.67, 'cor3': -0.47, 'height': -0.84, 'weight': -0.85}),
+    ("Οργανωτής", "Πασέρ: πολλές ασίστ με μέτριο usage, μικρόσωμος.",
+     {'usg': -0.07, 'ast_pct': 1.15, 'orb_pct': -0.65, 'drb_pct': -0.7, 'stl100': 0.05, 'blk100': -0.6, 'r3': -0.02, 'rrim': -0.43, 'rmid': 0.24, 'rfta': -0.27, 'cor3': -0.44, 'height': -1.06, 'weight': -0.83}),
+    ("Φόργουορντ ρόλου", "Χαμηλό usage, λίγες ασίστ· τα λίγα τρίποντά του κυρίως από τη γωνία.",
+     {'usg': -0.57, 'ast_pct': -0.68, 'orb_pct': 0.29, 'drb_pct': 0.02, 'stl100': 0.0, 'blk100': -0.0, 'r3': -0.48, 'rrim': 0.13, 'rmid': -0.4, 'rfta': -0.23, 'cor3': 1.52, 'height': 0.24, 'weight': 0.16}),
+    ("Ψηλός με τρίποντο", "Stretch big: σώμα και αμυντικά ριμπάουντ, αλλά σουτάρει και τρίποντα.",
+     {'usg': 0.39, 'ast_pct': -0.16, 'orb_pct': 0.05, 'drb_pct': 0.94, 'stl100': -0.07, 'blk100': 0.13, 'r3': 0.56, 'rrim': -0.07, 'rmid': 0.1, 'rfta': 0.07, 'cor3': -0.24, 'height': 0.76, 'weight': 0.81}),
+    ("Σκόρερ με την μπάλα", "Πρωταγωνιστής: μεγάλο usage, ασίστ, πολλά δίποντα εκτός καλαθιού και πολλές βολές.",
+     {'usg': 1.21, 'ast_pct': 0.93, 'orb_pct': -0.12, 'drb_pct': 0.37, 'stl100': -0.24, 'blk100': -0.17, 'r3': -0.3, 'rrim': 0.58, 'rmid': 1.55, 'rfta': 1.27, 'cor3': -0.67, 'height': 0.27, 'weight': 0.46}),
+    ("Αμυντικός περιφέρειας", "Κλεψίματα, λίγη μπάλα στα χέρια, λίγα σουτ μέσα.",
+     {'usg': -0.37, 'ast_pct': 0.22, 'orb_pct': -0.22, 'drb_pct': -0.21, 'stl100': 1.65, 'blk100': -0.2, 'r3': 0.11, 'rrim': -0.3, 'rmid': -0.47, 'rfta': -0.51, 'cor3': 0.14, 'height': -0.53, 'weight': -0.61}),
+    ("Ψηλός του καλαθιού", "Τελειώνει στο καλάθι: επιθετικά ριμπάουντ, κοψίματα, καθόλου τρίποντα.",
+     {'usg': -0.45, 'ast_pct': -0.7, 'orb_pct': 1.68, 'drb_pct': 1.01, 'stl100': -0.42, 'blk100': 1.61, 'r3': -1.38, 'rrim': 1.27, 'rmid': -0.37, 'rfta': 0.32, 'cor3': -0.45, 'height': 1.2, 'weight': 1.01}),
 ]
 N_SIMILAR = 5
 # Προφίλ καριέρας (όπως στα ratings): το σχήμα βγαίνει από τον σταθμισμένο μέσο όλων των σεζόν του παίκτη
 # (z ανά λίγκα-σεζόν, άρα συγκρίσιμα ανάμεσα σε λίγκες), βάρος = λεπτά, × HIST_SCALE·HIST_DECAY^(σεζόν πίσω) για το παρελθόν.
 HIST_DECAY, HIST_SCALE = 0.7, 1.5
+ZONES = ["rim", "paint", "mid", "c3", "a3"]
 SEED = 7
 
 
@@ -77,32 +95,31 @@ def load(min_min: float = MIN_MIN) -> pd.DataFrame:
             continue
         A = json.loads(f.read_text())
         logs = CompetitionData(c).logs
-        logs = logs.assign(FGA=logs.FG2A + logs.FG3A)
         for s, v in A["seasons"].items():
             P = v.get("players")
             if not P:
                 continue
             t = pd.DataFrame(P["rows"], columns=P["cols"])
             t["comp"], t["season"] = c, int(s)
-            g = logs[logs.season == int(s)].groupby("pid")[["FTA", "FGA"]].sum()
-            t["ftr"] = t.pid.map(g.FTA / g.FGA.replace(0, np.nan))
+            g = logs[logs.season == int(s)].groupby("pid")[["FTA", "FG3A"]].sum()
+            per36 = 36.0 / t.MIN.replace(0, np.nan)
+            t["r3"] = t.pid.map(g.FG3A) * per36                        # από τα box scores: και στην ελληνική λίγκα
+            t["rfta"] = t.pid.map(g.FTA) * per36
             f = SITE_DATA / f"shots_{c}{s}.json"
             if f.exists():
                 Z = json.loads(f.read_text())["pzones"]
                 att = pd.DataFrame({z: t.pid.map(lambda p, i=i: (Z.get(p) or [[np.nan, 0]] * 5)[i][0]) for i, z in enumerate(ZONES)})
-                tot = att.sum(axis=1)
-                for z in ZONES:
-                    t["sh_" + z] = att[z] / tot.replace(0, np.nan)
-                    t["za_" + z] = att[z]                              # προσπάθειες
-                two, three = att.rim + att.paint + att.mid, att.c3 + att.a3
-                t["sh3"] = three / tot.replace(0, np.nan)
-                t["rim2"] = att.rim / two.replace(0, np.nan)
-                t["mid2"] = att.mid / two.replace(0, np.nan)
+                t["rrim"] = att.rim * per36
+                t["rmid"] = (att.paint + att.mid) * per36
+                t["rmid2"] = att.mid * per36
+                three = att.c3 + att.a3
                 t["cor3"] = att.c3 / three.replace(0, np.nan)
-                for f_ in NESTED:                                      # π.χ. κανένα τρίποντο: γωνία = διάμεσος της λίγκας
-                    t[f_] = t[f_].where(tot.isna() | (tot == 0) | t[f_].notna(), t[f_].median())
+                t["cor3"] = t.cor3.where(att.sum(axis=1).isna() | t.cor3.notna(), t.cor3.median())   # χωρίς τρίποντα: διάμεσος
             frames.append(t)
     P = pd.concat(frames, ignore_index=True)
+    for c in ["rrim", "rmid", "rmid2", "cor3"]:
+        if c not in P:
+            P[c] = np.nan
     # βιομετρικά
     bios = [pd.read_csv(f) for f in sorted(RAW_DIR.glob("[EU]20*_bio.csv"))]
     if (RAW_DIR / "NBA_bio.csv").exists():
@@ -134,14 +151,16 @@ def load_all() -> pd.DataFrame:
     return load(MIN_LOAD)
 
 
-def zscores(P: pd.DataFrame) -> pd.DataFrame:
+def zscores(P: pd.DataFrame, cols=None) -> pd.DataFrame:
     """z ανά λίγκα-σεζόν (βάρος λεπτά). Μέσος/διασπορά από όσους έχουν ≥ MIN_SHOW (ώστε τα μικρά δείγματα να μη
     μετακινούν την κλίμακα), εφαρμογή σε όλους. Κενά μένουν κενά."""
+    cols = cols or FEATS
+
     def z(df):
         ref = df[df.MIN >= MIN_SHOW]
         ref = ref if len(ref) >= 20 else df
         out = {}
-        for c in FEATS:
+        for c in cols:
             v = df[c].to_numpy(float)
             rv, rw = ref[c].to_numpy(float), ref.MIN.to_numpy(float)
             ok = ~np.isnan(rv)
@@ -155,40 +174,29 @@ def zscores(P: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([z(g) for _, g in P.groupby(["comp", "season"])]).loc[P.index]
 
 
-def varimax(L, iters=100, tol=1e-6):
-    """Varimax περιστροφή (στήλες = άξονες)."""
-    p, k = L.shape
-    R = np.eye(k)
-    d = 0
-    for _ in range(iters):
-        Lr = L @ R
-        u, s, vt = np.linalg.svd(L.T @ (Lr ** 3 - Lr @ np.diag(np.sum(Lr ** 2, axis=0)) / p))
-        R = u @ vt
-        d_old, d = d, np.sum(s)
-        if d_old != 0 and d / d_old < 1 + tol:
-            break
-    return L @ R, R
-
-
-def axes(X: np.ndarray, w: np.ndarray):
-    """SVD -> N_AXES -> varimax, σε σταθερή σειρά/φορά (AXIS_NAMES). Επιστρέφει (scores, loadings, ev, transform)."""
+def svd_space(X: np.ndarray, w: np.ndarray):
+    """SVD -> N_AXES κατευθύνσεις, λευκασμένες (διασπορά 1 η καθεμιά). Επιστρέφει (scores, loadings, ev, transform).
+    Η λεύκανση δίνει ίσο βάρος σε κάθε ανεξάρτητο παράγοντα: χωρίς αυτήν, το «σώμα» (ύψος, βάρος, 2 ριμπάουντ,
+    συσχέτιση 0.6–0.8) θα μετρούσε σαν τέσσερα μεγέθη και θα καθόριζε μόνο του τους ρόλους."""
     Xw = X * np.sqrt(w / w.mean())[:, None]
-    U, S, Vt = np.linalg.svd(Xw, full_matrices=False)
+    _, S, Vt = np.linalg.svd(Xw, full_matrices=False)
     ev = S ** 2 / np.sum(S ** 2)
     scale = S[:N_AXES] / math.sqrt(len(X))
-    L = Vt[:N_AXES].T * scale                                     # loadings
-    Lr, R = varimax(L)
-    # αντιστοίχιση των περιστραμμένων αξόνων στους ονομασμένους (AXIS_FEATS), με θετική φορά
-    fi = {f: i for i, f in enumerate(FEATS)}
-    M = np.array([[abs(sum(Lr[fi[f], j] for f in fs if f in fi)) for j in range(N_AXES)] for fs in AXIS_FEATS])
-    rows, cols = linear_sum_assignment(-M)
-    order = cols[np.argsort(rows)]
-    sign = np.array([np.sign(sum(Lr[fi[f], j] for f in fs if f in fi)) or 1.0 for fs, j in zip(AXIS_FEATS, order)])
-    Rf = R[:, order] * sign
 
     def transform(Xn):
-        return (Xn @ Vt[:N_AXES].T / scale) @ Rf
-    return transform(X), Lr[:, order] * sign, ev, transform
+        return Xn @ Vt[:N_AXES].T / scale
+    return transform(X), Vt[:N_AXES].T * scale, ev, transform
+
+
+def radar_raw(Xr: np.ndarray, cols: list[str]) -> np.ndarray:
+    """Τιμή κάθε άξονα του radar = μέσος όρος των z των μεγεθών του (τα κενά δεν μετρούν)."""
+    ix = {c: i for i, c in enumerate(cols)}
+    out = []
+    for _, _, _, fs in RADAR:
+        V = Xr[:, [ix[f] for f in fs]]
+        ok = ~np.isnan(V)
+        out.append(np.where(ok.any(axis=1), np.where(ok, V, 0).sum(axis=1) / np.maximum(ok.sum(axis=1), 1), 0.0))
+    return np.column_stack(out)
 
 
 def blend_history(P: pd.DataFrame, X: np.ndarray):
@@ -217,13 +225,13 @@ def blend_history(P: pd.DataFrame, X: np.ndarray):
 
 
 def to_shape(scores: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Αποκλίσεις από τον μέσο όρο (με πρόσημο) -> μήκος 1. Επιστρέφει (σχήμα, ένταση προφίλ = αρχικό μήκος)."""
+    """Διάνυσμα -> μήκος 1. Επιστρέφει (σχήμα, ένταση προφίλ = αρχικό μήκος)."""
     n = np.linalg.norm(scores, axis=1)
     return scores / np.maximum(n, 1e-9)[:, None], n
 
 
 def percentiles(scores: np.ndarray, ref: np.ndarray) -> np.ndarray:
-    """Ποσοστημόριο κάθε άξονα ως προς τους παίκτες με αρκετά λεπτά (για εμφάνιση)."""
+    """Ποσοστημόριο κάθε στήλης ως προς τους παίκτες με αρκετά λεπτά."""
     return np.column_stack([np.searchsorted(np.sort(ref[:, j]), scores[:, j], side="right") / len(ref)
                             for j in range(scores.shape[1])])
 
@@ -262,11 +270,15 @@ def role_probs(shape: np.ndarray, C: np.ndarray, kappa: float) -> np.ndarray:
     return p / p.sum(axis=1, keepdims=True)
 
 
-def name_roles(C: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Σειρά των κέντρων ώστε το i να αντιστοιχεί στο ROLES[i] (μέγιστη ομοιότητα με τα κέντρα αναφοράς)."""
-    ref = np.array([r[2] for r in ROLES])
-    ref = ref / np.linalg.norm(ref, axis=1, keepdims=True)
-    M = C @ ref.T
+def name_roles(prof: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Σειρά των ρόλων ώστε ο i να αντιστοιχεί στο ROLES[i] (ομοιότητα προφίλ στα 13 μεγέθη με τα προφίλ αναφοράς).
+    Χωρίς ROLES (ή με λιγότερους): η σειρά μένει όπως βγήκε."""
+    if len(ROLES) != len(prof):
+        return np.arange(len(prof)), np.full(len(prof), np.nan)
+    ref = np.array([[r[2][f] for f in FEATS] for r in ROLES])
+    a = prof / np.linalg.norm(prof, axis=1, keepdims=True)
+    b = ref / np.linalg.norm(ref, axis=1, keepdims=True)
+    M = a @ b.T
     r, c = linear_sum_assignment(-M)
     order = np.empty(len(ref), dtype=int)
     order[c] = r
@@ -279,25 +291,35 @@ def _r(v, d=3):
 
 def main():
     P = load_all()
-    Z = zscores(P)
-    X = Z[FEATS].to_numpy()
+    cols = FEATS + EXTRA
+    Zall = zscores(P, cols)
+    Xall = Zall[cols].to_numpy()
+    X = Xall[:, :len(FEATS)]
     fit = ((P.MIN >= MIN_MIN) & P.comp.isin(COMPS)).to_numpy() & ~np.isnan(X).any(axis=1)
     w = P.MIN.to_numpy()
-    sc_fit, L, ev, tf = axes(X[fit], w[fit])          # άξονες και ρόλοι: από «καθαρές» σεζόν (≥ MIN_MIN)
-    Xb, cur_share, prior_min = blend_history(P, X)       # το σχήμα κάθε παίκτη-σεζόν: με την ιστορία του
+    # A. clustering: χώρος SVD από «καθαρές» σεζόν (≥ MIN_MIN), εφαρμογή στο προφίλ καριέρας κάθε παίκτη-σεζόν
+    sc_fit, L, ev, tf = svd_space(X[fit], w[fit])
+    Xb_all, cur_share, prior_min = blend_history(P, Xall)
+    Xb = Xb_all[:, :len(FEATS)]
     sc = tf(Xb)
     shape, inten = to_shape(sc)
-    pct = percentiles(sc, sc_fit)
     C, lab = spherical_kmeans(shape[fit], K, w[fit])
     kappa = vmf_kappa(shape[fit], lab, K)
-    order, match = name_roles(C)
-    C = C[order]
+    Pr0 = role_probs(shape, C, kappa)
+    lab_fit = np.argmax(Pr0[fit], axis=1)
+    Xf, wf = X[fit], w[fit]
+    prof = np.array([np.average(Xf[lab_fit == k], axis=0, weights=wf[lab_fit == k]) if (lab_fit == k).any()
+                     else np.zeros(len(FEATS)) for k in range(K)])
+    order, match = name_roles(prof)
+    C, prof = C[order], prof[order]
     Pr = role_probs(shape, C, kappa)
-    # για το γράφημα (χωρίς κανονικοποίηση): κέντρο κάθε ρόλου στο τυπικό επίπεδο των παικτών του, σε ποσοστημόρια
     lab_fit = np.argmax(Pr[fit], axis=1)
-    inten_fit = inten[fit]
-    center_pct = [percentiles((C[k] * float(np.median(inten_fit[lab_fit == k])))[None, :], sc_fit)[0]
-                  if (lab_fit == k).any() else np.full(N_AXES, 0.5) for k in range(K)]
+    # B. radar: σταθεροί άξονες, ποσοστημόρια ως προς τις «καθαρές» σεζόν
+    rad_fit = radar_raw(Xall[fit], cols)
+    rad = radar_raw(Xb_all, cols)
+    pct = percentiles(rad, rad_fit)
+    center_pct = [percentiles(np.average(rad_fit[lab_fit == k], axis=0, weights=wf[lab_fit == k])[None, :], rad_fit)[0]
+                  if (lab_fit == k).any() else np.full(len(RADAR), 0.5) for k in range(K)]
     inten_pct = np.searchsorted(np.sort(inten[fit]), inten, side="right") / fit.sum()
     # πιο όμοιοι (συνημίτονο σχημάτων), ανάμεσα σε όσους έχουν αρκετά λεπτά, άλλος παίκτης
     Sf, idx_fit, uid = shape[fit], np.flatnonzero(fit), P.uid.astype(str).to_numpy()
@@ -320,21 +342,25 @@ def main():
             r.pid, [_r(v) for v in shape[i]], [_r(v, 2) for v in pct[i]], [_r(v, 2) for v in Pr[i]], int(fit[i]),
             _r(inten_pct[i], 2), _r(cur_share[i], 2), _r(prior_min[i], 0),
             [[P.pid.iloc[g], P.player.iloc[g], P.comp.iloc[g], int(P.season.iloc[g]), _r(s_)] for g, s_ in best]])
+    names = ROLES if len(ROLES) == K else [(f"Ρόλος {k + 1}", "", None) for k in range(K)]
     out = {
-        "axes": AXIS_NAMES, "n_fit": int(fit.sum()), "min_fit": MIN_MIN, "min_show": MIN_SHOW,
-        "explained": _r(float(ev[:N_AXES].sum())), "kappa": _r(kappa, 2),
-        "loadings": {"feats": FEATS, "rows": [[_r(v, 2) for v in row] for row in L]},
-        "roles": [{"name": n, "desc": d, "center": [_r(v) for v in C[k]], "center_pct": [_r(v, 2) for v in center_pct[k]], "n": int(np.sum(np.argmax(Pr[fit], 1) == k)),
-                   "match": _r(float(match[k]))} for k, (n, d, _) in enumerate(ROLES)],
+        "axes": [a[0] for a in RADAR], "axes_short": [a[1] for a in RADAR], "tags": [a[2] for a in RADAR],
+        "axes_feats": [[FEAT_GR[f] if f in FEAT_GR else "μέση απόσταση" for f in a[3]] for a in RADAR], "tag_min": TAG_MIN,
+        "n_fit": int(fit.sum()), "min_fit": MIN_MIN, "min_show": MIN_SHOW,
+        "explained": _r(float(ev[:N_AXES].sum())), "kappa": _r(kappa, 2), "n_feats": len(FEATS),
+        "feats": [FEAT_GR[f] for f in FEATS],
+        "roles": [{"name": n, "desc": d, "center_pct": [_r(v, 2) for v in center_pct[k]],
+                   "profile": [_r(v, 2) for v in prof[k]], "n": int(np.sum(lab_fit == k)), "match": _r(float(match[k]))}
+                  for k, (n, d, _) in enumerate(names)],
         "cols": ["pid", "shape", "pct", "probs", "fit", "intensity", "cur_share", "prior_min", "similar"],
-        "players": out_players,
     }
     SITE_DATA.mkdir(parents=True, exist_ok=True)
     for c, by_season in out_players.items():            # ένα αρχείο ανά διοργάνωση (φορτώνεται μόνο αυτό που χρειάζεται)
         (SITE_DATA / f"roles_{c}.json").write_text(json.dumps({**out, "comp": c, "no_zones": c in HIST_COMPS, "players": by_season},
                                                                ensure_ascii=False, separators=(",", ":")))
-    print(f"roles: {len(P)} player-seasons ({int(fit.sum())} fit), axes explain {ev[:N_AXES].sum():.1%}, "
+    print(f"roles: {len(P)} player-seasons ({int(fit.sum())} fit), SVD explains {ev[:N_AXES].sum():.1%}, "
           f"kappa {kappa:.2f}, match to reference roles {np.round(match, 3).tolist()}")
+    return P, X, fit, prof, lab_fit
 
 
 if __name__ == "__main__":
