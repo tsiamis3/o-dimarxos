@@ -42,10 +42,12 @@ MIN_LOAD = 1.0                     # κάθε σεζόν με λεπτά μπα�
 STYLE = ["usg", "ast_pct", "orb_pct", "drb_pct", "stl100", "blk100", "r3", "rrim", "rmid", "rfta", "cor3"]
 BODY = ["height", "weight"]
 FEATS = STYLE + BODY
-EXTRA = ["rmid2"]                  # μόνο για το radar: σουτ μέσης απόστασης ανά 36′ (χωρίς τη ρακέτα)
+EXTRA = ["rmid2", "selfc"]         # μόνο για το radar: σουτ μέσης απόστασης ανά 36′· εύστοχα σουτ χωρίς ασίστ (%)
+K_SELF = 15.0                      # συρρίκνωση του «χωρίς ασίστ»: +15 εικονικά εύστοχα στον μέσο όρο της λίγκας-σεζόν
 FEAT_GR = {"usg": "usage", "ast_pct": "ασίστ", "orb_pct": "επιθ. ριμπάουντ", "drb_pct": "αμυντ. ριμπάουντ",
            "stl100": "κλεψίματα", "blk100": "κοψίματα", "r3": "τρίποντα", "rrim": "σουτ στο καλάθι",
-           "rmid": "άλλα δίποντα", "rfta": "βολές", "cor3": "τρίποντα από γωνία", "height": "ύψος", "weight": "βάρος"}
+           "rmid": "άλλα δίποντα", "rfta": "βολές", "cor3": "τρίποντα από γωνία", "height": "ύψος", "weight": "βάρος",
+           "rmid2": "μέση απόσταση", "selfc": "εύστοχα χωρίς ασίστ"}
 N_AXES = 6                         # SVD για το clustering: 6 κατευθύνσεις, ~84% της διακύμανσης
 K = 8                              # ρόλοι (K = 7..8: silhouette ~0.31, σταθερότητα ~0.90)
 # Radar: (όνομα, σύντομο, ετικέτα για το κορυφαίο 20%, μεγέθη που τον ορίζουν)
@@ -57,6 +59,7 @@ RADAR = [
     ("Τρίποντα", "Τρίποντα", "Σουτέρ", ["r3"]),
     ("Όγκος επίθεσης", "Όγκος επίθ.", "Πρώτη επιλογή", ["usg"]),   # usage: % των φάσεων της ομάδας που τελειώνουν σε αυτόν
     ("Δημιουργία", "Δημιουργία", "Δημιουργός", ["ast_pct"]),
+    ("Δημιουργεί το σουτ του", "Δικό του σουτ", "Self-creator", ["selfc"]),
     ("Κλεψίματα", "Κλεψίματα", "Ενεργά χέρια", ["stl100"]),
 ]
 TAG_MIN = 0.80
@@ -94,7 +97,8 @@ def load(min_min: float = MIN_MIN) -> pd.DataFrame:
         if not f.exists():
             continue
         A = json.loads(f.read_text())
-        logs = CompetitionData(c).logs
+        data = CompetitionData(c)
+        logs = data.logs
         for s, v in A["seasons"].items():
             P = v.get("players")
             if not P:
@@ -115,6 +119,7 @@ def load(min_min: float = MIN_MIN) -> pd.DataFrame:
                 three = att.c3 + att.a3
                 t["cor3"] = att.c3 / three.replace(0, np.nan)
                 t["cor3"] = t.cor3.where(att.sum(axis=1).isna() | t.cor3.notna(), t.cor3.median())   # χωρίς τρίποντα: διάμεσος
+            t["selfc"] = t.pid.map(self_created(c, int(s), logs, data))
             frames.append(t)
     P = pd.concat(frames, ignore_index=True)
     for c in ["rrim", "rmid", "rmid2", "cor3"]:
@@ -144,6 +149,34 @@ def load(min_min: float = MIN_MIN) -> pd.DataFrame:
         P[c] = P[c].fillna(P.groupby([P.comp, pos])[c].transform("median")).fillna(P[c].median())
     P = P[P.MIN >= min_min].reset_index(drop=True)
     return P
+
+
+def self_created(comp: str, season: int, logs: pd.DataFrame, data) -> pd.Series:
+    """Ποσοστό των εύστοχων σουτ (εντός παιδιάς) που ΔΕΝ ήρθαν από ασίστ, ανά παίκτη, με συρρίκνωση K_SELF.
+    EuroLeague/EuroCup: ασίστ από το play-by-play (κάθε AS δένεται με το προηγούμενο εύστοχο σουτ της ομάδας).
+    NBA: ο πασέρ κάθε εύστοχου σουτ από το ESPN (στήλη ast_pid). Αλλού: κενό."""
+    fgm = logs[logs.season == season].groupby("pid")[["FG2M", "FG3M"]].sum().sum(axis=1)
+    asd = None
+    f = RAW_DIR / f"{comp}{season}_pbp.csv.gz"
+    if f.exists():
+        from gnn_data import assist_pairs
+        pb = pd.read_csv(f).rename(columns={"gameCode": "gid"})
+        pb["pid"] = pb.pid.astype(str).str.strip().replace(data.pid_alias or {})
+        pb["team"] = pb.team.astype(str).str.strip()
+        pb.loc[pb.pid.isin(["nan", ""]), "pid"] = np.nan
+        a, _ = assist_pairs(pb)
+        asd = a.groupby("scorer").ast_fg.sum()
+    f = RAW_DIR / f"{comp}{season}_shots.csv.gz"
+    if asd is None and f.exists():
+        sh = pd.read_csv(f)
+        if "ast_pid" in sh.columns:
+            m = sh[(sh.made == 1) & sh.ast_pid.notna()]
+            asd = m.groupby(m.pid.astype(str)).size()
+    if asd is None or fgm.sum() == 0:
+        return pd.Series(dtype=float)
+    asd = asd.reindex(fgm.index).fillna(0).clip(upper=fgm)
+    mean = 1 - asd.sum() / fgm.sum()
+    return (fgm - asd + K_SELF * mean) / (fgm + K_SELF)
 
 
 def load_all() -> pd.DataFrame:
@@ -345,7 +378,7 @@ def main():
     names = ROLES if len(ROLES) == K else [(f"Ρόλος {k + 1}", "", None) for k in range(K)]
     out = {
         "axes": [a[0] for a in RADAR], "axes_short": [a[1] for a in RADAR], "tags": [a[2] for a in RADAR],
-        "axes_feats": [[FEAT_GR[f] if f in FEAT_GR else "μέση απόσταση" for f in a[3]] for a in RADAR], "tag_min": TAG_MIN,
+        "axes_feats": [[FEAT_GR[f] for f in a[3]] for a in RADAR], "tag_min": TAG_MIN,
         "n_fit": int(fit.sum()), "min_fit": MIN_MIN, "min_show": MIN_SHOW,
         "explained": _r(float(ev[:N_AXES].sum())), "kappa": _r(kappa, 2), "n_feats": len(FEATS),
         "feats": [FEAT_GR[f] for f in FEATS],

@@ -10,7 +10,7 @@ x = πλάγια απόσταση (+ δεξιά όπως κοιτάς το κα�
 Μόνο σουτ εντός παιδιάς (όχι βολές).
 
 Έξοδος: data/raw/{C}{season}_shots.csv.gz
-  gameCode, pid, team, x, y, made, pts, zone, fastbreak, second_chance
+  gameCode, pid, team, x, y, made, pts, zone, fastbreak, second_chance, rx, ry, ast_pid (NBA)
 
     python scripts/scrapers/shots.py                  # E, U, NBA, όλες οι σεζόν (incremental)
     python scripts/scrapers/shots.py --comp NBA --probe 3
@@ -29,7 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import Http  # noqa: E402
 from config import RAW_DIR, SEASONS  # noqa: E402
 
-COLS = ["gameCode", "pid", "team", "x", "y", "made", "pts", "zone", "fastbreak", "second_chance", "rx", "ry"]
+COLS = ["gameCode", "pid", "team", "x", "y", "made", "pts", "zone", "fastbreak", "second_chance", "rx", "ry", "ast_pid"]
+# ast_pid: ποιος έδωσε την ασίστ (μόνο NBA, από το ESPN· στη EuroLeague/EuroCup οι ασίστ έρχονται από το play-by-play)
 # rx, ry: ακατέργαστες συντεταγμένες της πηγής (για επανυπολογισμό αν αλλάξει η κανονικοποίηση)
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
 # ESPN: ακέραια πόδια, x = 0..50 κατά πλάτος, y κατά μήκος· το καλάθι είναι στο (25, ~1)
@@ -151,6 +152,8 @@ def nba_rows(j: dict, gc: int) -> list[dict]:
         aid = ((parts[0] if parts else {}).get("athlete") or {}).get("id")
         if not aid:
             continue
+        # εύστοχο σουτ με ασίστ: ο δεύτερος συμμετέχων είναι ο πασέρ («... (X assists)»)
+        ast = ((parts[1] if len(parts) > 1 else {}).get("athlete") or {}).get("id") if p.get("scoringPlay") else None
         pts = p.get("pointsAttempted") or (3 if "three point" in text or "3-pt" in text else 2)
         # x: πλάγια (κέντρο = 25), y: από την τελική γραμμή -> μέτρα από το καλάθι
         xm = (float(x) - NBA_BASKET_X) * FT
@@ -158,7 +161,7 @@ def nba_rows(j: dict, gc: int) -> list[dict]:
         rows.append(dict(gameCode=gc, pid=f"ESPN{aid}", team=teams.get(str((p.get("team") or {}).get("id")), ""),
                          x=round(xm, 2), y=round(ym, 2), made=int(bool(p.get("scoringPlay"))), pts=int(pts),
                          zone=(p.get("type") or {}).get("text", ""), fastbreak=0, second_chance=0,
-                         rx=float(x), ry=float(y)))
+                         rx=float(x), ry=float(y), ast_pid=f"ESPN{ast}" if ast else None))
     return rows
 
 
@@ -166,6 +169,11 @@ def run_nba(seasons, probe=0):
     http = Http(sleep=0.12)
     for s in seasons:
         st = Store("NBA", s)
+        old = st.load()
+        if len(old) and "ast_pid" not in old.columns and not probe:
+            # παλιό αρχείο χωρίς τον πασέρ: κατεβαίνει ξανά ολόκληρη η σεζόν (μία φορά)
+            print(f"  NBA{s}: shots without assister -> re-download")
+            st.path.unlink()
         have = st.cached()
         todo = [gc for gc in _played("NBA", s) if gc not in have]
         if probe:
