@@ -87,6 +87,7 @@ def load(min_min: float = MIN_MIN) -> pd.DataFrame:
                 tot = att.sum(axis=1)
                 for z in ZONES:
                     t["sh_" + z] = att[z] / tot.replace(0, np.nan)
+                    t["za_" + z] = att[z]                              # προσπάθειες (για ρυθμούς / log-ratio)
             frames.append(t)
     P = pd.concat(frames, ignore_index=True)
     # βιομετρικά
