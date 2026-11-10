@@ -1023,9 +1023,12 @@ const Views = {
     const rp = (o) => o.pct.map((v) => Math.max(0.03, v));
     const rc = (k) => RJ.roles[k].center_pct || rv(RJ.roles[k].center);
     const SHORT = { "Σώμα/ριμπάουντ": "Σώμα/ριμπ.", "Καλάθι/βολές": "Καλάθι", "Βολές/διείσδυση": "Βολές/διείσδ.", "Μέση απόσταση": "Μέση απόστ." };
-    const rAxes = () => RJ.axes.map((a) => SHORT[a] || a);
+    const rAxes = () => RJ.axes_short || RJ.axes.map((a) => SHORT[a] || a);
+    // ετικέτες: κορυφαίο 20% σε έναν άξονα του radar (ένας παίκτης μπορεί να έχει πολλές)
+    const tagsOf = (o) => (RJ.tags || []).map((t, i) => [t, o.pct[i]]).filter(([t, v]) => t && v >= (RJ.tag_min ?? 0.8)).sort((a, b) => b[1] - a[1]);
+    const tagHtml = (o) => { const t = tagsOf(o); return t.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px">${t.map(([n, v]) => `<span class="pill" style="background:var(--accent-soft)" title="κορυφαίο ${Math.max(1, Math.round(100 * (1 - v)))}% της λίγκας">${esc(n)}</span>`).join("")}</div>` : ""; };
     const topRoles = (o) => o.probs.map((q, k) => [k, q]).sort((a, b) => b[1] - a[1]);
-    const roleNote = `<p class="muted" style="margin:0;font-size:12px">Οι 6 άξονες (από SVD ${RJ?.loadings?.feats?.length ?? 13} μεγεθών στυλ και σώματος· τα σουτ σε επίπεδα) δείχνουν σε ποιο ποσοστημόριο της λίγκας του είναι ο παίκτης (διακεκομμένος κύκλος = διάμεσος). Για τους ρόλους και την ομοιότητα το σχήμα κανονικοποιείται σε μήκος 1, ώστε να μετρά <b>πώς</b> παίζει και όχι πόσο έντονα· στο γράφημα φαίνεται χωρίς κανονικοποίηση. Το κέντρο του ρόλου σχεδιάζεται στο τυπικό επίπεδο των παικτών του. Ρόλοι: soft clustering σε ${RJ?.n_fit ?? ""} παίκτες-σεζόν EuroLeague, EuroCup και NBA (≥${RJ?.min_fit ?? 300}′).</p>`;
+    const roleNote = `<p class="muted" style="margin:0;font-size:12px">Radar: ${RJ?.axes?.length ?? 8} σταθεροί άξονες από συγκεκριμένα στατιστικά (π.χ. «Τρίποντα» = τρίποντα ανά 36′), σε ποσοστημόριο της λίγκας (διακεκομμένος κύκλος = διάμεσος). Ετικέτα = κορυφαίο 20% σε έναν άξονα. Οι ρόλοι και η ομοιότητα βγαίνουν χωριστά, από clustering ${RJ?.n_feats ?? 13} μεγεθών (SVD σε 6 ανεξάρτητες κατευθύνσεις) σε ${RJ?.n_fit ?? ""} παίκτες-σεζόν EuroLeague, EuroCup και NBA (≥${RJ?.min_fit ?? 300}′)· το κέντρο του ρόλου είναι ο μέσος όρος των παικτών του.</p>`;
     const similarBlock = (p) => {
       const o = RO.get(p.pid);
       if (!o) return "";
@@ -1072,7 +1075,9 @@ const Views = {
         .filter(([, v]) => v != null && v !== "").map(([k, v]) => `<dt>${k}</dt><dd>${k === "Ομάδα" ? v : esc(v)}</dd>`).join("");
       const tr = o ? topRoles(o) : [];
       const roles = o ? `<div class="eyebrow" style="margin-top:12px">Ρόλος</div>
-        <div style="font-weight:700;margin:2px 0 6px">${esc(RJ.roles[tr[0][0]].name)}</div>
+        <div style="font-weight:700;margin:2px 0 2px">${esc(RJ.roles[tr[0][0]].name)}</div>
+        ${RJ.roles[tr[0][0]].desc ? `<div class="muted" style="font-size:12px;margin:0 0 4px">${esc(RJ.roles[tr[0][0]].desc)}</div>` : ""}
+        ${tagHtml(o)}
         <div class="rbars">${tr.filter(([, q]) => q >= 0.08).slice(0, 3).map(([k, q]) => `<div class="rbar"><span>${esc(RJ.roles[k].name)}</span><b>${Math.round(100 * q)}%</b><span class="pbar"><i style="width:${Math.max(2, 100 * q)}%"></i></span></div>`).join("")}</div>
         ${!o.fit && (o.cur_share ?? 1) > 0.9 ? `<p class="muted" style="margin:6px 0 0;font-size:12px">Μικρό δείγμα (κάτω από ${RJ.min_fit}′) χωρίς προηγούμενες σεζόν στη βάση: εκτίμηση.</p>` : ""}` : "";
       const radar = o ? `<div class="chart">${Charts.radar({ axes: rAxes(), series: [{ k: "k1", vals: rp(o) }, { k: "k3", dash: true, vals: rc(tr[0][0]) }], mid: true, W: 480 })}</div>
@@ -1106,7 +1111,7 @@ const Views = {
         radar: `<div class="chart">${Charts.radar({ axes: rAxes(), series: os.map((o, i) => ({ k: "k" + (i + 1), vals: rp(o) })), mid: true, W: 480 })}</div>
           <div class="legend">${sel.map((p, i) => `<span><i class="c${i + 1}bg"></i>${esc(p.player)}</span>`).join("")}</div>`,
         info: `<div class="tile" style="margin-top:12px"><div class="v">${Math.round(100 * cos)}</div><div class="l">ομοιότητα στυλ (σχήμα μήκους 1): 100 = ίδιο, 0 = άσχετο, −100 = αντίθετο</div></div>
-          ${os.map((o, i) => { const [k, q] = topRoles(o)[0]; return `<p style="margin:8px 0 0"><b style="color:var(--c${i + 1})">${esc(sel[i].player)}</b>: ${esc(RJ.roles[k].name)} <span class="muted">${Math.round(100 * q)}%</span></p>`; }).join("")}`,
+          ${os.map((o, i) => { const [k, q] = topRoles(o)[0]; return `<p style="margin:8px 0 0"><b style="color:var(--c${i + 1})">${esc(sel[i].player)}</b>: ${esc(RJ.roles[k].name)} <span class="muted">${Math.round(100 * q)}%</span></p>${tagHtml(o)}`; }).join("")}`,
       };
     };
     const byId = new Map(pa.map((p) => [p.pid, p]));
