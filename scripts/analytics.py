@@ -92,7 +92,14 @@ LEAGUE_OFFSET = {"E": 0.0, "U": -0.9, "GBL": -0.35, "NBA": 0.6}
 #   ελληνική -> EuroLeague: κλίση 0.49 (n=36)· ελληνική -> EuroCup: 0.48 (n=10) => 0.55 (με διόρθωση θορύβου)
 #   EuroCup <-> EuroLeague: οι μεταγραφές δίνουν αντιφατικές κλίσεις (επιλογή) -> κρατάμε 1
 LEAGUE_SCALE = {"GBL": 0.55}
-SHRINK_MIN = 250.0                 # εικονικά λεπτά μέσου όρου (μικρό δείγμα -> προς τον μέσο)
+SHRINK_MIN = 250.0                 # εικονικά λεπτά προς τον μέσο όρο όταν δεν υπάρχει καθόλου παρελθόν
+# Προφίλ καριέρας: όλες οι προηγούμενες σεζόν (οποιαδήποτε λίγκα, μέσω του ενιαίου μητρώου) με βάρος
+# λεπτά × PRIOR_DECAY^(σεζόν πίσω), μετατρεπόμενες στην κλίμακα της τωρινής λίγκας. Βάρος παρελθόντος στη συρρίκνωση:
+# PRIOR_SCALE × (σταθμισμένα λεπτά), έως PRIOR_CAP· + PRIOR_K εικονικά λεπτά προς τον μέσο όρο.
+PRIOR_MODE = "multi"               # "last": μόνο η προηγούμενη σεζόν με σταθερό βάρος (παλιά συμπεριφορά)
+# Επιλογή με walk-forward (8 σενάρια EuroLeague/EuroCup 2024–25): μέση συσχέτιση 0.392 έναντι 0.391 της «last»·
+# ίδια ακρίβεια, αλλά ο παίκτης «φαίνεται» από την αρχή της σεζόν με όλη του την ιστορία.
+PRIOR_DECAY, PRIOR_SCALE, PRIOR_CAP, PRIOR_K = 0.7, 1.5, 2500.0, 100.0
 POS = ["PG", "SG", "SF", "PF", "C"]
 
 
@@ -109,20 +116,25 @@ def _pool(t: pd.DataFrame) -> pd.DataFrame:
 
 
 def cross_prior(comp: str, season: int, registry: dict) -> pd.DataFrame | None:
-    """Προηγούμενη σεζόν κάθε παίκτη από ΟΠΟΙΑΔΗΠΟΤΕ διοργάνωση με κοινούς κωδικούς παικτών
-    (EuroLeague/EuroCup), μετατρεπόμενη στην κλίμακα της τωρινής: z στη λίγκα προέλευσης
-    + διαφορά επιπέδου λίγκας -> μονάδες της τωρινής λίγκας. Αν έπαιξε σε δύο, κρατά όπου έπαιξε περισσότερο."""
+    """Παρελθόν κάθε παίκτη από ΟΠΟΙΑΔΗΠΟΤΕ διοργάνωση (ενιαίο μητρώο), μετατρεπόμενο στην κλίμακα της τωρινής:
+    z στη λίγκα προέλευσης + διαφορά επιπέδου λίγκας -> μονάδες της τωρινής λίγκας.
+    multi: σταθμισμένος μέσος όλων των προηγούμενων σεζόν (και της ίδιας σεζόν σε άλλη λίγκα), βάρος λεπτά × decay^Δ·
+    στήλη _w = συνολικό βάρος. last: μόνο η προηγούμενη σεζόν (ή η ίδια σε άλλη λίγκα), όπου έπαιξε περισσότερο."""
     cur = registry.get((comp, season))
     if cur is None or cur.empty:
         return None
     cp = _pool(cur)
     frames = []
     for (c2, s2), src in registry.items():
-        # προηγούμενη σεζόν (οποιαδήποτε λίγκα) ή ΙΔΙΑ σεζόν σε άλλη λίγκα (μεταγραφή μέσα στη σεζόν)
-        if src is None or src.empty or not (s2 == season - 1 or (s2 == season and c2 != comp)):
+        same = s2 == season and c2 != comp
+        if PRIOR_MODE == "last":
+            ok = s2 == season - 1 or same
+        else:
+            ok = s2 < season or same
+        if src is None or src.empty or not ok:
             continue
         sp = _pool(src)
-        t = src[src.MIN >= (300 if s2 == season - 1 else 100)].drop_duplicates("uid").set_index("uid")
+        t = src[src.MIN >= (300 if (PRIOR_MODE == "last" and not same) else 100)].drop_duplicates("uid").set_index("uid")
         if t.empty or len(sp) < 10:
             continue
         conv = pd.DataFrame(index=t.index)
@@ -133,12 +145,23 @@ def cross_prior(comp: str, season: int, registry: dict) -> pd.DataFrame | None:
             zz = (t[col] - sp[col].mean()) / (sp[col].std() + 1e-9) + PRIOR_SHIFT.get(col, 0.0) * shift
             conv[col] = cp[col].mean() + cp[col].std() * zz
         conv["_min"] = t.MIN
+        conv["_w"] = t.MIN * (1.0 / PRIOR_SCALE if same else PRIOR_DECAY ** (season - s2))   # ίδια σεζόν: ισότιμα (×1)
         conv["_src"] = c2
         frames.append(conv)
     if not frames:
         return None
-    allp = pd.concat(frames).sort_values("_min")
-    return allp[~allp.index.duplicated(keep="last")]
+    allp = pd.concat(frames)
+    if PRIOR_MODE == "last":
+        allp = allp.sort_values("_min")
+        return allp[~allp.index.duplicated(keep="last")]
+    cols = [c for c in PRIOR_STATS if c in allp]
+    w = allp["_w"]
+    num = allp[cols].mul(w, axis=0).groupby(level=0).sum(min_count=1)
+    den = allp[cols].notna().mul(w, axis=0).groupby(level=0).sum()
+    out = num / den.replace(0, np.nan)
+    out["_w"] = w.groupby(level=0).sum()
+    out["_min"] = allp["_min"].groupby(level=0).sum()
+    return out
 
 
 def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str = "E",
@@ -163,19 +186,31 @@ def player_ratings(p: pd.DataFrame, prior: pd.DataFrame | None = None, comp: str
         # μικρό δείγμα -> προς το επίπεδο του ΙΔΙΟΥ παίκτη (προηγούμενη σεζόν ή άλλη λίγκα, μέσω του ενιαίου μητρώου),
         # αλλιώς προς τον μέσο όρο
         m = pool[col].mean()
-        target = pd.Series(m, index=p.index)
-        if prior is not None and col in prior:
-            pr = p.uid.map(prior[col])
+        v0 = p[col]
+        if prior is None or col not in prior:
+            v = v0.fillna(m)
+            return (v * p.MIN + SHRINK_MIN * m) / (p.MIN + SHRINK_MIN)
+        pr = p.uid.map(prior[col])
+        if PRIOR_MODE == "last":
             target = pr.where(pr.notna(), m)
-        v = p[col].fillna(target)
-        return (v * p.MIN + SHRINK_MIN * target) / (p.MIN + SHRINK_MIN)
+            v = v0.fillna(target)
+            return (v * p.MIN + SHRINK_MIN * target) / (p.MIN + SHRINK_MIN)
+        # προφίλ καριέρας: φετινά λεπτά + σταθμισμένο παρελθόν + λίγα εικονικά λεπτά μέσου όρου
+        wp = (PRIOR_SCALE * p.uid.map(prior["_w"])).clip(upper=PRIOR_CAP).where(pr.notna(), 0.0).fillna(0.0)
+        k = np.where(wp > 0, PRIOR_K, SHRINK_MIN)
+        shares[col] = p.MIN / (p.MIN + wp + k)
+        v = v0.fillna(pr).fillna(m)
+        return (v * p.MIN + wp * pr.fillna(m) + k * m) / (p.MIN + wp + k)
 
     def z(series):
         q = series[qual]
         return (series - q.mean()) / (q.std() + 1e-9)
 
+    shares = {}
     S = {c: shr(c) for c in ["pts100", "usg", "ts_adj", "fg3_adj", "ft_adj", "ast_pct", "tov_pct", "orb_pct", "drb_pct",
                              "stl100", "blk100", "pf100", "pir100", "fg3_rate"]}
+    p["cur_share"] = shares["pts100"] if "pts100" in shares else p.MIN / (p.MIN + SHRINK_MIN)   # μερίδιο της φετινής σεζόν
+    p["prior_min"] = p.uid.map(prior["_min"]) if prior is not None and "_min" in prior else np.nan
     shooter = (S["fg3_rate"] > 0.2).astype(float)
     cmp_ = {
         "r_sco": z(S["pts100"]) + 0.5 * z(S["usg"]),
@@ -457,7 +492,7 @@ class SeasonAnalytics:
         cols = ["pid", "uid", "player", "team", "GP", "MIN", "mpg", "usg", "ts", "ts_adj", "tsa", "pts100", "ast100", "reb100",
                 "pir100", "ast_pct", "orb_pct", "drb_pct", "tov_pct", "on100", "off100", "onoff",
                 "fg3_rate", "fg3_adj", "ft_adj", "fg3a_g", "stl100", "blk100", "pf100", "GS", "gs5", "gp5", "min5",
-                "pos", "guard", "qual", *RATING_KEYS, *PCT_KEYS, *IMPACT_KEYS]
+                "pos", "guard", "qual", *RATING_KEYS, *PCT_KEYS, *IMPACT_KEYS, "cur_share", "prior_min"]
         self.player_cols = cols
         return p, trend
 

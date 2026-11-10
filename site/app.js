@@ -1071,7 +1071,7 @@ const Views = {
       const roles = o ? `<div class="eyebrow" style="margin-top:12px">Ρόλος</div>
         <div style="font-weight:700;margin:2px 0 6px">${esc(RJ.roles[tr[0][0]].name)}</div>
         <div class="rbars">${tr.filter(([, q]) => q >= 0.08).slice(0, 3).map(([k, q]) => `<div class="rbar"><span>${esc(RJ.roles[k].name)}</span><b>${Math.round(100 * q)}%</b><span class="pbar"><i style="width:${Math.max(2, 100 * q)}%"></i></span></div>`).join("")}</div>
-        ${o.fit ? "" : `<p class="muted" style="margin:6px 0 0;font-size:12px">Μικρό δείγμα (κάτω από ${RJ.min_fit}′): εκτίμηση.</p>`}` : "";
+        ${!o.fit && (o.cur_share ?? 1) > 0.9 ? `<p class="muted" style="margin:6px 0 0;font-size:12px">Μικρό δείγμα (κάτω από ${RJ.min_fit}′) χωρίς προηγούμενες σεζόν στη βάση: εκτίμηση.</p>` : ""}` : "";
       const radar = o ? `<div class="chart">${Charts.radar({ axes: rAxes(), series: [{ k: "k1", vals: rv(o.shape) }, { k: "k3", dash: true, vals: rv(RJ.roles[tr[0][0]].center) }], mid: true, W: 480 })}</div>
           <div class="legend"><span><i class="c1bg"></i>${esc(p.player)}</span><span><i style="background:var(--c3)"></i>${esc(RJ.roles[tr[0][0]].name)} (κέντρο ρόλου)</span></div>`
         : `<div class="empty">${RJ ? `Δεν υπάρχει σχήμα ρόλου: χρειάζονται τουλάχιστον ${RJ.min_show}′.` : "Δεν υπάρχουν ρόλοι για αυτή τη λίγκα (χρειάζονται ζώνες σουτ)."}</div>`;
@@ -1086,7 +1086,9 @@ const Views = {
             <div style="min-width:0"><div class="fm-name">${esc(p.player)}</div>
               <div class="row muted" style="gap:6px;font-size:13px">${Gfx.badge(p.team, 18)} ${esc(S.teamName(p.team))}</div></div>
             ${r && isNum(r.ovr) ? `<div class="ovr ${ovrCls(r.ovr)}" style="margin-left:auto" title="Συνολική βαθμολογία: επιρροή στη διαφορά πόντων${isNum(r.pc_ovr) ? " · " + topPct(r.pc_ovr) + " της λίγκας" : ""}"><b>${r.ovr}</b><span>OVR</span></div>` : ""}</div>
-          <dl class="fm-facts">${facts}</dl>${roles}</div>
+          <dl class="fm-facts">${facts}</dl>
+          ${isNum(r?.cur_share) && r.cur_share < 0.98 ? `<p class="muted" style="margin:8px 0 0;font-size:12px" title="Rating και ρόλος υπολογίζονται από όλη την ιστορία του παίκτη στη βάση· οι παλαιότερες σεζόν μετρούν λιγότερο (×0.7 ανά σεζόν).">Προφίλ: <b>${Math.round(100 * r.cur_share)}%</b> φετινή σεζόν, ${100 - Math.round(100 * r.cur_share)}% προηγούμενες${isNum(r.prior_min) ? ` (${fmt(r.prior_min, 0)}′)` : ""}</p>` : ""}
+          ${roles}</div>
         <div>${radar}</div>
         <div class="fm-attrs">${ATTRS.map(([g, list]) => `<div class="fm-group"><h4>${g}</h4>${list.map(val).join("")}</div>`).join("")}
           <p class="muted" style="grid-column:1/-1;margin:2px 0 0;font-size:12px">Μέσοι όροι ανά αγώνα στη σεζόν, όπως είναι στη βάση. <span style="color:var(--good)">Πράσινο</span>: στο κορυφαίο 20% της λίγκας (υπογραμμισμένο: 5%), <span style="color:var(--bad)">κόκκινο</span>: στο χαμηλότερο 15%.</p></div>
