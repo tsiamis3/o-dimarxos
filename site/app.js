@@ -1093,9 +1093,12 @@ const Views = {
         <div><div class="fm-head">${Gfx.photo(b.photo, p.player, p.team, 76)}
             <div style="min-width:0"><div class="fm-name">${esc(p.player)}</div>
               <div class="row muted" style="gap:6px;font-size:13px">${Gfx.badge(p.team, 18)} ${esc(S.teamName(p.team))}</div></div>
-            ${r && isNum(r.ovr) ? `<div class="ovr ${ovrCls(r.ovr)}" style="margin-left:auto" title="Συνολική βαθμολογία: επιρροή στη διαφορά πόντων${isNum(r.pc_ovr) ? " · " + topPct(r.pc_ovr) + " της λίγκας" : ""}"><b>${r.ovr}</b><span>OVR</span></div>` : ""}</div>
+            ${r && isNum(r.ovr) ? `<div class="ovr ${ovrCls(r.ovr)}" style="margin-left:auto" title="Συνολική βαθμολογία: πόσο καλός παίκτης είναι για τον ρόλο του (από τα στατιστικά του· η επιρροή στο σκορ, RAPM, είναι χωριστά)${isNum(r.pc_ovr) ? " · " + topPct(r.pc_ovr) + " της λίγκας" : ""}"><b>${r.ovr}</b><span>OVR</span></div>` : ""}</div>
           <dl class="fm-facts">${facts}</dl>
           ${isNum(r?.cur_share) && r.cur_share < 0.98 ? `<p class="muted" style="margin:8px 0 0;font-size:12px" title="Rating και ρόλος υπολογίζονται από όλη την ιστορία του παίκτη στη βάση· οι παλαιότερες σεζόν μετρούν λιγότερο (×0.7 ανά σεζόν).">Προφίλ: <b>${Math.round(100 * r.cur_share)}%</b> φετινή σεζόν, ${100 - Math.round(100 * r.cur_share)}% προηγούμενες${isNum(r.prior_min) ? ` (${fmt(r.prior_min, 0)}′)` : ""}</p>` : ""}
+          ${r && isNum(r.ovr) && isNum(r.r_fin) ? `<div class="eyebrow" style="margin-top:12px">Ratings</div>
+            <div class="rbars">${CATS.filter(([k]) => isNum(r[k])).map(([k, l]) => `<div class="rbar"><span>${l}</span><b>${r[k]}</b>${bar(r[k])}</div>`).join("")}</div>
+            ${isNum(r.imp) ? `<p class="muted" style="margin:6px 0 0;font-size:12px" title="RAPM: πόσο αλλάζει η διαφορά πόντων της ομάδας όταν παίζει (με διόρθωση για συμπαίκτες και αντιπάλους)">Επιρροή στο σκορ (RAPM): <b>${sgn(r.imp)}</b> π./100${isNum(r.pc_r_imp) ? ` · ${topPct(r.pc_r_imp)} της λίγκας` : ""}</p>` : ""}` : ""}
           ${roles}</div>
         <div>${radar}</div>
         <div class="fm-attrs">${ATTRS.map(([g, list]) => `<div class="fm-group"><h4>${g}</h4>${list.map(val).join("")}</div>`).join("")}
@@ -1141,7 +1144,7 @@ const Views = {
       const below = vals.filter((x) => (low ? x > v : x < v)).length;
       return below / vals.length;
     };
-    const CATS = [["r_sco", "Σκοράρισμα"], ["r_sho", "Σουτ"], ["r_pla", "Δημιουργία"], ["r_reb", "Ριμπάουντ"], ["r_def", "Άμυνα"]];
+    const CATS = [["r_sco", "Σκοράρισμα"], ["r_sho", "Σουτ"], ["r_fin", "Τελείωμα"], ["r_mid", "Μέση απόσταση"], ["r_pla", "Δημιουργία"], ["r_reb", "Ριμπάουντ"], ["r_def", "Άμυνα"]].filter(([k]) => k !== "r_fin" && k !== "r_mid" || (App.analytics.get(App.comp)?.ratings_v3));
     const topPct = (pc) => (isNum(pc) ? (pc >= 50 ? `top ${Math.max(1, 100 - pc)}%` : `κάτω ${Math.max(1, pc)}%`) : "");
     const sgn = (v, d = 1) => (isNum(v) ? (v > 0 ? "+" : "") + fmt(v, d) : "–");
     const bar = (v, max = 99, cls = "") => `<span class="pbar ${cls}"><i style="width:${isNum(v) ? Math.max(2, Math.min(100, (100 * v) / max)) : 0}%"></i></span>`;
@@ -1152,13 +1155,13 @@ const Views = {
       const head = `<div class="pcard-head">${Gfx.avatar(p.player, p.team, 64)}
           <div style="min-width:0"><div class="pcard-name">${esc(p.player)}</div>
             <div class="row muted" style="gap:6px;font-size:13px">${Gfx.badge(p.team, 18)} ${App.teamLink(p.team, S)}${r?.pos ? ` · <span title="Εκτίμηση από το προφίλ στατιστικών">${r.pos}*</span>` : ""} · ${p.GP} αγ. · ${fmt(p.MIN_AVG ?? p.MIN)}'</div></div>
-          ${r && isNum(r.ovr) ? `<div class="ovr ${ovrCls(r.ovr)}" title="Συνολική βαθμολογία (0–99): επιρροή στη διαφορά πόντων${isNum(r.pc_ovr) ? ` · ${topPct(r.pc_ovr)} της λίγκας` : ""}"><b>${r.ovr}</b><span>OVR</span></div>` : ""}</div>`;
+          ${r && isNum(r.ovr) ? `<div class="ovr ${ovrCls(r.ovr)}" title="Συνολική βαθμολογία (0–99): πόσο καλός παίκτης είναι για τον ρόλο του (από τα στατιστικά του)${isNum(r.pc_ovr) ? ` · ${topPct(r.pc_ovr)} της λίγκας` : ""}"><b>${r.ovr}</b><span>OVR</span></div>` : ""}</div>`;
       if (!r || !isNum(r.ovr)) return `<div class="pcard" style="border-color:var(--c${i + 1})">${head}<p class="muted" style="margin:0">Δεν υπάρχουν αναλυτικά για αυτόν τον παίκτη.</p></div>`;
       return `<div class="pcard" style="border-color:var(--c${i + 1})">${head}
         ${isNum(r.imp) ? `<div class="tile" style="padding:10px 12px"><div class="row" style="gap:14px;flex-wrap:wrap;font-size:13px">
             <span><span class="muted">Επιρροή</span> <b class="num">${sgn(r.imp)}</b> <span class="muted">π./100</span></span>
             <span><span class="muted">επίθεση</span> <b class="num">${sgn(r.imp_o)}</b></span><span><span class="muted">άμυνα</span> <b class="num">${sgn(r.imp_d)}</b></span>
-            ${isNum(r.pc_ovr) ? `<span class="pill ${r.pc_ovr >= 50 ? "w" : "l"}">${topPct(r.pc_ovr)} της λίγκας</span>` : ""}</div>
+            ${isNum(r.pc_r_imp) ? `<span class="pill ${r.pc_r_imp >= 50 ? "w" : "l"}">${topPct(r.pc_r_imp)} της λίγκας</span>` : ""}</div>
           <div class="muted" style="font-size:12px;margin-top:4px">${r.imp_src === "rapm" ? "Από το play-by-play: πόσο αλλάζει η διαφορά πόντων όταν παίζει, με διόρθωση για συμπαίκτες και αντιπάλους (RAPM), ξεκινώντας από την εκτίμηση των στατιστικών του." : "Εκτίμηση από τα στατιστικά του (μοντέλο που έμαθε από το play-by-play της EuroLeague/EuroCup ποια στατιστικά συνδέονται με τη νίκη)."}</div></div>` : ""}
         <div class="rbars">${CATS.map(([key, label]) => `<div class="rbar" title="${topPct(r["pc_" + key])}"><span>${label}</span><b>${r[key]}</b>${bar(r[key], 99, ovrCls(r[key]))}</div>`).join("")}</div>
         ${!r.qual ? `<p class="muted" style="margin:0;font-size:12px">Λίγα λεπτά (${fmt(r.MIN, 0)}'): οι βαθμολογίες είναι τραβηγμένες προς τον μέσο όρο.</p>` : ""}</div>`;
@@ -1699,7 +1702,7 @@ const Views = {
     const margin = ((ta.adj_net - tb.adj_net) * pace) / 100 + hca;
     const sd = AN.sd_game || 12;
     const pHome = 0.5 * (1 + erf(margin / (sd * Math.SQRT2)));
-    const CATS = [["r_sco", "Σκορ"], ["r_sho", "Σουτ"], ["r_pla", "Δημ."], ["r_reb", "Ριμπ."], ["r_def", "Άμυνα"]];
+    const CATS = [["r_sco", "Σκορ"], ["r_sho", "Σουτ"], ["r_fin", "Τελ."], ["r_pla", "Δημ."], ["r_reb", "Ριμπ."], ["r_def", "Άμυνα"]].filter(([k]) => k !== "r_fin" || AN.ratings_v3);
 
     const opts = (sel) => teams.map((c) => `<option value="${esc(c)}" ${c === sel ? "selected" : ""}>${esc(S.teamName(c))}</option>`).join("");
     el.innerHTML = `

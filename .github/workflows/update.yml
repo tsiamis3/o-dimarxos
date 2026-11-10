@@ -91,6 +91,11 @@ jobs:
         continue-on-error: true
         run: python scripts/roles.py
 
+      # Ratings v3: OVR από τα επιμέρους (όγκος + ευστοχία) με βάρη ανά ρόλο· το RAPM μένει χωριστά (imp)
+      - name: Player ratings (v3)
+        continue-on-error: true
+        run: python scripts/overall.py
+
       - name: GNN dataset (graphs per game, EuroLeague + EuroCup)
         continue-on-error: true
         run: python scripts/gnn_data.py
