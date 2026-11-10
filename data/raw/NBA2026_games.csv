@@ -145,14 +145,14 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909949,3,2026-11-08,20:00,MIL,Milwaukee Bucks,BOS,Boston Celtics,97.0,117.0,True
 401909950,3,2026-11-08,21:00,LAC,LA Clippers,NO,New Orleans Pelicans,139.0,123.0,True
 401909951,3,2026-11-08,21:00,SAC,Sacramento Kings,MIA,Miami Heat,108.0,114.0,True
-401909952,3,2026-11-09,19:00,ATL,Atlanta Hawks,LAL,Los Angeles Lakers,,,False
-401909953,3,2026-11-09,19:00,CHA,Charlotte Hornets,CLE,Cleveland Cavaliers,,,False
-401909954,3,2026-11-09,19:00,DET,Detroit Pistons,WSH,Washington Wizards,,,False
-401909955,3,2026-11-09,19:30,TOR,Toronto Raptors,MEM,Memphis Grizzlies,,,False
-401909956,3,2026-11-09,20:00,DAL,Dallas Mavericks,IND,Indiana Pacers,,,False
-401909957,3,2026-11-09,20:30,HOU,Houston Rockets,DEN,Denver Nuggets,,,False
-401909958,3,2026-11-09,21:00,PHX,Phoenix Suns,SA,San Antonio Spurs,,,False
-401909959,3,2026-11-09,22:00,GS,Golden State Warriors,NO,New Orleans Pelicans,,,False
+401909952,3,2026-11-09,19:00,ATL,Atlanta Hawks,LAL,Los Angeles Lakers,114.0,124.0,True
+401909953,3,2026-11-09,19:00,CHA,Charlotte Hornets,CLE,Cleveland Cavaliers,124.0,112.0,True
+401909954,3,2026-11-09,19:00,DET,Detroit Pistons,WSH,Washington Wizards,122.0,111.0,True
+401909955,3,2026-11-09,19:30,TOR,Toronto Raptors,MEM,Memphis Grizzlies,102.0,118.0,True
+401909956,3,2026-11-09,20:00,DAL,Dallas Mavericks,IND,Indiana Pacers,125.0,122.0,True
+401909957,3,2026-11-09,20:30,HOU,Houston Rockets,DEN,Denver Nuggets,110.0,100.0,True
+401909958,3,2026-11-09,21:00,PHX,Phoenix Suns,SA,San Antonio Spurs,96.0,122.0,True
+401909959,3,2026-11-09,22:00,GS,Golden State Warriors,NO,New Orleans Pelicans,138.0,87.0,True
 401909960,4,2026-11-10,19:30,NY,New York Knicks,MIL,Milwaukee Bucks,,,False
 401909961,4,2026-11-10,20:00,PHI,Philadelphia 76ers,BOS,Boston Celtics,,,False
 401909962,4,2026-11-10,21:00,PHX,Phoenix Suns,LAC,LA Clippers,,,False
