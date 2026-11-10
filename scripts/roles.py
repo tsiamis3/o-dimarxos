@@ -58,6 +58,9 @@ ROLES = [   # όνομα, περιγραφή, κέντρο αναφοράς (Ν�
      [0.467, 0.731, -0.127, 0.325, -0.32, -0.151]),
 ]
 N_SIMILAR = 5
+# Προφίλ καριέρας (όπως στα ratings): το σχήμα βγαίνει από τον σταθμισμένο μέσο όλων των σεζόν του παίκτη
+# (z ανά λίγκα-σεζόν, άρα συγκρίσιμα ανάμεσα σε λίγκες), βάρος = λεπτά, × HIST_SCALE·HIST_DECAY^(σεζόν πίσω) για το παρελθόν.
+HIST_DECAY, HIST_SCALE = 0.7, 1.5
 SEED = 7
 
 
@@ -153,6 +156,31 @@ def axes(X: np.ndarray, w: np.ndarray):
     return transform(X), Lr[:, order] * sign, ev, transform
 
 
+def blend_history(P: pd.DataFrame, X: np.ndarray):
+    """Για κάθε παίκτη-σεζόν: σταθμισμένος μέσος των z όλων των σεζόν του ως τότε (και άλλων λιγκών την ίδια σεζόν).
+    Επιστρέφει (Xb, μερίδιο φετινής σεζόν, λεπτά παρελθόντος)."""
+    Xb = X.copy()
+    share = np.ones(len(P))
+    pmin = np.zeros(len(P))
+    uid, season, mins = P.uid.astype(str).to_numpy(), P.season.to_numpy(), P.MIN.to_numpy(float)
+    by = pd.Series(np.arange(len(P))).groupby(uid).apply(list)
+    for idx in by:
+        if len(idx) < 2:
+            continue
+        for i in idx:
+            js = [j for j in idx if j != i and season[j] <= season[i]]
+            if not js:
+                continue
+            # ίδια σεζόν σε άλλη λίγκα: ισότιμα με τη φετινή· προηγούμενες: × HIST_SCALE · HIST_DECAY^Δ
+            wj = np.array([mins[j] * (1.0 if season[j] == season[i] else HIST_SCALE * HIST_DECAY ** (season[i] - season[j]))
+                           for j in js])
+            wi = mins[i]
+            Xb[i] = (wi * X[i] + wj @ X[js]) / (wi + wj.sum())
+            share[i] = wi / (wi + wj.sum())
+            pmin[i] = float(mins[js].sum())
+    return Xb, share, pmin
+
+
 def to_shape(scores: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Αποκλίσεις από τον μέσο όρο (με πρόσημο) -> μήκος 1. Επιστρέφει (σχήμα, ένταση προφίλ = αρχικό μήκος)."""
     n = np.linalg.norm(scores, axis=1)
@@ -220,8 +248,9 @@ def main():
     fit = (P.MIN >= MIN_MIN).to_numpy()
     X = Z[FEATS].to_numpy()
     w = P.MIN.to_numpy()
-    sc_fit, L, ev, tf = axes(X[fit], w[fit])
-    sc = tf(X)
+    sc_fit, L, ev, tf = axes(X[fit], w[fit])          # άξονες και ρόλοι: από «καθαρές» σεζόν (≥ MIN_MIN)
+    Xb, cur_share, prior_min = blend_history(P, X)       # το σχήμα κάθε παίκτη-σεζόν: με την ιστορία του
+    sc = tf(Xb)
     shape, inten = to_shape(sc)
     pct = percentiles(sc, sc_fit)
     C, lab = spherical_kmeans(shape[fit], K, w[fit])
@@ -247,7 +276,7 @@ def main():
         r = P.iloc[i]
         out_players.setdefault(r.comp, {}).setdefault(str(r.season), []).append([
             r.pid, [_r(v) for v in shape[i]], [_r(v, 2) for v in pct[i]], [_r(v, 2) for v in Pr[i]], int(fit[i]),
-            _r(inten_pct[i], 2),
+            _r(inten_pct[i], 2), _r(cur_share[i], 2), _r(prior_min[i], 0),
             [[P.pid.iloc[g], P.player.iloc[g], P.comp.iloc[g], int(P.season.iloc[g]), _r(s_)] for g, s_ in best]])
     out = {
         "axes": AXIS_NAMES, "n_fit": int(fit.sum()), "min_fit": MIN_MIN, "min_show": MIN_SHOW,
@@ -255,7 +284,7 @@ def main():
         "loadings": {"feats": FEATS, "rows": [[_r(v, 2) for v in row] for row in L]},
         "roles": [{"name": n, "desc": d, "center": [_r(v) for v in C[k]], "n": int(np.sum(np.argmax(Pr[fit], 1) == k)),
                    "match": _r(float(match[k]))} for k, (n, d, _) in enumerate(ROLES)],
-        "cols": ["pid", "shape", "pct", "probs", "fit", "intensity", "similar"],
+        "cols": ["pid", "shape", "pct", "probs", "fit", "intensity", "cur_share", "prior_min", "similar"],
         "players": out_players,
     }
     SITE_DATA.mkdir(parents=True, exist_ok=True)
