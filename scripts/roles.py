@@ -28,7 +28,8 @@ from dataset import CompetitionData
 
 COMPS = ["E", "U", "NBA"]
 MIN_MIN = 300.0                    # λεπτά για να μπει παίκτης-σεζόν στην εκπαίδευση (άξονες, ρόλοι)
-MIN_SHOW = 120.0                   # λεπτά για να του υπολογιστεί σχήμα (με σημείωση «μικρό δείγμα»)
+MIN_SHOW = 120.0                   # λεπτά (φέτος ή φέτος + ιστορία) για να του υπολογιστεί σχήμα
+MIN_LOAD = 20.0                    # λεπτά για να μπει μια σεζόν στο προφίλ καριέρας
 # Λάθη και φάουλ έξω: μετρούν περισσότερο ποιότητα/θόρυβο παρά στυλ, και έβγαζαν έναν ασαφή «ρόλο».
 STYLE = ["usg", "ast_pct", "orb_pct", "drb_pct", "stl100", "blk100", "ftr",
          "sh_rim", "sh_paint", "sh_mid", "sh_c3", "sh_a3"]
@@ -97,14 +98,21 @@ def load(min_min: float = MIN_MIN) -> pd.DataFrame:
         P[c] = P.pid.map(bio[c])
     P.loc[~P.height.between(160, 235), "height"] = np.nan
     P.loc[~P.weight.between(55, 160), "weight"] = np.nan
-    P = P[(P.MIN >= min_min)].dropna(subset=FEATS).reset_index(drop=True)
+    P = P[(P.MIN >= min_min) & P.height.notna() & P.weight.notna()]
+    # λίγα λεπτά (< MIN_SHOW): κενά στυλ (π.χ. χωρίς σουτ) -> μέσος όρος της λίγκας-σεζόν· μετράνε ελάχιστα στο προφίλ
+    small = P.MIN < MIN_SHOW
+    for c in STYLE:
+        med = P.groupby(["comp", "season"])[c].transform("median")
+        P.loc[small, c] = P.loc[small, c].fillna(med[small])
+    P = P.dropna(subset=FEATS).reset_index(drop=True)
     if "uid" not in P:
         P["uid"] = P.pid
     return P
 
 
 def load_all() -> pd.DataFrame:
-    return load(MIN_SHOW)
+    """Όλοι με ≥ MIN_LOAD λεπτά· σχήμα δείχνεται σε όσους έχουν ≥ MIN_SHOW φέτος ή αρκετή ιστορία."""
+    return load(MIN_LOAD)
 
 
 def zscores(P: pd.DataFrame) -> pd.DataFrame:
@@ -263,6 +271,8 @@ def main():
     Sf, idx_fit, uid = shape[fit], np.flatnonzero(fit), P.uid.astype(str).to_numpy()
     out_players = {}
     for i in range(len(P)):
+        if P.MIN.iloc[i] < MIN_SHOW and prior_min[i] < MIN_SHOW:
+            continue                                   # λίγα λεπτά και χωρίς ιστορία: όχι σχήμα
         sims = Sf @ shape[i]
         best, seen = [], {uid[i]}
         for j in np.argsort(-sims):
