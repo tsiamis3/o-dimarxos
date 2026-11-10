@@ -26,10 +26,11 @@ from scipy.optimize import linear_sum_assignment
 from config import RAW_DIR, SITE_DATA
 from dataset import CompetitionData
 
-COMPS = ["E", "U", "NBA"]
+COMPS = ["E", "U", "NBA"]          # ρόλοι ορίζονται και δείχνονται εδώ (υπάρχουν ζώνες σουτ)
+HIST_COMPS = ["GBL"]               # μόνο ως ιστορία (χωρίς ζώνες σουτ): μετρούν τα υπόλοιπα χαρακτηριστικά
 MIN_MIN = 300.0                    # λεπτά για να μπει παίκτης-σεζόν στην εκπαίδευση (άξονες, ρόλοι)
-MIN_SHOW = 120.0                   # λεπτά (φέτος ή φέτος + ιστορία) για να του υπολογιστεί σχήμα
-MIN_LOAD = 20.0                    # λεπτά για να μπει μια σεζόν στο προφίλ καριέρας
+MIN_SHOW = 120.0                   # φετινά λεπτά για σχήμα όταν δεν υπάρχει ιστορία (με ιστορία: πάντα)
+MIN_LOAD = 1.0                     # κάθε σεζόν με λεπτά μπαίνει στο προφίλ καριέρας (λίγα λεπτά = λίγο βάρος)
 # Λάθη και φάουλ έξω: μετρούν περισσότερο ποιότητα/θόρυβο παρά στυλ, και έβγαζαν έναν ασαφή «ρόλο».
 STYLE = ["usg", "ast_pct", "orb_pct", "drb_pct", "stl100", "blk100", "ftr",
          "sh_rim", "sh_paint", "sh_mid", "sh_c3", "sh_a3"]
@@ -68,8 +69,11 @@ SEED = 7
 # ---------------------------------------------------------------------------
 def load(min_min: float = MIN_MIN) -> pd.DataFrame:
     frames = []
-    for c in COMPS:
-        A = json.loads((SITE_DATA / f"analytics_{c}.json").read_text())
+    for c in COMPS + HIST_COMPS:
+        f = SITE_DATA / f"analytics_{c}.json"
+        if not f.exists():
+            continue
+        A = json.loads(f.read_text())
         logs = CompetitionData(c).logs
         logs = logs.assign(FGA=logs.FG2A + logs.FG3A)
         for s, v in A["seasons"].items():
@@ -87,26 +91,32 @@ def load(min_min: float = MIN_MIN) -> pd.DataFrame:
                 tot = att.sum(axis=1)
                 for z in ZONES:
                     t["sh_" + z] = att[z] / tot.replace(0, np.nan)
+                    t["za_" + z] = att[z]                              # προσπάθειες (για ρυθμούς / log-ratio)
             frames.append(t)
     P = pd.concat(frames, ignore_index=True)
     # βιομετρικά
     bios = [pd.read_csv(f) for f in sorted(RAW_DIR.glob("[EU]20*_bio.csv"))]
     if (RAW_DIR / "NBA_bio.csv").exists():
         bios.append(pd.read_csv(RAW_DIR / "NBA_bio.csv"))
-    bio = pd.concat(bios).groupby("pid")[["height", "weight", "position", "headshot"]].last()
-    for c in ["height", "weight", "position", "headshot"]:
-        P[c] = P.pid.map(bio[c])
-    P.loc[~P.height.between(160, 235), "height"] = np.nan
-    P.loc[~P.weight.between(55, 160), "weight"] = np.nan
-    P = P[(P.MIN >= min_min) & P.height.notna() & P.weight.notna()]
-    # λίγα λεπτά (< MIN_SHOW): κενά στυλ (π.χ. χωρίς σουτ) -> μέσος όρος της λίγκας-σεζόν· μετράνε ελάχιστα στο προφίλ
-    small = P.MIN < MIN_SHOW
-    for c in STYLE:
-        med = P.groupby(["comp", "season"])[c].transform("median")
-        P.loc[small, c] = P.loc[small, c].fillna(med[small])
-    P = P.dropna(subset=FEATS).reset_index(drop=True)
+    bio = pd.concat(bios)
+    # λάθη της πηγής: ίντσες/λίβρες, βάρος = ύψος, αδύνατες τιμές (ίδιος κανόνας με το GNN)
+    imp = bio.height.between(60, 95) & (bio.weight > 140)
+    bio.loc[imp, "height"], bio.loc[imp, "weight"] = bio.height[imp] * 2.54, bio.weight[imp] * 0.4536
+    bio.loc[bio.weight == bio.height, "weight"] = np.nan
+    bio.loc[~bio.height.between(160, 235), "height"] = np.nan
+    bio.loc[~bio.weight.between(55, 160), "weight"] = np.nan
+    bio = bio.groupby("pid")[["height", "weight", "position", "headshot"]].last()
     if "uid" not in P:
         P["uid"] = P.pid
+    key = P.uid.where(P.uid.astype(str).str.startswith(("P", "ESPN")), P.pid).astype(str)   # ελληνική λίγκα: μέσω uid
+    for c in ["height", "weight", "position", "headshot"]:
+        P[c] = key.map(bio[c])
+    # χωρίς βιομετρικά: διάμεσος της θέσης στη λίγκα (θέση από την πηγή, αλλιώς από το προφίλ στατιστικών)
+    pos = P.position.fillna(P.get("pos", pd.Series("", index=P.index)).map({"PG": "Guard", "SG": "Guard", "SF": "Forward",
+                                                                          "PF": "Forward", "C": "Center"}))
+    for c in ["height", "weight"]:
+        P[c] = P[c].fillna(P.groupby([P.comp, pos])[c].transform("median")).fillna(P[c].median())
+    P = P[P.MIN >= min_min].reset_index(drop=True)
     return P
 
 
@@ -116,13 +126,21 @@ def load_all() -> pd.DataFrame:
 
 
 def zscores(P: pd.DataFrame) -> pd.DataFrame:
+    """z ανά λίγκα-σεζόν (βάρος λεπτά). Μέσος/διασπορά από όσους έχουν ≥ MIN_SHOW (ώστε τα μικρά δείγματα να μη
+    μετακινούν την κλίμακα), εφαρμογή σε όλους. Κενά μένουν κενά."""
     def z(df):
-        w = df.MIN.to_numpy()
+        ref = df[df.MIN >= MIN_SHOW]
+        ref = ref if len(ref) >= 20 else df
         out = {}
         for c in FEATS:
             v = df[c].to_numpy(float)
-            m = np.average(v, weights=w)
-            sd = math.sqrt(np.average((v - m) ** 2, weights=w))
+            rv, rw = ref[c].to_numpy(float), ref.MIN.to_numpy(float)
+            ok = ~np.isnan(rv)
+            if ok.sum() < 5:
+                out[c] = np.full(len(df), np.nan)
+                continue
+            m = np.average(rv[ok], weights=rw[ok])
+            sd = math.sqrt(np.average((rv[ok] - m) ** 2, weights=rw[ok]))
             out[c] = np.clip((v - m) / (sd + 1e-9), -4, 4)
         return pd.DataFrame(out, index=df.index)
     return pd.concat([z(g) for _, g in P.groupby(["comp", "season"])]).loc[P.index]
@@ -165,27 +183,27 @@ def axes(X: np.ndarray, w: np.ndarray):
 
 
 def blend_history(P: pd.DataFrame, X: np.ndarray):
-    """Για κάθε παίκτη-σεζόν: σταθμισμένος μέσος των z όλων των σεζόν του ως τότε (και άλλων λιγκών την ίδια σεζόν).
+    """Για κάθε παίκτη-σεζόν: σταθμισμένος μέσος των z όλων των σεζόν του ως τότε (και άλλων λιγκών την ίδια σεζόν),
+    ανά χαρακτηριστικό (τα κενά, π.χ. ζώνες σουτ στην ελληνική λίγκα, δεν μετρούν· ό,τι μείνει κενό = μέσος όρος, 0).
     Επιστρέφει (Xb, μερίδιο φετινής σεζόν, λεπτά παρελθόντος)."""
-    Xb = X.copy()
+    uid, season, mins = P.uid.astype(str).to_numpy(), P.season.to_numpy(), P.MIN.to_numpy(float)
+    Xb = np.zeros_like(X)
     share = np.ones(len(P))
     pmin = np.zeros(len(P))
-    uid, season, mins = P.uid.astype(str).to_numpy(), P.season.to_numpy(), P.MIN.to_numpy(float)
     by = pd.Series(np.arange(len(P))).groupby(uid).apply(list)
     for idx in by:
-        if len(idx) < 2:
-            continue
         for i in idx:
             js = [j for j in idx if j != i and season[j] <= season[i]]
-            if not js:
-                continue
             # ίδια σεζόν σε άλλη λίγκα: ισότιμα με τη φετινή· προηγούμενες: × HIST_SCALE · HIST_DECAY^Δ
-            wj = np.array([mins[j] * (1.0 if season[j] == season[i] else HIST_SCALE * HIST_DECAY ** (season[i] - season[j]))
-                           for j in js])
-            wi = mins[i]
-            Xb[i] = (wi * X[i] + wj @ X[js]) / (wi + wj.sum())
-            share[i] = wi / (wi + wj.sum())
-            pmin[i] = float(mins[js].sum())
+            w = np.array([mins[i]] + [mins[j] * (1.0 if season[j] == season[i] else HIST_SCALE * HIST_DECAY ** (season[i] - season[j]))
+                                      for j in js])
+            V = X[[i] + js]
+            ok = ~np.isnan(V)
+            num = np.where(ok, V, 0.0).T @ w
+            den = ok.T.astype(float) @ w
+            Xb[i] = np.where(den > 0, num / np.maximum(den, 1e-9), 0.0)
+            share[i] = w[0] / w.sum()
+            pmin[i] = float(mins[js].sum()) if js else 0.0
     return Xb, share, pmin
 
 
@@ -253,8 +271,8 @@ def _r(v, d=3):
 def main():
     P = load_all()
     Z = zscores(P)
-    fit = (P.MIN >= MIN_MIN).to_numpy()
     X = Z[FEATS].to_numpy()
+    fit = ((P.MIN >= MIN_MIN) & P.comp.isin(COMPS)).to_numpy() & ~np.isnan(X).any(axis=1)
     w = P.MIN.to_numpy()
     sc_fit, L, ev, tf = axes(X[fit], w[fit])          # άξονες και ρόλοι: από «καθαρές» σεζόν (≥ MIN_MIN)
     Xb, cur_share, prior_min = blend_history(P, X)       # το σχήμα κάθε παίκτη-σεζόν: με την ιστορία του
@@ -271,8 +289,8 @@ def main():
     Sf, idx_fit, uid = shape[fit], np.flatnonzero(fit), P.uid.astype(str).to_numpy()
     out_players = {}
     for i in range(len(P)):
-        if P.MIN.iloc[i] < MIN_SHOW and prior_min[i] < MIN_SHOW:
-            continue                                   # λίγα λεπτά και χωρίς ιστορία: όχι σχήμα
+        if P.MIN.iloc[i] < MIN_SHOW and prior_min[i] <= 0:
+            continue                                   # καινούργιος παίκτης (χωρίς ιστορία) με λίγα λεπτά: όχι σχήμα
         sims = Sf @ shape[i]
         best, seen = [], {uid[i]}
         for j in np.argsort(-sims):
@@ -299,7 +317,7 @@ def main():
     }
     SITE_DATA.mkdir(parents=True, exist_ok=True)
     for c, by_season in out_players.items():            # ένα αρχείο ανά διοργάνωση (φορτώνεται μόνο αυτό που χρειάζεται)
-        (SITE_DATA / f"roles_{c}.json").write_text(json.dumps({**out, "comp": c, "players": by_season},
+        (SITE_DATA / f"roles_{c}.json").write_text(json.dumps({**out, "comp": c, "no_zones": c in HIST_COMPS, "players": by_season},
                                                                ensure_ascii=False, separators=(",", ":")))
     print(f"roles: {len(P)} player-seasons ({int(fit.sum())} fit), axes explain {ev[:N_AXES].sum():.1%}, "
           f"kappa {kappa:.2f}, match to reference roles {np.round(match, 3).tolist()}")
