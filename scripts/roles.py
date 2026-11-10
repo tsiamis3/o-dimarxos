@@ -284,6 +284,11 @@ def main():
     order, match = name_roles(C)
     C = C[order]
     Pr = role_probs(shape, C, kappa)
+    # για το γράφημα (χωρίς κανονικοποίηση): κέντρο κάθε ρόλου στο τυπικό επίπεδο των παικτών του, σε ποσοστημόρια
+    lab_fit = np.argmax(Pr[fit], axis=1)
+    inten_fit = inten[fit]
+    center_pct = [percentiles((C[k] * float(np.median(inten_fit[lab_fit == k])))[None, :], sc_fit)[0]
+                  if (lab_fit == k).any() else np.full(N_AXES, 0.5) for k in range(K)]
     inten_pct = np.searchsorted(np.sort(inten[fit]), inten, side="right") / fit.sum()
     # πιο όμοιοι (συνημίτονο σχημάτων), ανάμεσα σε όσους έχουν αρκετά λεπτά, άλλος παίκτης
     Sf, idx_fit, uid = shape[fit], np.flatnonzero(fit), P.uid.astype(str).to_numpy()
@@ -310,7 +315,7 @@ def main():
         "axes": AXIS_NAMES, "n_fit": int(fit.sum()), "min_fit": MIN_MIN, "min_show": MIN_SHOW,
         "explained": _r(float(ev[:N_AXES].sum())), "kappa": _r(kappa, 2),
         "loadings": {"feats": FEATS, "rows": [[_r(v, 2) for v in row] for row in L]},
-        "roles": [{"name": n, "desc": d, "center": [_r(v) for v in C[k]], "n": int(np.sum(np.argmax(Pr[fit], 1) == k)),
+        "roles": [{"name": n, "desc": d, "center": [_r(v) for v in C[k]], "center_pct": [_r(v, 2) for v in center_pct[k]], "n": int(np.sum(np.argmax(Pr[fit], 1) == k)),
                    "match": _r(float(match[k]))} for k, (n, d, _) in enumerate(ROLES)],
         "cols": ["pid", "shape", "pct", "probs", "fit", "intensity", "cur_share", "prior_min", "similar"],
         "players": out_players,
