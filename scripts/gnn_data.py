@@ -104,6 +104,20 @@ FEATURES = {   # όνομα -> περιγραφή (για τη σελίδα)
     "pos_c": "Επίσημη θέση: Center (1/0)",
     "no_bio": "1 = λείπουν βιομετρικά (ύψος/βάρος/ηλικία = μέσος όρος της θέσης ή της λίγκας)",
 }
+# Προφίλ καριέρας μέχρι την ΠΡΟΗΓΟΥΜΕΝΗ σεζόν (χωρίς διαρροή από τη φετινή): rating και ρόλος (analytics.py, roles.py)
+ROLE_N = 7
+CAREER_FEATURES = {
+    "prev_ovr": "OVR στο τέλος της πιο πρόσφατης προηγούμενης σεζόν (οποιαδήποτε λίγκα, κοινή κλίμακα· προφίλ καριέρας)",
+    "prev_sco": "Σκοράρισμα (rating) της πιο πρόσφατης προηγούμενης σεζόν",
+    "prev_sho": "Σουτ (rating) της πιο πρόσφατης προηγούμενης σεζόν",
+    "prev_pla": "Δημιουργία (rating) της πιο πρόσφατης προηγούμενης σεζόν",
+    "prev_reb": "Ριμπάουντ (rating) της πιο πρόσφατης προηγούμενης σεζόν",
+    "prev_def": "Άμυνα (rating) της πιο πρόσφατης προηγούμενης σεζόν",
+    "prev_gap": "Σεζόν από την πιο πρόσφατη προηγούμενη (1 = πέρυσι, έως 4)",
+    **{f"role_{k}": f"Πιθανότητα ρόλου {k + 1} (από το σχήμα καριέρας έως την προηγούμενη σεζόν· ονόματα στο roles_*.json)" for k in range(ROLE_N)},
+    "new": "1 = καινούργιος στη βάση (καμία προηγούμενη σεζόν): rating = μέσος όρος, ρόλοι = ισοπίθανοι",
+}
+FEATURES.update(CAREER_FEATURES)
 TEAM_FEATURES = {
     "t_off": "Rating επίθεσης ομάδας (πόντοι/100 πάνω από τον μέσο όρο, με διόρθωση για αντιπάλους)",
     "t_def": "Rating άμυνας ομάδας (πόντοι/100 που επιτρέπει πάνω από τον μέσο όρο· αρνητικό = καλή άμυνα)",
@@ -204,6 +218,65 @@ def load():
     logs = logs.merge(trips[["gid", "pid", "trips"]], on=["gid", "pid"], how="left")
     logs.loc[logs.trips.isna() & logs.gid.isin(stints.gid), "trips"] = 0
     return logs, games, stints, pbp, shots, tgs
+
+
+def career_prev(N: pd.DataFrame) -> pd.DataFrame:
+    """Για κάθε κόμβο (παίκτης, σεζόν S): rating και πιθανότητες ρόλων της πιο πρόσφατης σεζόν < S, σε όποια λίγκα
+    (ενιαίο μητρώο). Πηγές: site/data/analytics_*.json (ratings) και roles_*.json (ρόλοι)."""
+    rows, uid_of = [], {}
+    for c in ["E", "U", "GBL", "NBA"]:
+        f = SITE_DATA / f"analytics_{c}.json"
+        if not f.exists():
+            continue
+        A = json.loads(f.read_text())
+        R = None
+        fr = SITE_DATA / f"roles_{c}.json"
+        if fr.exists():
+            R = json.loads(fr.read_text())
+        for s, v in A.get("seasons", {}).items():
+            P = v.get("players")
+            if not P or "uid" not in P["cols"]:
+                continue
+            t = pd.DataFrame(P["rows"], columns=P["cols"])
+            if c in COMPS:
+                uid_of.update(dict(zip(t.pid.astype(str), t.uid.astype(str))))
+            probs = {}
+            if R and str(s) in R.get("players", {}):
+                ci, cp = R["cols"].index("pid"), R["cols"].index("probs")
+                probs = {r[ci]: r[cp] for r in R["players"][str(s)]}
+            for r in t.itertuples():
+                pr = probs.get(r.pid)
+                rows.append((str(r.uid), int(s), float(r.MIN), r.ovr, r.r_sco, r.r_sho, r.r_pla, r.r_reb, r.r_def,
+                             *(pr if pr else [np.nan] * ROLE_N)))
+    cols = ["uid", "season", "MIN", "prev_ovr", "prev_sco", "prev_sho", "prev_pla", "prev_reb", "prev_def",
+            *[f"role_{k}" for k in range(ROLE_N)]]
+    H = pd.DataFrame(rows, columns=cols)
+    if H.empty:
+        return pd.DataFrame(index=N.index, columns=list(CAREER_FEATURES), dtype=float)
+    H = H.sort_values("MIN").drop_duplicates(["uid", "season"], keep="last")        # σεζόν σε δύο λίγκες: όπου έπαιξε περισσότερο
+    # ρόλοι: αν λείπουν από τη σεζόν με τα περισσότερα λεπτά (π.χ. ελληνική λίγκα), από άλλη λίγκα την ίδια σεζόν
+    q = pd.DataFrame({"uid": N.pid.map(lambda p: uid_of.get(str(p), str(p))), "season": N.season.astype(int)}, index=N.index)
+    q = q.reset_index().sort_values("season")
+    H = H.sort_values("season")
+    m = pd.merge_asof(q, H.drop(columns="MIN"), on="season", by="uid", allow_exact_matches=False,
+                      suffixes=("", "_h")).set_index("index").reindex(N.index)
+    hs = pd.merge_asof(q, H[["uid", "season"]].assign(prev_season=H.season), on="season", by="uid",
+                       allow_exact_matches=False).set_index("index").reindex(N.index)
+    out = pd.DataFrame(index=N.index)
+    for c in ["prev_ovr", "prev_sco", "prev_sho", "prev_pla", "prev_reb", "prev_def"]:
+        out[c] = m[c].astype(float)
+    out["prev_gap"] = (N.season - hs.prev_season).clip(upper=4)
+    out["new"] = out.prev_ovr.isna().astype(float)
+    for k in range(ROLE_N):
+        out[f"role_{k}"] = m[f"role_{k}"].astype(float)
+    # καινούργιοι: rating = μέσος όρος της λίγκας του κόμβου, ρόλοι ισοπίθανοι, gap = 4
+    for c in ["prev_ovr", "prev_sco", "prev_sho", "prev_pla", "prev_reb", "prev_def"]:
+        out[c] = out[c].fillna(out.groupby(N.comp)[c].transform("mean")).fillna(out[c].mean())
+    rcols = [f"role_{k}" for k in range(ROLE_N)]
+    miss = out[rcols].isna().any(axis=1)
+    out.loc[miss, rcols] = 1.0 / ROLE_N
+    out["prev_gap"] = out.prev_gap.fillna(4)
+    return out
 
 
 def load_bio():
@@ -435,7 +508,7 @@ def node_features(logs, games, pg, zones, ast, stints, bio):
         if c in F and F[c].isna().any():
             F[c] = F[c].fillna(F.groupby(L.comp)[c].transform("mean")).fillna(F[c].mean())
     keep = ["gid", "comp", "season", "gameCode", "date", "pid", "player", "team", "opp", "home", "played"]
-    N = pd.concat([L[keep].reset_index(drop=True), F[list(FEATURES)].reset_index(drop=True).add_prefix("f_")], axis=1)
+    N = pd.concat([L[keep].reset_index(drop=True), F[[c for c in FEATURES if c not in CAREER_FEATURES]].reset_index(drop=True).add_prefix("f_")], axis=1)
     for t in TARGETS_A:
         N["y_" + t.lower()] = L[t].values
     N["y_pm100"] = L.pm100.where(pl).values
@@ -602,7 +675,7 @@ def preview(N, E, G, T, logs, ast_rate, poss_game=None):
     gs = {}
     show_f = ["r_pts", "r_reb", "r_ast", "r_pir", "r_pts_s", "ts", "usg", "oreb_pct", "dreb_pct", "astd", "sh_rim", "sh_a3", "min", "starter",
               "pm100", "rapm_o", "rapm_d", "sd_pts", "log_games", "rest", "hist_E", "no_hist",
-              "height", "weight", "age", "pos_g", "pos_f", "pos_c"]
+              "height", "weight", "age", "pos_g", "pos_f", "pos_c", "prev_ovr", "prev_gap", "new"]
     for gid in sample_ids:
         nd = N[N.gid == gid]
         ed = E[E.gid == gid]
@@ -655,6 +728,10 @@ def main():
     bio = load_bio()
     print(f"bio: {len(bio)} players")
     N = node_features(logs, games, pg, zones, ast, stints, bio)
+    CP = career_prev(N)
+    for c in CAREER_FEATURES:
+        N["f_" + c] = CP[c].values
+    print(f"career profile: {1 - N.f_new.mean():.1%} of nodes have an earlier season (rating + role)")
     E = edge_features(N, pairs, games, ast)
     T = team_nodes(tgs, N)
     G = graphs_table(N, games, logs[logs.played == 1])
