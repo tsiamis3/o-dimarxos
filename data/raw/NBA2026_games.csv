@@ -159,16 +159,16 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909963,4,2026-11-10,21:00,UTAH,Utah Jazz,MIA,Miami Heat,109.0,115.0,True
 401909964,4,2026-11-10,22:00,SAC,Sacramento Kings,ORL,Orlando Magic,100.0,107.0,True
 401909965,4,2026-11-10,23:00,POR,Portland Trail Blazers,OKC,Oklahoma City Thunder,123.0,103.0,True
-401909966,4,2026-11-11,19:00,IND,Indiana Pacers,WSH,Washington Wizards,,,False
-401909967,4,2026-11-11,19:00,NY,New York Knicks,CLE,Cleveland Cavaliers,,,False
-401909968,4,2026-11-11,19:00,TOR,Toronto Raptors,BOS,Boston Celtics,,,False
-401909969,4,2026-11-11,20:00,CHI,Chicago Bulls,SA,San Antonio Spurs,,,False
-401909970,4,2026-11-11,20:00,MEM,Memphis Grizzlies,DEN,Denver Nuggets,,,False
-401909971,4,2026-11-11,20:00,MIL,Milwaukee Bucks,LAL,Los Angeles Lakers,,,False
-401909972,4,2026-11-11,20:00,NO,New Orleans Pelicans,BKN,Brooklyn Nets,,,False
-401909973,4,2026-11-11,21:00,UTAH,Utah Jazz,ORL,Orlando Magic,,,False
-401909974,4,2026-11-11,21:30,HOU,Houston Rockets,GS,Golden State Warriors,,,False
-401909975,4,2026-11-11,22:00,POR,Portland Trail Blazers,OKC,Oklahoma City Thunder,,,False
+401909966,4,2026-11-11,19:00,IND,Indiana Pacers,WSH,Washington Wizards,114.0,101.0,True
+401909967,4,2026-11-11,19:00,NY,New York Knicks,CLE,Cleveland Cavaliers,107.0,115.0,True
+401909968,4,2026-11-11,19:00,TOR,Toronto Raptors,BOS,Boston Celtics,93.0,98.0,True
+401909969,4,2026-11-11,20:00,CHI,Chicago Bulls,SA,San Antonio Spurs,119.0,124.0,True
+401909970,4,2026-11-11,20:00,MEM,Memphis Grizzlies,DEN,Denver Nuggets,118.0,123.0,True
+401909971,4,2026-11-11,20:00,MIL,Milwaukee Bucks,LAL,Los Angeles Lakers,112.0,123.0,True
+401909972,4,2026-11-11,20:00,NO,New Orleans Pelicans,BKN,Brooklyn Nets,111.0,145.0,True
+401909973,4,2026-11-11,21:00,UTAH,Utah Jazz,ORL,Orlando Magic,108.0,123.0,True
+401909974,4,2026-11-11,21:30,HOU,Houston Rockets,GS,Golden State Warriors,115.0,108.0,True
+401909975,4,2026-11-11,22:00,POR,Portland Trail Blazers,OKC,Oklahoma City Thunder,118.0,108.0,True
 401909976,4,2026-11-12,19:00,PHI,Philadelphia 76ers,TOR,Toronto Raptors,,,False
 401909977,4,2026-11-12,19:00,WSH,Washington Wizards,DET,Detroit Pistons,,,False
 401909978,4,2026-11-12,20:00,MIN,Minnesota Timberwolves,DAL,Dallas Mavericks,,,False
