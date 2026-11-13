@@ -713,6 +713,17 @@ const App = {
     const saved = store.get("comp");
     const inSec = this.sectionInfo().comps;
     this.comp = inSec.includes(saved) ? saved : inSec[0];
+    // deep link: index.html?c=GBL&p=<παίκτης> ή ?c=GBL&t=<ομάδα> (π.χ. από τη μινιμαλιστική σελίδα gbl.html)
+    const q = new URLSearchParams(location.search), qc = q.get("c");
+    if (qc && this.compInfo(qc)) {
+      const sec = secs.find((x) => x.comps.includes(qc));
+      if (sec) { this.section = sec.key; store.set("section", sec.key); }
+      this.comp = qc; store.set("comp", qc);
+      let h = location.hash;
+      if (q.get("p")) { this.ui.players = [q.get("p")]; h = "#players"; }
+      else if (q.get("t")) { this.ui.team = q.get("t"); h = "#teams"; }
+      history.replaceState(null, "", location.pathname + h);      // χωρίς hashchange (μία μόνο απόδοση)
+    }
     this.season = this.latestSeason();
     this.renderControls();
     window.addEventListener("hashchange", () => this.render());
