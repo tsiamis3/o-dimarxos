@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Πλάνο · Προγνωστικά</title>
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="stylesheet" href="style.css?v=__BUILD__">
+<style>
+  /* μόνο διάταξη για αυτή τη σελίδα (τα χρώματα/τυπογραφία έρχονται από το theme.css) */
+  .plan-sec { display: flex; flex-direction: column; gap: 12px; }
+  .plan-sec h2 { margin: 0; }
+  .plan-sec h3 { margin: 10px 0 0; }
+  .plan-sec p { margin: 0; max-width: 80ch; }
+  .st { display: inline-block; min-width: 1.4em; text-align: center; font-weight: 700; }
+  .st.done { color: var(--good); } .st.next { color: var(--accent); } .st.idea { color: var(--muted); } .st.no { color: var(--bad); }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .tile { flex: 1 1 200px; }
+  .flow .arrow { align-self: center; color: var(--muted); font-size: 20px; }
+  .gm td { vertical-align: top; }
+  .gm input[type=number] { width: 5.6em; }
+  .gm select { max-width: 9.5em; }
+  .form-dots { letter-spacing: 1px; font-family: var(--font-num); font-size: 12px; }
+  .ev-pos { color: var(--good); font-weight: 600; } .ev-neg { color: var(--bad); }
+  .sugg button { white-space: nowrap; }
+  .note-box { border-left: 3px solid var(--accent); padding: 8px 12px; background: var(--surface); border-radius: var(--r); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand-row"><div class="brand"><h1>Προγνωστικά</h1><small>οργάνωση του project και πλάνο αγωνιστικής</small></div></div>
+    <nav class="tabs">
+      <a href="index.html#home">Αρχική</a>
+      <a href="index.html#players">Παίκτες</a>
+      <a href="index.html#analysis">Ανάλυση</a>
+      <a href="notes.html">Σημειώσεις</a>
+      <a href="gnn.html">Δεδομένα GNN</a>
+      <a href="plan.html" aria-current="page">Πλάνο</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap" style="display:flex;flex-direction:column;gap:32px;padding-block:20px 40px">
+
+<!-- ===================================================================== -->
+<section class="plan-sec" id="bet">
+  <h2>Πλάνο αγωνιστικής: Stoiximan GBL</h2>
+  <div id="bet-head" class="muted">Φόρτωση…</div>
+  <div class="note-box">
+    <p><b>Πώς να το χρησιμοποιήσεις.</b> Για κάθε αγώνα διάλεξε αγορά (νίκη, χάντικαπ, over/under) και γράψε την <b>απόδοση του bookmaker</b> (και τη γραμμή, όπου χρειάζεται). Η σελίδα βάζει την πιθανότητα του μοντέλου και δείχνει αν η απόδοση είναι πάνω ή κάτω από τη «δίκαιη». Κάτω, το δελτίο αθροίζει τα πάντα για το ποσό σου και προτείνει συνδυασμούς που φτάνουν τον στόχο. Το παρολί το αποφασίζεις εσύ.</p>
+  </div>
+  <div id="bet-games"></div>
+  <div id="bet-slip"></div>
+  <div id="bet-sugg"></div>
+  <div id="bet-model"></div>
+</section>
+
+<!-- ===================================================================== -->
+<section class="plan-sec" id="map">
+  <h2>Το project με μια ματιά</h2>
+  <p>Ένα σύστημα που μαζεύει κάθε μέρα δεδομένα από πέντε διοργανώσεις, βγάζει από αυτά μοντέλα για ομάδες και παίκτες, και τα δείχνει στο σάιτ. Όλα τρέχουν αυτόματα στο GitHub (ένα workflow την ημέρα και σε κάθε αλλαγή κώδικα).</p>
+  <div class="flow">
+    <div class="tile"><div class="l">1. Δεδομένα</div><div><b>EuroLeague, EuroCup</b>: box scores, play-by-play, σουτ με συντεταγμένες, βιογραφικά.<br><b>Stoiximan GBL</b> (esake.gr): box scores.<br><b>NBA</b> (ESPN): box scores, σουτ με τον πασέρ, βιογραφικά, αποδόσεις, τραυματισμοί.<br><b>Α2 γυναικών</b>: πρόγραμμα, σκορ.</div></div>
+    <div class="arrow">→</div>
+    <div class="tile"><div class="l">2. Επεξεργασία</div><div>Ενιαίο μητρώο παικτών (ο ίδιος παίκτης σε όλες τις λίγκες, 222 συνδέσεις), stints από το play-by-play (64.689), μετρημένες κατοχές, ζώνες σουτ, προφίλ καριέρας.</div></div>
+    <div class="arrow">→</div>
+    <div class="tile"><div class="l">3. Μοντέλα</div><div>Ratings ομάδων και πρόβλεψη αγώνων, ratings παικτών (OVR v3), επιρροή (RAPM), ρόλοι και radar, δεδομένα GNN.</div></div>
+    <div class="arrow">→</div>
+    <div class="tile"><div class="l">4. Σάιτ</div><div>Αρχική και αγώνες, ομάδες, παίκτες (κάρτα, radar, σύγκριση), ανάλυση, ματσάρισμα, στοίχημα, σημειώσεις, δεδομένα GNN, αυτό το πλάνο.</div></div>
+  </div>
+
+  <h3>Τα μοντέλα</h3>
+  <div class="tbl-wrap"><table><thead><tr><th>Μοντέλο</th><th>Τι απαντά</th><th>Έλεγχος</th><th>Κατάσταση</th></tr></thead><tbody>
+    <tr><td><b>Ratings ομάδων</b> (επίθεση/άμυνα, με χρονική απόσβεση)</td><td>Πιθανότητα νίκης, αναμενόμενη διαφορά και σύνολο πόντων</td><td>GBL: 76% σωστός νικητής, Brier 0.156 (494 αγώνες)· φέτος 79% (42). NBA απέναντι στην αγορά: 0.202 έναντι 0.194, άρα <b>δεν κερδίζει την αγορά</b></td><td><span class="st done">✔</span> στο σάιτ</td></tr>
+    <tr><td><b>OVR παικτών (v3)</b></td><td>Πόσο καλός παίκτης είναι για τον ρόλο του (από τα στατιστικά)</td><td>Σταθερότητα από σεζόν σε σεζόν 0.93· συσχέτιση με PIR 0.62–0.70</td><td><span class="st done">✔</span> στο σάιτ (§8)</td></tr>
+    <tr><td><b>Επιρροή (RAPM)</b></td><td>Πόσο αλλάζει η διαφορά πόντων όταν παίζει</td><td>Walk-forward 0.39 (από 0.36)</td><td><span class="st done">✔</span> EuroLeague/EuroCup</td></tr>
+    <tr><td><b>Ρόλοι και radar</b></td><td>Πώς παίζει, με ποιους μοιάζει, 8 ρόλοι, ετικέτες</td><td>Σταθερότητα ρόλων 0.90</td><td><span class="st done">✔</span> στο σάιτ (§12)</td></tr>
+    <tr><td><b>GNN αγώνων</b></td><td>Πρόβλεψη αγώνα από τους παίκτες που θα παίξουν και τις σχέσεις τους</td><td>Δεδομένα έτοιμα (74 χαρακτηριστικά ανά παίκτη)</td><td><span class="st next">▶</span> εκπαίδευση</td></tr>
+  </tbody></table></div>
+
+  <h3>Οι ιδέες, οργανωμένες</h3>
+  <p class="muted"><span class="st done">✔</span> έγινε · <span class="st next">▶</span> προτεινόμενο επόμενο · <span class="st idea">○</span> ιδέα για αργότερα · <span class="st no">✖</span> δοκιμάστηκε ή συζητήθηκε, δεν αξίζει</p>
+  <div class="grid2">
+    <div class="tbl-wrap"><table><thead><tr><th colspan="2">Παίκτες</th></tr></thead><tbody>
+      <tr><td><span class="st done">✔</span></td><td>Ενιαίο μητρώο σε όλες τις λίγκες, πίνακας καριέρας, ελληνικά ονόματα</td></tr>
+      <tr><td><span class="st done">✔</span></td><td>Βιομετρικά (ύψος, βάρος, ηλικία) από EuroLeague API και ESPN</td></tr>
+      <tr><td><span class="st done">✔</span></td><td>Ρόλοι (8), radar 9 αξόνων, ετικέτες, «δημιουργεί το σουτ του»</td></tr>
+      <tr><td><span class="st done">✔</span></td><td>OVR v3 με βάρη ανά ρόλο, RAPM χωριστά</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Σιγουριά με την μπάλα (λάθη) στο radar</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Ρυθμοί ανά 100 κατοχές αντί για ανά 36′</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Έλεγχος ρόλων: συνέπεια από χρονιά σε χρονιά, σύγκριση με θέσεις</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Πιο γρήγορη αντίδραση του προφίλ καριέρας σε αλλαγή ρόλου (π.χ. Osman)</td></tr>
+      <tr><td><span class="st no">✖</span></td><td>GNN για τα ratings: μικρό αναμενόμενο κέρδος, χάνεται η ερμηνεία</td></tr>
+    </tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th colspan="2">Αγώνες και πρόβλεψη</th></tr></thead><tbody>
+      <tr><td><span class="st done">✔</span></td><td>Ratings ομάδων, Monte Carlo, πιθανότητες, γραμμή, σύνολο πόντων</td></tr>
+      <tr><td><span class="st done">✔</span></td><td>Δεδομένα GNN: κόμβοι παίκτες και ομάδες, ακμές ασίστ, λεπτά μαζί/απέναντι, ιστορικό</td></tr>
+      <tr><td><span class="st next">▶</span></td><td>Εκπαίδευση GNN με walk-forward, με προβλέψεις και για παλιούς αγώνες για αξιολόγηση</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Αναμενόμενες πεντάδες και λεπτά πριν από κάθε αγώνα</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Τραυματισμοί/απουσίες για Ευρώπη και GBL (σήμερα μόνο NBA)</td></tr>
+    </tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th colspan="2">Δεδομένα</th></tr></thead><tbody>
+      <tr><td><span class="st done">✔</span></td><td>Μετρημένες κατοχές, OREB%/DREB%, ζώνες σουτ, ασίστ ανά σουτ (και NBA)</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Play-by-play για την GBL (σήμερα μόνο box scores)</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Ακμές αντιπάλων: φάουλ, κλεψίματα, κοψίματα ανάμεσα σε παίκτες</td></tr>
+      <tr><td><span class="st idea">○</span></td><td>Καλύτερο «ποιος μαρκάρει ποιον»</td></tr>
+    </tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th colspan="2">Στοίχημα</th></tr></thead><tbody>
+      <tr><td><span class="st done">✔</span></td><td>Μοντέλο edge απέναντι στην αγορά (NBA, όπου υπάρχουν αποδόσεις)</td></tr>
+      <tr><td><span class="st done">✔</span></td><td>Πλάνο αγωνιστικής GBL με δελτίο (αυτή η σελίδα)</td></tr>
+      <tr><td><span class="st next">▶</span></td><td>Αποδόσεις για GBL/EuroLeague/EuroCup (κλειδί The Odds API ή άλλη πηγή): χωρίς αυτές δεν μετριέται edge</td></tr>
+      <tr><td><span class="st next">▶</span></td><td>Ιστορικό προτάσεων και αποτελεσμάτων (track record), για να ξέρουμε αν το μοντέλο κερδίζει</td></tr>
+    </tbody></table></div>
+  </div>
+  <h3>Προτεινόμενη σειρά</h3>
+  <ol style="margin:0">
+    <li><b>Αποδόσεις για GBL και Ευρώπη.</b> Χωρίς αυτές ούτε το πλάνο ούτε το μοντέλο μπορούν να πουν αν μια επιλογή έχει αξία.</li>
+    <li><b>Track record.</b> Κάθε πρόβλεψη και κάθε δελτίο κρατιέται, και βλέπουμε μετά από 10–20 αγωνιστικές αν το μοντέλο κερδίζει.</li>
+    <li><b>Εκπαίδευση GNN</b> με walk-forward, και σύγκριση με τα ratings ομάδων.</li>
+  </ol>
+</section>
+</main>
+<footer class="wrap">Οι πιθανότητες είναι εκτιμήσεις ενός μοντέλου, όχι εγγυήσεις. Παίζεις μόνο ποσό που αντέχεις να χάσεις.</footer>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isNum = (v) => v != null && v !== "" && Number.isFinite(+v);
+const fmt = (v, d = 2) => (isNum(v) ? (+v).toFixed(d) : "–");
+const pct = (p, d = 0) => (isNum(p) ? (100 * p).toFixed(d) + "%" : "–");
+const objs = (o) => o.rows.map((r) => Object.fromEntries(o.cols.map((c, i) => [c, r[i]])));
+// κανονική κατανομή: Φ(x)
+const Phi = (x) => { const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x * x / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; };
+const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+             set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* χωρίς αποθήκευση */ } } };
+const MARGIN = 0.06;     // εκτίμηση περιθωρίου bookmaker όταν δεν έχεις γράψει απόδοση (μόνο για προτάσεις)
+
+let G = [], S = null, E = null;
+const st = LS.get("plan_gbl", { stake: 5, target: 10, picks: {} });
+
+async function load() {
+  const v = "__BUILD__";
+  const [e, s] = await Promise.all([fetch(`data/edge_GBL.json?v=${v}`).then((r) => r.json()), fetch(`data/manifest.json?v=${v}`).then((r) => r.json()).catch(() => null)]);
+  E = e;
+  const seasons = (s?.competitions || []).find((c) => c.code === "GBL")?.seasons || [];
+  const season = seasons.length ? Math.max(...seasons) : new Date().getFullYear() - (new Date().getMonth() < 7 ? 1 : 0);
+  S = await fetch(`data/GBL${season}.json?v=${v}`).then((r) => r.json());
+  const up = objs(S.upcoming), byCode = new Map(up.map((u) => [u.gameCode, u]));
+  const ups = (E.upcoming || []).filter((u) => byCode.has(u.gameCode)).map((u) => ({ ...u, round: byCode.get(u.gameCode).round, time: byCode.get(u.gameCode).time }));
+  const r0 = Math.min(...ups.map((u) => u.round));
+  G = ups.filter((u) => u.round === r0).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  render();
+}
+
+const tname = (c) => S.teams?.[c] || c;
+// φόρμα: τελευταίοι 5 αγώνες της σεζόν
+function form(code) {
+  const g = objs(S.games).filter((x) => x.home === code || x.away === code).sort((a, b) => a.date.localeCompare(b.date));
+  const res = g.map((x) => { const my = x.home === code ? x.hs : x.as, op = x.home === code ? x.as : x.hs; return my > op ? "Ν" : "Η"; });
+  const w = res.filter((r) => r === "Ν").length;
+  return { rec: `${w}-${res.length - w}`, last: res.slice(-5).join("") };
+}
+const margin = (g) => -g.line;                 // αναμενόμενη διαφορά γηπεδούχου (line = −διαφορά)
+const sdm = (g) => g.sd_m || 11.85, sdt = (g) => g.sd_t || 17.3;
+
+// πιθανότητα μιας επιλογής σύμφωνα με το μοντέλο
+function prob(g, p) {
+  if (!p || !p.m) return null;
+  if (p.m === "1") return g.p_home;
+  if (p.m === "2") return 1 - g.p_home;
+  const L = +p.line;
+  if (!isNum(p.line)) return null;
+  if (p.m === "h1") return 1 - Phi((-L - margin(g)) / sdm(g));      // γηπεδούχος με χάντικαπ L (π.χ. −5.5: κερδίζει με 6+)
+  if (p.m === "h2") return 1 - Phi((-L + margin(g)) / sdm(g));      // φιλοξενούμενος με χάντικαπ L
+  if (p.m === "ov") return 1 - Phi((L - g.total) / sdt(g));
+  if (p.m === "un") return Phi((L - g.total) / sdt(g));
+  return null;
+}
+const MK = [["", "—"], ["1", "1 (νίκη γηπ.)"], ["2", "2 (νίκη φιλ.)"], ["h1", "Χάντικαπ 1"], ["h2", "Χάντικαπ 2"], ["ov", "Over"], ["un", "Under"]];
+const needsLine = (m) => ["h1", "h2", "ov", "un"].includes(m);
+
+function render() {
+  const d0 = G[0]?.date, d1 = G.at(-1)?.date;
+  $("#bet-head").innerHTML = G.length ? `<b>${G[0].round}η αγωνιστική</b> · ${G.length} αγώνες · ${esc(d0)}${d1 !== d0 ? " έως " + esc(d1) : ""} · μοντέλο ενημερωμένο ${esc(E.updated)}` : "Δεν υπάρχουν επερχόμενοι αγώνες.";
+  renderGames(); renderSlip(); renderSugg(); renderModel();
+}
+
+function renderGames() {
+  const rows = G.map((g) => {
+    const p = st.picks[g.gameCode] || {}, fh = form(g.home), fa = form(g.away), m = margin(g), q = prob(g, p);
+    const fav = m >= 0 ? tname(g.home) : tname(g.away), lo = m - 1.2816 * sdm(g), hi = m + 1.2816 * sdm(g);
+    const ev = isNum(q) && isNum(p.odds) ? q * p.odds - 1 : null;
+    return `<tr class="gm" data-g="${g.gameCode}">
+      <td><div class="muted" style="font-size:12px">${esc(g.date)} ${esc(g.time || "")}</div>
+        <div><b>${esc(tname(g.home))}</b> <span class="muted">${fh.rec}</span> <span class="form-dots" title="τελευταίοι 5 (Ν νίκη, Η ήττα)">${fh.last}</span></div>
+        <div><b>${esc(tname(g.away))}</b> <span class="muted">${fa.rec}</span> <span class="form-dots">${fa.last}</span></div></td>
+      <td class="n"><b>${pct(g.p_home)}</b> / ${pct(1 - g.p_home)}<div class="muted" style="font-size:12px">δίκαιες ${fmt(1 / g.p_home)} / ${fmt(1 / (1 - g.p_home))}</div></td>
+      <td><span style="white-space:nowrap">${esc(fav)} κατά <b>${fmt(Math.abs(m), 1)}</b></span><div class="muted" style="font-size:12px" title="80% των φορών η διαφορά του γηπεδούχου πέφτει σε αυτό το διάστημα">γηπ. ${fmt(lo, 0)} έως ${fmt(hi, 0)} · σύνολο ${fmt(g.total, 0)}</div></td>
+      <td><select data-k="m">${MK.map(([k, l]) => `<option value="${k}" ${p.m === k ? "selected" : ""}>${l}</option>`).join("")}</select>
+        ${needsLine(p.m) ? `<div style="margin-top:4px"><label class="muted" style="font-size:12px">γραμμή <input type="number" step="0.5" data-k="line" value="${p.line ?? ""}" placeholder="${p.m?.startsWith("h") ? "−5.5" : fmt(g.total, 0)}"></label></div>` : ""}</td>
+      <td>${p.m ? `<input type="number" step="0.01" min="1.01" data-k="odds" value="${p.odds ?? ""}" placeholder="απόδοση">` : ""}</td>
+      <td class="n">${isNum(q) ? `<b>${pct(q)}</b><div class="muted" style="font-size:12px">δίκαιη ${fmt(1 / q)}</div>` : ""}</td>
+      <td class="n">${ev == null ? "" : `<span class="${ev >= 0 ? "ev-pos" : "ev-neg"}" title="αναμενόμενη απόδοση ανά 1€ (σύμφωνα με το μοντέλο)">${ev >= 0 ? "+" : ""}${(100 * ev).toFixed(0)}%</span>`}</td></tr>`;
+  }).join("");
+  $("#bet-games").innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Αγώνας (ρεκόρ, φόρμα)</th><th class="n">Μοντέλο 1 / 2</th><th>Αναμενόμενο</th><th>Αγορά</th><th>Απόδοση</th><th class="n">Πιθανότητα</th><th class="n">Αξία</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="muted" style="font-size:12px">Η «αξία» είναι πιθανότητα × απόδοση − 1: θετική σημαίνει ότι η απόδοση του bookmaker είναι μεγαλύτερη από τη «δίκαιη» του μοντέλου. Χάντικαπ και over/under υπολογίζονται από την αναμενόμενη διαφορά και τη διασπορά των αγώνων της GBL (τυπική απόκλιση ${fmt(sdm(G[0] || {}), 1)} στη διαφορά, ${fmt(sdt(G[0] || {}), 1)} στο σύνολο).</p>`;
+  $("#bet-games").querySelectorAll("tr[data-g]").forEach((tr) => tr.querySelectorAll("[data-k]").forEach((inp) => inp.addEventListener("change", () => {
+    const id = tr.dataset.g, p = st.picks[id] || (st.picks[id] = {});
+    p[inp.dataset.k] = inp.dataset.k === "m" ? inp.value : (inp.value === "" ? null : +inp.value);
+    if (inp.dataset.k === "m" && !inp.value) delete st.picks[id];
+    LS.set("plan_gbl", st); render();
+  })));
+}
+
+// τα επιλεγμένα της σελίδας (με απόδοση)
+function legs() {
+  return G.map((g) => { const p = st.picks[g.gameCode]; const q = prob(g, p); return p && p.m && isNum(q) && isNum(p.odds) ? { g, p, q } : null; }).filter(Boolean);
+}
+function label(g, p) {
+  const n = { "1": tname(g.home), "2": tname(g.away), h1: `${tname(g.home)} ${p.line > 0 ? "+" : ""}${p.line}`, h2: `${tname(g.away)} ${p.line > 0 ? "+" : ""}${p.line}`, ov: `Over ${p.line}`, un: `Under ${p.line}` }[p.m];
+  return n + (["ov", "un"].includes(p.m) ? ` (${tname(g.home)}–${tname(g.away)})` : "");
+}
+
+function renderSlip() {
+  const L = legs(), odds = L.reduce((a, l) => a * l.p.odds, 1), P = L.reduce((a, l) => a * l.q, 1), pay = st.stake * odds, ev = P * pay - st.stake;
+  $("#bet-slip").innerHTML = `<div class="tile"><div class="l" style="margin-bottom:6px">Το δελτίο σου</div>
+    <div class="row" style="justify-content:space-between;gap:16px">
+      <div class="filters"><label>Ποσό (€)<input type="number" min="0.5" step="0.5" id="stake" value="${st.stake}" style="width:5em"></label>
+        <label>Στόχος (× ποσό)<input type="number" min="1.5" step="0.5" id="target" value="${st.target}" style="width:5em"></label></div>
+      <div class="tiles" style="flex:1;min-width:280px">
+        <div class="tile"><div class="v">${L.length}</div><div class="l">επιλογές με απόδοση</div></div>
+        <div class="tile"><div class="v">${L.length ? fmt(odds) : "–"}</div><div class="l">συνολική απόδοση</div></div>
+        <div class="tile"><div class="v">${L.length ? fmt(pay) + "€" : "–"}</div><div class="l">αν κερδίσει</div></div>
+        <div class="tile"><div class="v">${L.length ? pct(P, 1) : "–"}</div><div class="l">πιθανότητα (μοντέλο)</div></div>
+        <div class="tile"><div class="v ${L.length ? (ev >= 0 ? "ev-pos" : "ev-neg") : ""}">${L.length ? (ev >= 0 ? "+" : "") + fmt(ev) + "€" : "–"}</div><div class="l">αναμενόμενο κέρδος</div></div>
+      </div></div>
+    ${L.length ? `<div class="muted" style="font-size:12px;margin-top:6px">${L.map((l) => `${esc(label(l.g, l.p))} @ ${fmt(l.p.odds)} (${pct(l.q)})`).join(" · ")}${odds < st.target ? ` · <b>κάτω από τον στόχο ${st.target}x</b>` : ""}${L.length ? ` · στις 100 φορές θα κέρδιζε περίπου <b>${Math.round(100 * P)}</b>` : ""}</div>` : `<div class="muted" style="font-size:12px;margin-top:6px">Διάλεξε αγορές και γράψε αποδόσεις στον πίνακα για να γεμίσει το δελτίο.</div>`}
+  </div>`;
+  $("#stake").addEventListener("change", (e) => { st.stake = Math.max(0.5, +e.target.value || 5); LS.set("plan_gbl", st); render(); });
+  $("#target").addEventListener("change", (e) => { st.target = Math.max(1.5, +e.target.value || 10); LS.set("plan_gbl", st); render(); });
+}
+
+// Προτάσεις: όλοι οι συνδυασμοί (νίκη 1/2 σε κάθε αγώνα, ή η αγορά που έχεις γράψει) που φτάνουν τον στόχο,
+// ταξινομημένοι με την πιθανότητα του μοντέλου. Απόδοση: η δική σου αν τη γράψεις, αλλιώς δίκαιη × (1 − 6%).
+function renderSugg() {
+  const opts = G.map((g) => {
+    const p = st.picks[g.gameCode], o = [];
+    const own = p && p.m && isNum(prob(g, p)) && isNum(p.odds) ? { g, p, q: prob(g, p), odds: p.odds, est: false } : null;
+    for (const m of ["1", "2"]) {
+      if (own && own.p.m === m) continue;
+      const q = m === "1" ? g.p_home : 1 - g.p_home;
+      o.push({ g, p: { m }, q, odds: Math.max(1.01, (1 / q) * (1 - MARGIN)), est: true });
+    }
+    if (own) o.push(own);
+    return o.filter((x) => x.odds >= 1.05);            // αποδόσεις κάτω από 1.05 δεν βοηθούν ένα παρολί
+  });
+  const res = [];
+  const rec = (i, acc) => {
+    if (acc.legs.length >= 6) { if (acc.odds >= st.target) res.push(acc); return; }
+    if (i === G.length) { if (acc.legs.length && acc.odds >= st.target && acc.odds <= st.target * 1.8) res.push(acc); return; }
+    rec(i + 1, acc);
+    for (const x of opts[i]) rec(i + 1, { legs: [...acc.legs, x], odds: acc.odds * x.odds, P: acc.P * x.q });
+  };
+  rec(0, { legs: [], odds: 1, P: 1 });
+  res.sort((a, b) => b.P - a.P);
+  const top = res.slice(0, 6);
+  $("#bet-sugg").innerHTML = `<h3>Συνδυασμοί που φτάνουν τον στόχο (${st.target}x)</h3>
+    <p class="muted" style="font-size:12px">Ταξινομημένοι με την πιθανότητα του μοντέλου. Όπου δεν έχεις γράψει απόδοση, χρησιμοποιείται <b>εκτίμηση</b> (δίκαιη απόδοση μείον ~6% περιθώριο του bookmaker, με *): γράψε τις πραγματικές για ακριβή εικόνα. Χάντικαπ και over/under μπαίνουν μόνο αν τα έχεις γράψει στον πίνακα.</p>
+    ${top.length ? `<div class="tbl-wrap"><table class="sugg"><thead><tr><th>Επιλογές</th><th class="n">Απόδοση</th><th class="n">Πιθανότητα</th><th class="n">Αναμ. κέρδος (${st.stake}€)</th><th></th></tr></thead><tbody>
+      ${top.map((c, i) => `<tr><td>${c.legs.map((l) => `${esc(label(l.g, l.p))}${l.est ? "*" : ""} <span class="muted">${fmt(l.odds)}</span>`).join(" · ")}</td>
+        <td class="n"><b>${fmt(c.odds)}</b></td><td class="n">${pct(c.P, 1)}</td><td class="n ${c.P * c.odds >= 1 ? "ev-pos" : "ev-neg"}">${fmt(st.stake * (c.P * c.odds - 1))}€</td>
+        <td><button class="chip" data-use="${i}">στο δελτίο</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Κανένας συνδυασμός δεν φτάνει τον στόχο με αυτές τις αποδόσεις.</div>`}`;
+  $("#bet-sugg").querySelectorAll("[data-use]").forEach((b) => b.addEventListener("click", () => {
+    const c = top[+b.dataset.use];
+    st.picks = {};
+    for (const l of c.legs) st.picks[l.g.gameCode] = { ...l.p, odds: l.est ? null : l.odds };
+    LS.set("plan_gbl", st); render();
+    document.getElementById("bet-games").scrollIntoView({ behavior: "smooth" });
+  }));
+}
+
+function renderModel() {
+  const ev = E.model_eval?.all?.ratings || {}, cur = E.model_eval?.current?.ratings || {}, cal = ev.calibration || [];
+  $("#bet-model").innerHTML = `<h3>Πόσο να εμπιστευτείς το μοντέλο</h3>
+    <div class="tiles">
+      <div class="tile"><div class="v">${pct(ev.acc)}</div><div class="l">σωστός νικητής (${ev.n} αγώνες GBL)</div></div>
+      <div class="tile"><div class="v">${pct(cur.acc)}</div><div class="l">φέτος (${cur.n} αγώνες)</div></div>
+      <div class="tile"><div class="v">${fmt(ev.brier, 3)}</div><div class="l">Brier (0.25 = κορόνα-γράμματα)</div></div>
+      <div class="tile"><div class="v">±${fmt(ev.mae_margin, 1)}</div><div class="l">μέσο σφάλμα στη διαφορά</div></div>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th>Όταν το μοντέλο λέει</th>${cal.map((c) => `<th class="n">${Math.round(100 * c.lo)}–${Math.round(100 * c.lo) + 10}%</th>`).join("")}</tr></thead><tbody>
+      <tr><td>…κέρδισε πράγματι</td>${cal.map((c) => `<td class="n">${pct(c.obs)}</td>`).join("")}</tr>
+      <tr><td class="muted">αγώνες</td>${cal.map((c) => `<td class="n muted">${c.n}</td>`).join("")}</tr></tbody></table></div>
+    <div class="note-box"><p><b>Τι δεν ξέρουμε.</b> Για την GBL δεν έχουμε ακόμα αποδόσεις bookmaker, οπότε δεν έχει ελεγχθεί αν το μοντέλο βρίσκει «αξία» απέναντι στην αγορά· στο NBA, όπου έχουμε, <b>δεν</b> την κερδίζει. Το μοντέλο δεν ξέρει απουσίες. Οι αγώνες θεωρούνται ανεξάρτητοι. Ένα 10x παρολί με δίκαιες αποδόσεις κερδίζει περίπου 1 φορά στις 10· με το περιθώριο του bookmaker (~5–8% ανά επιλογή) λιγότερο, άρα κατά μέσο όρο χάνεις μέρος του ποσού.</p></div>`;
+}
+
+load().catch((e) => { $("#bet-head").textContent = "Σφάλμα φόρτωσης: " + e.message; });
+</script>
+</body>
+</html>
