@@ -173,15 +173,15 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909977,4,2026-11-12,19:00,WSH,Washington Wizards,DET,Detroit Pistons,140.0,144.0,True
 401909978,4,2026-11-12,20:00,MIN,Minnesota Timberwolves,DAL,Dallas Mavericks,133.0,94.0,True
 401909979,4,2026-11-12,21:00,PHX,Phoenix Suns,CHA,Charlotte Hornets,101.0,96.0,True
-401909296,4,2026-11-13,19:00,IND,Indiana Pacers,NY,New York Knicks,,,False
-401909297,4,2026-11-13,19:00,ORL,Orlando Magic,MIL,Milwaukee Bucks,,,False
-401909298,4,2026-11-13,20:00,MIA,Miami Heat,CLE,Cleveland Cavaliers,,,False
-401909299,4,2026-11-13,20:00,CHI,Chicago Bulls,ATL,Atlanta Hawks,,,False
-401909300,4,2026-11-13,20:00,NO,New Orleans Pelicans,MEM,Memphis Grizzlies,,,False
-401909301,4,2026-11-13,20:30,HOU,Houston Rockets,UTAH,Utah Jazz,,,False
-401909302,4,2026-11-13,21:30,SA,San Antonio Spurs,GS,Golden State Warriors,,,False
-401909303,4,2026-11-13,22:00,SAC,Sacramento Kings,POR,Portland Trail Blazers,,,False
-401909304,4,2026-11-13,22:30,LAC,LA Clippers,OKC,Oklahoma City Thunder,,,False
+401909296,4,2026-11-13,19:00,IND,Indiana Pacers,NY,New York Knicks,106.0,104.0,True
+401909297,4,2026-11-13,19:00,ORL,Orlando Magic,MIL,Milwaukee Bucks,107.0,99.0,True
+401909298,4,2026-11-13,20:00,MIA,Miami Heat,CLE,Cleveland Cavaliers,133.0,121.0,True
+401909299,4,2026-11-13,20:00,CHI,Chicago Bulls,ATL,Atlanta Hawks,125.0,117.0,True
+401909300,4,2026-11-13,20:00,NO,New Orleans Pelicans,MEM,Memphis Grizzlies,111.0,142.0,True
+401909301,4,2026-11-13,20:30,HOU,Houston Rockets,UTAH,Utah Jazz,125.0,118.0,True
+401909302,4,2026-11-13,21:30,SA,San Antonio Spurs,GS,Golden State Warriors,123.0,85.0,True
+401909303,4,2026-11-13,22:00,SAC,Sacramento Kings,POR,Portland Trail Blazers,107.0,120.0,True
+401909304,4,2026-11-13,22:30,LAC,LA Clippers,OKC,Oklahoma City Thunder,113.0,112.0,True
 401909980,4,2026-11-14,19:00,NO,New Orleans Pelicans,DEN,Denver Nuggets,,,False
 401909981,4,2026-11-14,19:30,CLE,Cleveland Cavaliers,DAL,Dallas Mavericks,,,False
 401909982,4,2026-11-14,20:00,MIA,Miami Heat,DET,Detroit Pistons,,,False
