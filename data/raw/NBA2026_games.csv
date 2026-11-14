@@ -280,3 +280,8 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909334,6,2026-11-27,21:30,UTAH,Utah Jazz,DEN,Denver Nuggets,,,False
 401909335,6,2026-11-27,21:30,LAC,LA Clippers,NO,New Orleans Pelicans,,,False
 401909336,6,2026-11-27,21:30,POR,Portland Trail Blazers,GS,Golden State Warriors,,,False
+401910046,6,2026-11-28,17:00,WSH,Washington Wizards,ORL,Orlando Magic,,,False
+401910047,6,2026-11-28,18:00,CHA,Charlotte Hornets,BKN,Brooklyn Nets,,,False
+401910048,6,2026-11-28,20:00,CHI,Chicago Bulls,IND,Indiana Pacers,,,False
+401910049,6,2026-11-28,20:00,MIL,Milwaukee Bucks,OKC,Oklahoma City Thunder,,,False
+401910050,6,2026-11-28,20:30,HOU,Houston Rockets,PHI,Philadelphia 76ers,,,False
