@@ -29,6 +29,28 @@
   .fixt .tile { display: flex; flex-direction: column; gap: 4px; }
   .pbar2 { display: inline-block; width: 80px; height: 6px; border-radius: 3px; background: var(--line); vertical-align: middle; overflow: hidden; }
   .pbar2 i { display: block; height: 100%; background: var(--accent); }
+  .court-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
+  .court-wrap svg { display: block; width: 100%; height: auto; }
+  .court-line { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: .55; }
+  .court g[data-pid] { cursor: pointer; }
+  .court g[data-pid]:hover circle.pl { stroke-width: 4; }
+  .court text { fill: var(--fg); }
+  .mhead { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+  .mhead .side { display: flex; flex-direction: column; gap: 2px; }
+  .mhead .side.r { text-align: right; align-items: flex-end; }
+  .mhead .mid { text-align: center; font: 700 22px var(--font-num); }
+  .bench { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .bench .chips { justify-content: flex-start; }
+  .bench .r .chips { justify-content: flex-end; }
+  .gsel .chip { font-size: 12px; }
+  dialog.pop { border: 1px solid var(--line); border-radius: var(--r); padding: 0; width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); background: var(--bg); color: var(--fg); }
+  dialog.pop::backdrop { background: rgba(0, 0, 0, .45); }
+  .pop-in { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .pop-head { display: flex; gap: 12px; align-items: center; }
+  .pop-head .x { margin-left: auto; align-self: flex-start; }
+  .pop-ph { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center; font: 700 22px var(--font-display); color: #fff; position: relative; }
+  .pop-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pop table { font-size: 13px; }
 </style>
 </head>
 <body>
@@ -38,6 +60,7 @@
     <nav class="tabs">
       <a href="#standings">Βαθμολογία</a>
       <a href="#next">Επόμενη αγωνιστική</a>
+      <a href="#match">Ματς</a>
       <a href="#teams">Ομάδες</a>
       <a href="#players">Παίκτες</a>
       <a href="../index.html">Πλήρες σάιτ →</a>
@@ -47,9 +70,11 @@
 <main class="wrap lite">
   <section id="standings"><h2>Βαθμολογία</h2><div class="empty">Φόρτωση…</div></section>
   <section id="next"></section>
+  <section id="match"></section>
   <section id="teams"></section>
   <section id="players"></section>
 </main>
+<dialog class="pop" id="pop"></dialog>
 <footer class="wrap">Μινιμαλιστική εκδοχή για την ελληνική λίγκα. Για αναλυτικά (shot charts, ratings, σύγκριση παικτών, μοντέλα) δες το <a href="../index.html">πλήρες σάιτ</a>.</footer>
 
 <script>
@@ -79,7 +104,7 @@ async function load() {
   $("#upd").textContent = `${season}-${String((season + 1) % 100).padStart(2, "0")} · ενημέρωση ${man.updated}`;
   [S, A, R, E, META] = await Promise.all([get(`GBL${season}.json`), get("analytics_GBL.json"), get("roles_GBL.json").catch(() => null),
     get("edge_GBL.json").catch(() => null), get("teams_meta.json").then((m) => m.GBL).catch(() => null)]);
-  standings(); nextRound(); teams(); players();
+  buildPlayers(); standings(); nextRound(); match(); teams(); players();
 }
 
 // ------------------------------------------------------------------ βαθμολογία
@@ -111,8 +136,140 @@ function nextRound() {
     <div class="fixt">${G.map((g) => { const m = pm.get(g.gameCode), p = m?.p_home;
       return `<div class="tile"><div class="l">${esc(g.date)} ${esc(g.time || "")}</div>
         <div>${teamA(g.home)}</div><div>${teamA(g.away)}</div>
-        ${isNum(p) ? `<div style="font-size:13px"><span class="muted">Μοντέλο:</span> <b>${Math.round(100 * p)}%</b> – ${Math.round(100 * (1 - p))}% · ${esc(tname(p >= 0.5 ? g.home : g.away))} κατά ${fmt(Math.abs(m.line))}</div>` : ""}</div>`; }).join("")}</div>
+        ${isNum(p) ? `<div style="font-size:13px"><span class="muted">Μοντέλο:</span> <b>${Math.round(100 * p)}%</b> – ${Math.round(100 * (1 - p))}% · ${esc(tname(p >= 0.5 ? g.home : g.away))} κατά ${fmt(Math.abs(m.line))}</div>` : ""}
+        <div><button class="chip" data-match="${g.gameCode}">Δες το ματς: πεντάδες →</button></div></div>`; }).join("")}</div>
     <p class="more"><a href="../plan.html">Πλάνο αγωνιστικής με δελτίο →</a></p>`;
+  $("#next").querySelectorAll("[data-match]").forEach((b) => b.addEventListener("click", () => { MS.game = +b.dataset.match; match(); $("#match").scrollIntoView({ behavior: "smooth" }); }));
+}
+
+// ------------------------------------------------------------------ παίκτες (κοινά): μέσοι όροι, τελευταίοι αγώνες
+let PL = new Map(), GDATE = new Map(), AN = new Map(), ROLE = new Map();
+function buildPlayers() {
+  for (const g of objs(S.games)) GDATE.set(g.gameCode, g.date);
+  AN = new Map(objs(A.seasons[season].players).map((p) => [p.pid, p]));
+  for (const r of (R?.players?.[String(season)] || [])) { const o = Object.fromEntries(R.cols.map((c, i) => [c, r[i]])); ROLE.set(o.pid, o); }
+  const logs = objs(S.logs).sort((a, b) => (GDATE.get(a.gameCode) || "").localeCompare(GDATE.get(b.gameCode) || ""));
+  for (const l of logs) {
+    const a = PL.get(l.pid) || { pid: l.pid, name: S.players?.[l.pid] || l.pid, team: l.team, gp: 0, min: 0, pts: 0, reb: 0, ast: 0, pir: 0, fg3m: 0, games: [] };
+    PL.set(l.pid, a);
+    a.team = l.team;                                    // η πιο πρόσφατη ομάδα
+    a.games.push(l);
+    if (!(l.MIN > 0)) continue;
+    a.gp++; a.min += l.MIN; a.pts += l.PTS; a.reb += l.REB; a.ast += l.AST; a.pir += l.PIR; a.fg3m += l.FG3M;
+  }
+}
+const bioOf = (pid) => (S.bio?.[pid] ? Object.fromEntries(S.bio_cols.map((c, i) => [c, S.bio[pid][i]])) : {});
+const posRank = (pid) => { const b = bioOf(pid).pos || "", a = AN.get(pid)?.pos || "";
+  return b.startsWith("G") ? 0 : b.startsWith("F") ? 1 : b.startsWith("C") ? 2 : ({ PG: 0, SG: 0.5, SF: 1, PF: 1.5, C: 2 }[a] ?? 1); };
+const surname = (n) => String(n || "").split(",")[0].trim().toLowerCase().replace(/(^|[\s\-'])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+
+// πεντάδα + πάγκος. Η GBL (esake.gr) δεν δίνει βασικούς: πεντάδα = οι 5 με τα περισσότερα λεπτά
+// (στον ίδιο τον αγώνα αν έχει παιχτεί, αλλιώς στους τελευταίους 3 αγώνες της ομάδας). Αν υπάρχουν βασικοί, προηγούνται.
+function lineup(team, gameCode) {
+  const L = objs(S.logs).filter((l) => l.team === team);
+  const inGame = L.filter((l) => l.gameCode === gameCode);
+  if (inGame.length) {
+    const ord = inGame.filter((l) => l.MIN > 0).sort((a, b) => (b.starter ? 1 : 0) - (a.starter ? 1 : 0) || b.MIN - a.MIN).map((l) => l.pid);
+    return { five: ord.slice(0, 5), bench: ord.slice(5), actual: true };
+  }
+  const last = [...new Set(L.map((l) => l.gameCode))].sort((a, b) => (GDATE.get(b) || "").localeCompare(GDATE.get(a) || "")).slice(0, 3);
+  const sc = new Map();
+  for (const l of L.filter((x) => last.includes(x.gameCode))) {
+    if (PL.get(l.pid)?.team !== team) continue;          // όσοι άλλαξαν ομάδα
+    const v = sc.get(l.pid) || { st: 0, min: 0 }; v.st += l.starter ? 1 : 0; v.min += l.MIN || 0; sc.set(l.pid, v);
+  }
+  const ord = [...sc.entries()].filter(([, v]) => v.min > 0).sort((a, b) => b[1].st - a[1].st || b[1].min - a[1].min).map(([p]) => p);
+  return { five: ord.slice(0, 5), bench: ord.slice(5, 12), actual: false };
+}
+
+const MS = { game: null };
+function court(g, Lh, La) {
+  const W = 760, H = 420, mx = W / 2, cy = H / 2;
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="court" role="img" aria-label="γήπεδο">`;
+  s += `<rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="6" class="court-line"/><line x1="${mx}" y1="4" x2="${mx}" y2="${H - 4}" class="court-line"/><circle cx="${mx}" cy="${cy}" r="46" class="court-line"/>`;
+  for (const side of [0, 1]) {                         // ρακέτα, γραμμή τριών, καλάθι
+    const bx = side ? W - 40 : 40, d = side ? -1 : 1;
+    s += `<rect x="${side ? W - 4 - 150 : 4}" y="${cy - 62}" width="150" height="124" class="court-line"/>`;
+    s += `<circle cx="${4 + (side ? W - 8 - 150 : 150)}" cy="${cy}" r="48" class="court-line"/>`;
+    s += `<path d="M ${side ? W - 4 : 4} ${cy - 170} L ${bx + d * 40} ${cy - 170} A 175 175 0 0 ${side ? 0 : 1} ${bx + d * 40} ${cy + 170} L ${side ? W - 4 : 4} ${cy + 170}" class="court-line"/>`;
+    s += `<circle cx="${bx}" cy="${cy}" r="8" class="court-line"/>`;
+  }
+  // θέσεις (επιθετικό σχήμα προς το καλάθι της ομάδας): PG, SG, SF, PF, C
+  const spots = [[0.40, 0.50], [0.30, 0.17], [0.30, 0.83], [0.17, 0.30], [0.12, 0.66]];
+  const put = (L, team, right) => {
+    const five = [...L.five].sort((a, b) => posRank(a) - posRank(b) || (bioOf(a).height || 0) - (bioOf(b).height || 0));
+    const m = meta(team);
+    five.forEach((pid, i) => {
+      const [fx, fy] = spots[i] || spots[0], x = right ? W - fx * W : fx * W, y = fy * H, b = bioOf(pid), an = AN.get(pid);
+      const lab = b.number ? "#" + b.number : surname(PL.get(pid)?.name).slice(0, 3).toUpperCase();
+      s += `<g data-pid="${esc(pid)}"><title>${esc(nice(PL.get(pid)?.name))}</title>
+        <circle class="pl" cx="${x}" cy="${y}" r="24" fill="${m.c1}" stroke="var(--surface)" stroke-width="3"/>
+        <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" style="fill:${m.fg || "#fff"};font:700 14px var(--font-num)">${esc(lab)}</text>
+        <text x="${x}" y="${y + 38}" text-anchor="middle" style="font:600 13px var(--font-body)">${esc(surname(PL.get(pid)?.name))}</text>
+        ${an?.ovr != null ? `<text x="${x}" y="${y + 53}" text-anchor="middle" style="font:11px var(--font-num);fill:var(--muted)">OVR ${an.ovr}</text>` : ""}</g>`;
+    });
+  };
+  put(Lh, g.home, false); put(La, g.away, true);
+  return s + "</svg>";
+}
+
+function match() {
+  const up = objs(S.upcoming), played = objs(S.games);
+  const r0 = up.length ? Math.min(...up.map((u) => u.round)) : null, rl = played.length ? Math.max(...played.map((g) => g.round)) : null;
+  const next = up.filter((u) => u.round === r0), last = played.filter((g) => g.round === rl);
+  const all = [...next.map((g) => ({ ...g, up: true })), ...last.map((g) => ({ ...g, up: false }))];
+  if (!all.length) { $("#match").innerHTML = ""; return; }
+  if (!all.some((g) => g.gameCode === MS.game)) MS.game = all[0].gameCode;
+  const g = all.find((x) => x.gameCode === MS.game);
+  const Lh = lineup(g.home, g.gameCode), La = lineup(g.away, g.gameCode);
+  const pm = new Map((E?.upcoming || []).map((u) => [u.gameCode, u])), m = pm.get(g.gameCode);
+  const rec = (c) => { const G = played.filter((x) => x.home === c || x.away === c); const w = G.filter((x) => (x.home === c ? x.hs > x.as : x.as > x.hs)).length; return `${w}-${G.length - w}`; };
+  const chip = (x) => `<button class="chip ${x.gameCode === MS.game ? "on" : ""}" data-g="${x.gameCode}">${badge(x.home, 16)} ${esc(meta(x.home).abbr)} – ${esc(meta(x.away).abbr)} ${badge(x.away, 16)}${x.up ? "" : ` <span class="muted">${x.hs}-${x.as}</span>`}</button>`;
+  const benchH = (L, right) => `<div class="${right ? "r" : ""}"><div class="l muted" style="font-size:12px;margin-bottom:4px">Πάγκος</div><div class="chips">${L.bench.map((pid) => `<button class="chip" data-pid="${esc(pid)}">${esc(surname(PL.get(pid)?.name))}${AN.get(pid)?.ovr != null ? ` <span class="muted">${AN.get(pid).ovr}</span>` : ""}</button>`).join("") || `<span class="muted">—</span>`}</div></div>`;
+  $("#match").innerHTML = `<h2>Ματς</h2>
+    <div class="chips gsel">${next.length ? `<span class="muted" style="font-size:12px">${r0}η:</span> ${next.map((x) => chip({ ...x, up: true })).join("")}` : ""}
+      ${last.length ? `<span class="muted" style="font-size:12px;margin-left:8px">${rl}η (τελικά):</span> ${last.map((x) => chip({ ...x, up: false })).join("")}` : ""}</div>
+    <div class="tile mhead">
+      <div class="side"><div style="font-weight:700">${teamA(g.home)}</div><div class="muted" style="font-size:12px">γηπεδούχος · ${rec(g.home)}</div></div>
+      <div class="mid">${g.up ? (isNum(m?.p_home) ? `${Math.round(100 * m.p_home)}% – ${Math.round(100 * (1 - m.p_home))}%` : "vs") : `${g.hs} – ${g.as}`}
+        <div class="muted" style="font:12px var(--font-body)">${esc(g.date)} ${esc(g.time || "")}${g.up && m ? ` · μοντέλο: ${esc(meta(m.line <= 0 ? g.home : g.away).abbr)} κατά ${fmt(Math.abs(m.line))}` : ""}</div></div>
+      <div class="side r"><div style="font-weight:700">${teamA(g.away)}</div><div class="muted" style="font-size:12px">φιλοξενούμενος · ${rec(g.away)}</div></div></div>
+    <div class="court-wrap">${court(g, Lh, La)}</div>
+    <div class="bench">${benchH(Lh, false)}${benchH(La, true)}</div>
+    <p class="sub">${g.up ? "Πιθανή πεντάδα: οι 5 με τα περισσότερα λεπτά στους τελευταίους 3 αγώνες της ομάδας (δεν ξέρουμε απουσίες)." : "Οι 5 με τα περισσότερα λεπτά στον αγώνα· ο πάγκος με σειρά λεπτών."} Η GBL δεν δίνει ποιοι ξεκίνησαν. Πάτα έναν παίκτη για λεπτομέρειες.</p>`;
+  $("#match").querySelectorAll("[data-g]").forEach((b) => b.addEventListener("click", () => { MS.game = +b.dataset.g; match(); }));
+  $("#match").querySelectorAll("[data-pid]").forEach((el) => el.addEventListener("click", () => popup(el.dataset.pid)));
+}
+
+// ------------------------------------------------------------------ pop-up παίκτη
+function popup(pid) {
+  const r = PL.get(pid); if (!r) return;
+  const b = bioOf(pid), an = AN.get(pid), o = ROLE.get(pid), m = meta(r.team);
+  const age = b.birth ? Math.floor((Date.now() - Date.parse(b.birth)) / 3.15576e10) : null;
+  const top = o ? o.probs.map((q, k) => [k, q]).sort((a, c) => c[1] - a[1])[0] : null;
+  const tags = o && R.tags ? R.tags.map((t, i) => [t, o.pct[i]]).filter(([, v]) => v >= (R.tag_min ?? 0.8)).map(([t]) => t) : [];
+  const facts = [b.pos, age ? age + " ετών" : null, b.height ? b.height + " cm" : null, b.weight ? b.weight + " kg" : null, b.number ? "#" + b.number : null, b.country].filter(Boolean);
+  const gp = Math.max(r.gp, 1);
+  const lastG = r.games.filter((l) => l.MIN > 0).slice(-5).reverse();
+  const ini = surname(r.name).slice(0, 2).toUpperCase();
+  const dlg = $("#pop");
+  dlg.innerHTML = `<div class="pop-in">
+    <div class="pop-head"><div class="pop-ph" style="background:${m.c1}">${esc(ini)}${b.photo ? `<img src="${esc(b.photo)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
+      <div><div style="font:700 19px var(--font-display)">${esc(nice(r.name))}</div><div style="font-size:13px">${badge(r.team, 16)} ${esc(tname(r.team))}</div>
+        <div class="muted" style="font-size:12px">${facts.map(esc).join(" · ")}</div></div>
+      <button class="chip x" data-close aria-label="Κλείσιμο">✕</button></div>
+    <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px">
+      ${[["Λεπτά", r.min / gp], ["Πόντοι", r.pts / gp], ["Ριμπ.", r.reb / gp], ["Ασίστ", r.ast / gp], ["PIR", r.pir / gp]].map(([l, v]) => `<div class="tile" style="padding:6px 8px"><div class="v" style="font-size:17px">${fmt(v)}</div><div class="l">${l}</div></div>`).join("")}
+      <div class="tile" style="padding:6px 8px"><div class="v" style="font-size:17px">${an?.ovr ?? "–"}</div><div class="l">OVR${isNum(an?.pc_ovr) ? ` · top ${Math.max(1, 100 - an.pc_ovr)}%` : ""}</div></div></div>
+    ${top ? `<div><span class="muted">Ρόλος:</span> <b>${esc(R.roles[top[0]].name)}</b> <span class="muted">${Math.round(100 * top[1])}%</span>
+      ${tags.length ? `<div class="chips" style="margin-top:4px">${tags.map((t) => `<span class="pill" style="background:var(--accent-soft)">${esc(t)}</span>`).join("")}</div>` : ""}</div>` : ""}
+    ${o ? `<div class="chart" style="max-width:380px;margin:0 auto">${radar(R.axes_short || R.axes, [{ k: "k1", vals: o.pct }, ...(top && R.roles[top[0]].center_pct ? [{ k: "k3", dash: true, vals: R.roles[top[0]].center_pct }] : [])], 420, 330)}</div>` : ""}
+    ${lastG.length ? `<div class="tbl-wrap"><table><thead><tr><th>Τελευταίοι αγώνες</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">PIR</th></tr></thead><tbody>
+      ${lastG.map((l) => `<tr><td>${esc((GDATE.get(l.gameCode) || "").slice(5))} ${l.home ? "vs" : "@"} ${esc(meta(l.opp).abbr)}</td><td class="n">${fmt(l.MIN, 0)}</td><td class="n">${l.PTS}</td><td class="n">${l.REB}</td><td class="n">${l.AST}</td><td class="n"><b>${l.PIR}</b></td></tr>`).join("")}</tbody></table></div>` : ""}
+    <div class="row" style="justify-content:space-between"><a href="${full("p=" + encodeURIComponent(pid))}">Πλήρης κάρτα →</a><button class="chip" data-close>Κλείσιμο</button></div></div>`;
+  dlg.querySelectorAll("[data-close]").forEach((x) => x.addEventListener("click", () => dlg.close()));
+  dlg.onclick = (e) => { if (e.target === dlg) dlg.close(); };      // κλικ έξω από το παράθυρο
+  dlg.showModal();
 }
 
 // ------------------------------------------------------------------ scatter
