@@ -1,6 +1,10 @@
 pid,name,height,weight,birth_date,country,position,dorsal,club,headshot
-P008325,"KAMENJAS, KENAN",207,110.0,2000-01-17,BIH,Center,34,BAS,
-P007109,"SMITS, ROLANDS",208,107.0,1995-06-25,LAT,Center,11,BAS,
+PJUJ,"HUERTAS, MARCELINHO",190,84.0,1983-05-25,ITA,Guard,9,DUB,
+P014423,"POZA, NIL",172,69.0,2009-02-16,ESP,Guard,43,BAR,
+P014220,"SILVA, CHRIS",206,106.0,1996-09-19,GAB,Center,30,PAR,
+P012597,"BALDWIN, KAMAR",185,86.0,1997-09-15,USA,Guard,44,TEL,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTPy/9f6079be-1bf1-4606-9461-ef254a4021dd.png
+P008325,"KAMENJAS, KENAN",207,110.0,2000-01-17,BIH,Center,34,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTPy/44aeb33b-6719-402b-b6e7-ac8316b5507f.png
+P007109,"SMITS, ROLANDS",208,107.0,1995-06-25,LAT,Center,11,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTPy/9c3b96da-0723-457c-b933-107d7c0d05af.png
 P011193,"BLATT, TAMIR",178,82.0,1997-05-04,ISR,Guard,45,HTA,
 P014277,"BASSOUMBA, YOHAN",199,110.0,2009-12-18,FRA,Forward,93,ASV,
 P015405,"POWELL, DWIGHT",212,109.0,1991-07-20,CAN,Center,16,ULK,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTLo/0dea57af-3411-4256-8e4b-1a9c8bec30db.png
@@ -125,7 +129,7 @@ P007975,"FRANCISCO, SYLVAIN",185,79.0,1997-10-10,FRA,Guard,3,PAN,https://media-c
 P013381,"RAYMAN, WILLIAM",203,98.0,1997-04-01,ISR,Forward,11,TEL,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOO0/8d9e8529-db95-4e71-b212-68e2716504f6.png
 P014015,"BACOT JR., ARMANDO",208,,2000-03-06,USA,Center,5,TEL,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS3/e4a07b77-6908-4790-b710-7187f9a57537.png
 P014506,"ALVES DE SOUZA, THIERRY HENRY",211,98.0,2008-01-24,BRA,Center,16,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONy/d516e9df-87e6-4730-a813-816cb330ddaa.png
-P014103,"SOUZA, PEDRO",192,87.0,2008-12-04,BRA,Forward,11,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONy/c6c7853f-9cf1-43b3-b749-dd3b1b1a5484.png
+P014103,"SOUZA, PEDRO",192,87.0,2008-12-04,BRA,Forward,13,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONy/c6c7853f-9cf1-43b3-b749-dd3b1b1a5484.png
 P014107,"JOKSIMOVIC, STEFAN",194,83.0,2008-11-16,SLO,Forward,6,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONy/0a550a35-2888-4a7a-8a0a-52ce8859b34b.png
 P013383,"GABRIEL, WENYEN",206,100.0,1997-03-26,USA,Center,32,BES,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONy/bffa3555-b896-4e50-83dd-8207c2c08445.png
 P013374,"DIOUF, MOUHAMET",208,105.0,2001-09-10,ITA,Center,35,VIR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONz/44fceb26-24ea-4de5-b66b-724b5e569867.png
@@ -296,7 +300,7 @@ P011823,"ODIASE, TAI",206,109.0,1995-09-21,USA,Center,21,HTA,https://media-cdn.c
 P004846,"TIMOR, BAR",191,90.0,1992-03-02,ISR,Guard,10,HTA,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS3/32ee037a-13a6-4b53-a74a-207073950a6c.png
 P009846,"BRYANT, ELIJAH",196,99.0,1995-04-19,USA,Guard,3,HTA,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS3/059c5027-93b7-4bad-8924-26c9e4819a84.png
 P013402,"BLAKENEY, ANTONIO",193,89.0,1996-10-04,USA,Guard,2,HTA,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS3/106944f7-27db-4406-ac08-ed59628d5191.png
-P014220,"SILVA, CHRIS",203,106.0,1996-09-19,GAB,Center,30,ULK,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONx/feec6c35-12e0-40b5-b67e-4950139c43e6.png
+P014220,"SILVA, CHRIS",206,106.0,1996-09-19,GAB,Center,30,ULK,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONx/feec6c35-12e0-40b5-b67e-4950139c43e6.png
 P007929,"BITIM, ONURALP",196,89.0,1999-03-31,TUR,Forward,17,ULK,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONx/ff796aeb-4ff5-432b-a4c2-78ded0dded1a.png
 P014124,"HORTON TUCKER, TALEN",193,106.0,2000-11-25,USA,Guard,8,ULK,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONx/442032c1-9577-4b21-abe6-dc14c2f21b05.png
 P009863,"BALDWIN IV, WADE",193,90.0,1996-03-29,USA,Guard,2,ULK,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONx/c7d88a3f-13f2-4e71-a0ff-75a4cf3e0885.png
