@@ -1,0 +1,127 @@
+/* ============================================================================
+   Lab: προσωπικό εργαστήριο. Δύο εμφανίσεις:
+   - body.lab      : τερματικό/εργαστήριο (μαύρο, πράσινη λάμψη, πύλη, scanlines, κόκκινα σημάδια)
+   - body.generic  : η εμφάνιση του κυρίως σάιτ (theme.css + style.css), χωρίς τίποτα από εδώ
+   Όλοι οι κανόνες της lab εμφάνισης είναι κάτω από body.lab, ώστε το generic να μένει καθαρό.
+   ============================================================================ */
+
+/* ---------- κοινή διάταξη (και στις δύο εμφανίσεις) ---------- */
+.lab-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 14px; }
+.lab-top .grow { flex: 1; }
+.mode-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.mode-seg button { border: 0; background: transparent; padding: 4px 12px; font: inherit; font-size: 12px; cursor: pointer; color: inherit; }
+.mode-seg button[aria-pressed="true"] { background: var(--accent-soft); font-weight: 700; }
+.lab-main { display: flex; flex-direction: column; gap: 28px; padding-block: 8px 48px; }
+.hero { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; }
+@media (max-width: 720px) { .hero { grid-template-columns: 1fr; justify-items: center; } }
+.boot { margin: 0; font-family: var(--font-num, ui-monospace, monospace); font-size: 13px; line-height: 1.6; white-space: pre-wrap; min-height: 9.6em; }
+.exp { display: flex; flex-direction: column; gap: 12px; }
+.exp-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.exp-head .id { font-size: 12px; opacity: .7; }
+.exp-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 860px) { .exp-grid { grid-template-columns: 1fr; } }
+.readout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.probes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.probe h4 { margin: 0 0 6px; font-size: 13px; }
+.probe .fbar { display: grid; grid-template-columns: 1fr 90px 40px; gap: 6px; align-items: center; font-size: 12px; }
+.probe .fbar .b { height: 6px; background: var(--line); position: relative; border-radius: 3px; overflow: hidden; }
+.probe .fbar .b i { position: absolute; top: 0; bottom: 0; }
+.verdict { margin: 0; }
+.legend2 { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; }
+.legend2 i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+.tabs2 { display: inline-flex; gap: 6px; }
+.portal-wrap { width: 200px; height: 200px; display: grid; place-items: center; }
+.portal { display: none; }
+.lab-chart svg { display: block; width: 100%; height: auto; }
+.s-ae { stroke: var(--c1); fill: none; stroke-width: 2.5; } .d-ae { fill: var(--c1); }
+.s-pca { stroke: var(--c2); fill: none; stroke-width: 2; stroke-dasharray: 6 4; } .d-pca { fill: var(--c2); }
+.band-ae { fill: var(--c1); opacity: .15; stroke: none; }
+.mark { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.lab-chart text { fill: var(--muted); font-size: 11px; }
+.lab-chart .gl { stroke: var(--line); }
+.pos { background: var(--good); } .neg { background: var(--bad); }
+
+/* ---------- εμφάνιση LAB ---------- */
+body.lab {
+  --lab-bg: #030605; --lab-panel: rgba(8, 26, 15, .72); --lab-fg: #c6ffd9; --lab-dim: #6fae86;
+  --lab-green: #39ff88; --lab-lime: #b6ff3b; --lab-red: #ff2a3d; --lab-line: rgba(57, 255, 136, .28);
+  --c1: var(--lab-green); --c2: #d16bff; --bad: var(--lab-red); --good: var(--lab-green);
+  --line: var(--lab-line); --muted: var(--lab-dim); --accent-soft: rgba(57, 255, 136, .16);
+  background: radial-gradient(1200px 600px at 15% -10%, rgba(57, 255, 136, .10), transparent 60%),
+              radial-gradient(900px 500px at 110% 20%, rgba(255, 42, 61, .07), transparent 60%), var(--lab-bg);
+  color: var(--lab-fg);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 100vh;
+}
+body.lab::before {   /* scanlines σαν παλιά οθόνη */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, .22) 2px 3px);
+  mix-blend-mode: multiply;
+}
+body.lab::after {    /* απαλό βινιετάρισμα */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 49;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .55) 100%);
+}
+body.lab h1, body.lab h2, body.lab h3, body.lab h4 { font-family: inherit; color: var(--lab-green); text-shadow: 0 0 8px rgba(57, 255, 136, .55); letter-spacing: .02em; }
+body.lab h1 { font-size: 20px; margin: 0; }
+body.lab h1 .prompt { color: var(--lab-dim); text-shadow: none; }
+body.lab a { color: var(--lab-lime); }
+body.lab .muted, body.lab .sub { color: var(--lab-dim); }
+body.lab .tile, body.lab .panel {
+  background: var(--lab-panel); border: 1px solid var(--lab-line); border-radius: 2px; position: relative;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4) inset, 0 0 24px rgba(57, 255, 136, .05);
+}
+body.lab .panel { padding: 12px 14px; }
+body.lab .tile::before, body.lab .panel::before {   /* γωνίες «οργάνου» */
+  content: ""; position: absolute; inset: -1px; pointer-events: none;
+  background:
+    linear-gradient(var(--lab-green), var(--lab-green)) top left / 10px 1px no-repeat,
+    linear-gradient(var(--lab-green), var(--lab-green)) top left / 1px 10px no-repeat,
+    linear-gradient(var(--lab-green), var(--lab-green)) bottom right / 10px 1px no-repeat,
+    linear-gradient(var(--lab-green), var(--lab-green)) bottom right / 1px 10px no-repeat;
+}
+body.lab .tile .v { color: var(--lab-green); text-shadow: 0 0 10px rgba(57, 255, 136, .6); font-family: inherit; }
+body.lab .tile .l { color: var(--lab-dim); }
+body.lab .tile.alert .v { color: var(--lab-red); text-shadow: 0 0 10px rgba(255, 42, 61, .6); }
+body.lab .mode-seg { border-color: var(--lab-line); }
+body.lab .mode-seg button { color: var(--lab-fg); }
+body.lab .chip { background: transparent; color: var(--lab-fg); border-color: var(--lab-line); border-radius: 2px; font-family: inherit; }
+body.lab .chip.on { background: var(--accent-soft); border-color: var(--lab-green); }
+body.lab .boot { color: var(--lab-green); text-shadow: 0 0 6px rgba(57, 255, 136, .45); }
+body.lab .boot .ok { color: var(--lab-lime); } body.lab .boot .warn { color: var(--lab-red); text-shadow: 0 0 6px rgba(255, 42, 61, .5); }
+body.lab .cursor { display: inline-block; width: .6em; height: 1.1em; background: var(--lab-green); vertical-align: text-bottom; animation: blink 1s steps(1) infinite; box-shadow: 0 0 8px var(--lab-green); }
+body.lab .exp-head .id { color: var(--lab-red); opacity: 1; letter-spacing: .1em; }
+body.lab .lab-chart { background: rgba(0, 0, 0, .35); }
+body.lab .glitch { position: relative; }
+body.lab .glitch:hover { animation: glitch .35s steps(2) 2; }
+body.lab footer { color: var(--lab-dim); border-top: 1px dashed var(--lab-line); }
+
+/* η πύλη: στρόβιλος πράσινου «υγρού» με λάμψη */
+body.lab .portal {
+  display: block; width: 180px; height: 180px; border-radius: 50%; position: relative;
+  background: radial-gradient(circle at 50% 50%, #eaffd0 0 8%, #b6ff3b 18%, #39ff88 34%, #0f7a3b 52%, #06331a 66%, transparent 71%);
+  box-shadow: 0 0 40px rgba(57, 255, 136, .55), 0 0 120px rgba(57, 255, 136, .25), inset 0 0 40px rgba(0, 60, 20, .8);
+  animation: pulse 3.2s ease-in-out infinite;
+}
+body.lab .portal::before, body.lab .portal::after {
+  content: ""; position: absolute; inset: 6%; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 8%, rgba(214, 255, 160, .85) 10%, transparent 16%, transparent 30%,
+    rgba(57, 255, 136, .9) 33%, transparent 40%, transparent 55%, rgba(182, 255, 59, .8) 58%, transparent 64%, transparent 80%,
+    rgba(214, 255, 160, .7) 83%, transparent 90%);
+  -webkit-mask: radial-gradient(circle, transparent 18%, #000 22%, #000 66%, transparent 70%);
+  mask: radial-gradient(circle, transparent 18%, #000 22%, #000 66%, transparent 70%);
+  animation: spin 5s linear infinite; filter: blur(.6px);
+}
+body.lab .portal::after { inset: 14%; animation-duration: 3.3s; animation-direction: reverse; opacity: .8; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.04); filter: brightness(1.15); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes glitch { 0% { transform: translate(0); text-shadow: -2px 0 var(--lab-red), 2px 0 #3bd8ff; } 50% { transform: translate(1px, -1px); } 100% { transform: translate(0); } }
+@media (prefers-reduced-motion: reduce) {
+  body.lab .portal, body.lab .portal::before, body.lab .portal::after, body.lab .cursor, body.lab .glitch:hover { animation: none !important; }
+}
+
+/* ---------- εμφάνιση GENERIC: χωρίς την πύλη ---------- */
+body.generic .portal-wrap { display: none; }
+body.generic .hero { grid-template-columns: 1fr; }
