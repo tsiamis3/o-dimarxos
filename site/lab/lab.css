@@ -121,3 +121,7 @@ body.lab .portal::after { inset: 14%; animation-duration: 3.3s; animation-direct
 @media (prefers-reduced-motion: reduce) {
   body.lab .portal, body.lab .portal::before, body.lab .portal::after, body.lab .cursor, body.lab .glitch:hover { animation: none !important; }
 }
+
+/* ---------- εμφάνιση GENERIC: χωρίς την πύλη ---------- */
+body.generic .portal-wrap { display: none; }
+body.generic .hero { grid-template-columns: 1fr; }
