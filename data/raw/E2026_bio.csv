@@ -1,9 +1,9 @@
 pid,name,height,weight,birth_date,country,position,dorsal,club,headshot
 P009661,"HAYES, KILLIAN",196,98.0,2001-07-27,FRA,Guard,9,BAR,
-P009213,"NDIAYE, ELI",204,95.0,2004-06-26,ESP,Forward,44,MAD,
-PJUJ,"HUERTAS, MARCELINHO",190,84.0,1983-05-25,ITA,Guard,9,DUB,
+P009213,"NDIAYE, ELI",204,95.0,2004-06-26,ESP,Forward,44,MAD,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/d199f116-07ec-4941-8a8d-d6db8e909923.png
+PJUJ,"HUERTAS, MARCELINHO",190,84.0,1983-05-25,ITA,Guard,9,DUB,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/8a0fd79c-23d2-4ee9-a2aa-cfaf0dc88956.png
 P014423,"POZA, NIL",172,69.0,2009-02-16,ESP,Guard,43,BAR,
-P014220,"SILVA, CHRIS",206,106.0,1996-09-19,GAB,Center,30,PAR,
+P014220,"SILVA, CHRIS",206,106.0,1996-09-19,GAB,Center,30,PAR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/548b5d5b-0386-4b1f-82a4-b9de2834a1c9.png
 P012597,"BALDWIN, KAMAR",185,86.0,1997-09-15,USA,Guard,44,TEL,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTPy/9f6079be-1bf1-4606-9461-ef254a4021dd.png
 P008325,"KAMENJAS, KENAN",207,110.0,2000-01-17,BIH,Center,34,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTPy/44aeb33b-6719-402b-b6e7-ac8316b5507f.png
 P007109,"SMITS, ROLANDS",208,107.0,1995-06-25,LAT,Center,11,BAS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTPy/9c3b96da-0723-457c-b933-107d7c0d05af.png
@@ -91,7 +91,7 @@ P015139,"UMUDE, STANLEY",198,95.0,1999-04-12,NGR,Forward,3,BAR,https://media-cdn
 P015138,"MARTIN, TYRESE",198,100.0,1999-03-07,USA,Forward,2,BAR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONz/df36712f-78ef-48d7-b1b8-a28fab2554ba.png
 P013855,"GIBSON, UMOJA",185,77.0,1998-07-04,USA,Guard,1,BAR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONz/953aae61-f795-4df6-b558-ea91b4f9d7e5.png
 P004132,"THEIS, DANIEL",204,113.0,1992-04-04,GER,Center,23,TEL,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS3/18a7b04c-9b8b-4999-a57f-936ac7384a4d.png
-P012453,"DANILOVIC, UROS",203,80.0,2007-09-15,SRB,Forward,44,PAR,
+P012453,"DANILOVIC, UROS",203,80.0,2007-09-15,SRB,Forward,44,PAR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/b3021f15-9878-494d-901c-263e2184dbc7.png
 P013284,"WAINRIGHT, ISH",196,111.0,1994-09-12,USA,Forward,12,HTA,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS3/ffe1d2cd-9843-4d51-8fd6-2eeceac2c7cb.png
 P014786,"NOWELL, JAYLEN",191,90.0,1999-07-09,USA,Guard,24,BES,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONy/d95bb7c0-778e-4971-8c37-0b346e9017ec.png
 P005763,"KORKMAZ, FURKAN",202,92.0,1997-07-24,TUR,Forward,30,BES,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONy/f7929b1a-55b7-4f21-b311-028de2616dfb.png

@@ -209,18 +209,18 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401910004,5,2026-11-17,20:00,SA,San Antonio Spurs,DET,Detroit Pistons,93.0,105.0,True
 401910005,5,2026-11-17,23:00,LAL,Los Angeles Lakers,CHA,Charlotte Hornets,118.0,114.0,True
 401910006,5,2026-11-17,22:30,LAC,LA Clippers,UTAH,Utah Jazz,107.0,132.0,True
-401910007,5,2026-11-18,19:00,CLE,Cleveland Cavaliers,MEM,Memphis Grizzlies,,,False
-401910008,5,2026-11-18,19:00,IND,Indiana Pacers,HOU,Houston Rockets,,,False
-401910009,5,2026-11-18,19:00,MIA,Miami Heat,MIL,Milwaukee Bucks,,,False
-401910010,5,2026-11-18,19:00,ORL,Orlando Magic,PHI,Philadelphia 76ers,,,False
-401910011,5,2026-11-18,19:30,BKN,Brooklyn Nets,CHI,Chicago Bulls,,,False
-401910012,5,2026-11-18,19:30,TOR,Toronto Raptors,WSH,Washington Wizards,,,False
-401910013,5,2026-11-18,20:00,NO,New Orleans Pelicans,DET,Detroit Pistons,,,False
-401910014,5,2026-11-18,20:00,OKC,Oklahoma City Thunder,ATL,Atlanta Hawks,,,False
-401910015,5,2026-11-18,21:30,DEN,Denver Nuggets,BOS,Boston Celtics,,,False
-401910016,5,2026-11-18,20:00,DAL,Dallas Mavericks,GS,Golden State Warriors,,,False
-401910017,5,2026-11-18,22:00,LAL,Los Angeles Lakers,UTAH,Utah Jazz,,,False
-401910018,5,2026-11-18,22:00,SAC,Sacramento Kings,PHX,Phoenix Suns,,,False
+401910007,5,2026-11-18,19:00,CLE,Cleveland Cavaliers,MEM,Memphis Grizzlies,121.0,124.0,True
+401910008,5,2026-11-18,19:00,IND,Indiana Pacers,HOU,Houston Rockets,104.0,119.0,True
+401910009,5,2026-11-18,19:00,MIA,Miami Heat,MIL,Milwaukee Bucks,137.0,130.0,True
+401910010,5,2026-11-18,19:00,ORL,Orlando Magic,PHI,Philadelphia 76ers,116.0,121.0,True
+401910011,5,2026-11-18,19:30,BKN,Brooklyn Nets,CHI,Chicago Bulls,107.0,137.0,True
+401910012,5,2026-11-18,19:30,TOR,Toronto Raptors,WSH,Washington Wizards,99.0,103.0,True
+401910013,5,2026-11-18,20:00,NO,New Orleans Pelicans,DET,Detroit Pistons,109.0,122.0,True
+401910014,5,2026-11-18,20:00,OKC,Oklahoma City Thunder,ATL,Atlanta Hawks,112.0,117.0,True
+401910015,5,2026-11-18,21:30,DEN,Denver Nuggets,BOS,Boston Celtics,105.0,101.0,True
+401910016,5,2026-11-18,20:00,DAL,Dallas Mavericks,GS,Golden State Warriors,116.0,94.0,True
+401910017,5,2026-11-18,22:00,LAL,Los Angeles Lakers,UTAH,Utah Jazz,97.0,109.0,True
+401910018,5,2026-11-18,22:00,SAC,Sacramento Kings,PHX,Phoenix Suns,107.0,128.0,True
 401910019,5,2026-11-19,20:00,MEM,Memphis Grizzlies,GS,Golden State Warriors,,,False
 401910020,5,2026-11-19,20:00,MIL,Milwaukee Bucks,POR,Portland Trail Blazers,,,False
 401910021,5,2026-11-19,20:00,MIN,Minnesota Timberwolves,NY,New York Knicks,,,False
@@ -319,3 +319,8 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401910082,7,2026-12-02,20:00,OKC,Oklahoma City Thunder,BKN,Brooklyn Nets,,,False
 401910083,7,2026-12-02,21:00,PHX,Phoenix Suns,SAC,Sacramento Kings,,,False
 401910084,7,2026-12-02,22:30,LAC,LA Clippers,MIN,Minnesota Timberwolves,,,False
+401910085,7,2026-12-03,19:00,ATL,Atlanta Hawks,IND,Indiana Pacers,,,False
+401910086,7,2026-12-03,19:30,MIA,Miami Heat,WSH,Washington Wizards,,,False
+401910087,7,2026-12-03,20:00,CHI,Chicago Bulls,CLE,Cleveland Cavaliers,,,False
+401910088,7,2026-12-03,20:00,SA,San Antonio Spurs,TOR,Toronto Raptors,,,False
+401910089,7,2026-12-03,22:00,POR,Portland Trail Blazers,UTAH,Utah Jazz,,,False
