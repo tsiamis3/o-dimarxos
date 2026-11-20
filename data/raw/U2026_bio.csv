@@ -1,4 +1,6 @@
 pid,name,height,weight,birth_date,country,position,dorsal,club,headshot
+P015493,"JOCOVIC, LUKA",188.0,76.0,2011-10-11,MNE,Guard,42,BUD,
+P015418,"SHACKELFORD, JADEN",191.0,91.0,2001-02-14,USA,Guard,13,LLI,
 P015417,"ADEBAYO, ADE",193.0,91.0,2001-03-04,NGR,Guard,5,LLI,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/0e95914e-66cd-4c30-90ed-4f51250e123e.png
 P013621,"GRUNKIS, DOMINYKAS",183.0,73.0,2007-02-05,LTU,Guard,55,LLI,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/d031ff0a-96df-4234-80bd-21c70ef14041.png
 P005379,"CANCAR, VLATKO",203.0,107.0,1997-04-10,SLO,Forward,31,BGS,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS8/507df3cf-b8c4-4cc9-8a8f-d7fbd0c711e1.png
@@ -497,5 +499,3 @@ P006919,"OLINDE, LOUIS",205.0,92.0,1998-03-19,GER,Forward,19,VNC,https://media-c
 P012588,"JANELIDZE, GIGA",201.0,100.0,1995-04-03,ITA,Forward,14,VNC,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS5/0e7f1c11-7ce4-4133-af34-c8965c5b99d4.png
 P014836,"BOAKYE, ENOCH",208.0,113.0,2003-03-24,CAN,Center,13,VNC,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS5/9773a5ae-beec-4741-a842-650974290f4b.png
 P014835,"RICE, SIR'JABARI",193.0,82.0,1998-12-28,USA,Guard,10,VNC,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS5/ee4d3233-e8f1-4559-b830-7b5cbdd8554e.png
-P013928,"BOWMAN, KY",190.0,89.0,1997-06-16,USA,Guard,8,VNC,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS5/587b984b-e793-41b7-b42f-1aed4b972646.png
-P007921,"CANDI, LEONARDO",190.0,89.0,1997-03-30,ITA,Guard,7,VNC,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS5/8677221c-1d25-4747-ae46-1725a582aea2.png
