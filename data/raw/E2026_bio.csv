@@ -1,5 +1,5 @@
 pid,name,height,weight,birth_date,country,position,dorsal,club,headshot
-P009661,"HAYES, KILLIAN",196,98.0,2001-07-27,FRA,Guard,9,BAR,
+P009661,"HAYES, KILLIAN",196,98.0,2001-07-27,FRA,Guard,9,BAR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTU0/6df933e7-e6fa-4582-ac5a-dc9cffb52a86.png
 P009213,"NDIAYE, ELI",204,95.0,2004-06-26,ESP,Forward,44,MAD,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/d199f116-07ec-4941-8a8d-d6db8e909923.png
 PJUJ,"HUERTAS, MARCELINHO",190,84.0,1983-05-25,ITA,Guard,9,DUB,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTQ0/8a0fd79c-23d2-4ee9-a2aa-cfaf0dc88956.png
 P014423,"POZA, NIL",172,69.0,2009-02-16,ESP,Guard,43,BAR,
@@ -35,7 +35,7 @@ P003048,"DUNSTON, BRYANT",203,114.0,1986-05-28,USA,Center,42,OLY,https://media-c
 P005942,"DANGUBIC, NEMANJA",204,99.0,1993-04-13,SRB,Forward,2,DUB,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONx/cb63dd32-23db-47ea-94c6-6b7fb0520fab.png
 P013422,"FENEMEN, RUZGAR",185,86.0,2008-04-03,TUR,Guard,16,IST,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONz/14cb197c-84c8-4b63-83f8-8b26e7cc30ea.png
 P015244,"SMITH JR, NICK",189,84.0,2004-04-18,USA,Forward,1,MAD,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnOS8/dd5a643e-34e0-4668-bbd8-78889c1a2ca7.png
-P012879,"KONE, ABDU",209,118.0,2009-01-20,MLI,Center,41,BAR,
+P012879,"KONE, ABDU",209,118.0,2009-01-20,MLI,Center,41,BAR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTU0/5facc652-7f32-4d29-bc9d-258c153b6147.png
 P008084,"MANTZOUKAS, ELEFTHERIOS",207,100.0,2003-07-08,GRE,Forward,72,PAN,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONz/7800be8a-37bf-41af-88c2-3b9bc954454d.png
 P006544,"MORAITIS, DIMITRIS",190,86.0,1999-02-03,GRE,Guard,6,PAN,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjHHNTLn/452e4a09-a9f7-4e6a-b1ad-5afec2b6d891.png
 P013028,"BAIOCCHI, MATTEO",196,90.0,2007-08-02,ITA,Guard,13,VIR,https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCjnONz/b41b15f2-bc1e-44d6-8eef-c250aa50d95c.png
