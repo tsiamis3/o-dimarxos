@@ -23,7 +23,7 @@ const age = (b) => (b ? Math.floor((Date.now() - Date.parse(b)) / 3.15576e10) : 
 const POS = { Guard: "Γκαρντ", Forward: "Φόργουορντ", Center: "Σέντερ" };
 const LS = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* - */ } } };
 
-let DB = null;
+let DB = null, SIMS = null;
 
 // ----------------------------------------------------------------------------- βασικά εξαρτήματα
 const team = (c) => DB.teams[c] || DB.opponents[c] || { code: c, name: c, abbr: "?", c1: "#888", fg: "#fff" };
@@ -166,6 +166,7 @@ Views.player = (pid) => {
     <section class="grid">
       <div class="card"><h3>Σουτ</h3><div class="tiles">${tile(pct(p.pct.fg2), `2π (${f1(a.fg2m)}/${f1(a.fg2a)})`)}${tile(pct(p.pct.fg3), `3π (${f1(a.fg3m)}/${f1(a.fg3a)})`)}${tile(pct(p.pct.ft), `βολές (${f1(a.ftm)}/${f1(a.fta)})`)}</div></div>
       <div class="card"><h3>Πόντοι ανά αγώνα</h3>${spark(p.log)}</div></section>
+    ${nextDist(pid, false)}
     <section><h2>Αγώνας-αγώνας</h2>${log.length ? `<div class="tbl"><table><thead><tr><th>Ημ/νία</th><th>Αντίπαλος</th><th>Αποτ.</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">Κλ</th><th class="n">Κοψ</th><th class="n">Λάθ</th><th class="n">2π</th><th class="n">3π</th><th class="n">Βολ</th><th class="n">PIR</th></tr></thead><tbody>
       ${log.map((g) => `<tr><td><a href="#/game/${g.g}">${dateGR(g.date)}</a></td><td>${g.home ? "vs" : "@"} ${tlink(g.opp, 18)}</td>
         <td><a href="#/game/${g.g}" style="color:var(--${g.res === "W" ? "good" : "bad"});font-weight:700">${g.res === "W" ? "Ν" : g.res === "L" ? "Η" : ""} ${esc(g.score || "")}</a></td>
@@ -202,7 +203,7 @@ Views.game = (code) => {
     <div class="matchup">${side(g.home)}<div><div class="score">${g.played ? `${g.hs} – ${g.as}` : "vs"}</div><div class="muted">${g.played ? "Τελικό" : "Επερχόμενος"}</div></div>${side(g.away)}</div>
     ${!g.played && g.model ? `<div style="margin-top:14px"><div class="bar2"><i style="width:${100 * g.model.p_home}%;background:${team(g.home).c1}"></i><i style="width:${100 * (1 - g.model.p_home)}%;background:${team(g.away).c1}"></i></div>
       <div class="muted" style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px"><span>${pct(g.model.p_home)}</span><span>μοντέλο · αναμενόμενη διαφορά ${f1(Math.abs(g.model.line))} · σύνολο ${Math.round(g.model.total)}</span><span>${pct(1 - g.model.p_home)}</span></div></div>` : ""}
-    <div style="text-align:center;margin-top:14px"><button class="btn" disabled title="Επόμενο βήμα">▶ Προσομοίωση play-by-play (σύντομα)</button></div></section>`;
+    </section><section class="card" id="live" data-game="${g.code}"></section>${simSection(g.code)}`;
   if (g.played) {
     const box = (c) => { const R = g.box?.[c] || []; const tot = R.reduce((s, r) => ({ pts: s.pts + r.pts, reb: s.reb + r.reb, ast: s.ast + r.ast }), { pts: 0, reb: 0, ast: 0 });
       return `<div><h3>${tlink(c, 20)}</h3>${R.length ? `<div class="tbl"><table><thead><tr><th>Παίκτης</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">2π</th><th class="n">3π</th><th class="n">Βολ</th><th class="n">PIR</th></tr></thead><tbody>
@@ -212,12 +213,171 @@ Views.game = (code) => {
   }
   // επερχόμενος: πιθανά ρόστερ (με σειρά λεπτών) και προηγούμενη συνάντηση
   const roster = (c) => { const L = (DB.teams[c]?.roster || Object.values(DB.players).filter((p) => p.team === c).sort((a, b) => b.avg.min - a.avg.min).map((p) => p.pid)).slice(0, 9).map((pid) => DB.players[pid]);
-    return `<div class="card"><h3>${tlink(c, 20)}</h3>${L.length ? `<table><thead><tr><th>Παίκτης</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">PIR</th></tr></thead><tbody>
-      ${L.map((p) => `<tr><td>${pbtn(p.pid)}</td><td class="n">${f1(p.avg.min)}</td><td class="n">${f1(p.avg.pts)}</td><td class="n">${f1(p.avg.reb)}</td><td class="n">${f1(p.avg.ast)}</td><td class="n"><b>${f1(p.avg.pir)}</b></td></tr>`).join("")}</tbody></table>`
+    return `<div class="card"><h3>${tlink(c, 20)}</h3>${L.length ? `<div style="overflow-x:auto"><table><thead><tr><th>Παίκτης</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">PIR</th></tr></thead><tbody>
+      ${L.map((p) => `<tr><td>${pbtn(p.pid)}</td><td class="n">${f1(p.avg.min)}</td><td class="n">${f1(p.avg.pts)}</td><td class="n">${f1(p.avg.reb)}</td><td class="n">${f1(p.avg.ast)}</td><td class="n"><b>${f1(p.avg.pir)}</b></td></tr>`).join("")}</tbody></table></div>`
       : `<div class="muted">Δεν υπάρχουν στοιχεία για τους παίκτες (εκτός demo).</div>`}</div>`; };
   const h2h = demoGames().filter((x) => x.played && [x.home, x.away].sort().join() === [g.home, g.away].sort().join());
   return head + `<section><h2>Ρόστερ (με σειρά λεπτών)</h2><div class="grid">${roster(g.home)}${roster(g.away)}</div></section>
     ${h2h.length ? `<section><h2>Φετινές συναντήσεις</h2>${gamesList(h2h)}</section>` : ""}`;
+};
+
+// ============================================================================= προσομοιώσεις
+// ιστόγραμμα από κατανομή {lo, hist[]}: μπάρες, με τη διάμεσο τονισμένη
+function histo(d, { W = 520, H = 120, label = (v) => v, color = "var(--accent)", mark = null } = {}) {
+  if (!d) return "";
+  const n = d.hist.length, mx = Math.max(...d.hist, 1e-9), bw = (W - 20) / n;
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img">`;
+  d.hist.forEach((v, i) => { const x = 10 + i * bw, h = (v / mx) * (H - 26), val = d.lo + i;
+    s += `<rect x="${x.toFixed(1)}" y="${(H - 18 - h).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${h.toFixed(1)}" fill="${mark != null && (mark(val)) ? color : "var(--line)"}" ${mark ? "" : `style="fill:${color};opacity:${val >= d.p25 && val <= d.p75 ? 1 : 0.45}"`}><title>${label(val)}: ${(100 * v).toFixed(1)}%</title></rect>`; });
+  const tick = (v) => { const x = 10 + (v - d.lo + 0.5) * bw; return `<text x="${x.toFixed(1)}" y="${H - 4}" text-anchor="middle" style="fill:var(--muted);font:10px var(--font-num)">${label(v)}</text>`; };
+  [d.p10, d.p50, d.p90].forEach((v) => (s += tick(v)));
+  return s + "</svg>";
+}
+const rangeTxt = (d) => `${d.p10}–${d.p90}`;
+function simFor(pid) {                                   // ο επόμενος προσομοιωμένος αγώνας του παίκτη
+  if (!SIMS) return null;
+  const G = Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date));
+  for (const [code, g] of G) for (const side of [0, 1]) { const p = g.players[side].find((x) => x.pid === pid); if (p) return { code, g, p, side }; }
+  return null;
+}
+function nextDist(pid, compact) {
+  const r = simFor(pid); if (!r) return "";
+  const { g, p, code } = r, opp = r.side === 0 ? g.away : g.home;
+  const head = `${r.side === 0 ? "vs" : "@"} ${esc(team(opp).name)} · ${dateGR(g.date, true)}`;
+  const probs = `<div class="tiles">${tile(f1(p.pts.mean), `πόντοι (${rangeTxt(p.pts)})`)}${tile(pct(p.p_pts10), "10+ πόντοι")}${tile(pct(p.p_pts20), "20+ πόντοι")}${tile(f1(p.reb.mean), `ριμπ. (${rangeTxt(p.reb)})`)}${tile(f1(p.pir.mean), `PIR (${rangeTxt(p.pir)})`)}${tile(pct(p.p_dd), "double-double")}</div>`;
+  if (compact) return `<div class="card" style="padding:10px 12px"><div style="font-size:13px"><b>Επόμενος αγώνας</b> <span class="muted">${head} · ${SIMS.n.toLocaleString("el-GR")} προσομοιώσεις</span></div>
+    ${histo(p.pts, { H: 80, label: (v) => v })}<div class="muted" style="font-size:12px">Πόντοι: μέσος ${f1(p.pts.mean)}, 80% των αγώνων ${rangeTxt(p.pts)} · 20+: ${pct(p.p_pts20)}</div>
+    <a href="#/game/${code}" data-close style="font-size:13px">Όλη η προσομοίωση →</a></div>`;
+  return `<section><div class="section-head"><h2>Επόμενος αγώνας: κατανομή απόδοσης</h2><a href="#/game/${code}">${head} →</a></div>
+    <div class="grid"><div class="card"><h3>Πόντοι</h3>${histo(p.pts)}<div class="muted" style="font-size:12px">Οι πιο σκούρες μπάρες: το μεσαίο 50% των ${SIMS.n.toLocaleString("el-GR")} αγώνων. Κάτω: 10%, διάμεσος, 90%.</div></div>
+    <div class="card"><h3>Ριμπάουντ, ασίστ, PIR</h3>
+      ${[["Ριμπάουντ", p.reb, "var(--accent)"], ["Ασίστ", p.ast, "var(--c2)"], ["PIR", p.pir, "var(--c3)"]].map(([l, d, c]) => `<div class="muted" style="font-size:12px;margin-top:4px">${l}: μέσος ${f1(d.mean)} · 80% ${rangeTxt(d)}</div>${histo(d, { H: 60, color: c })}`).join("")}</div></div>
+    ${probs}</section>`;
+}
+
+function simSection(code) {
+  const S = SIMS?.games?.[code]; if (!S) return "";
+  const g = DB.games[code], H = team(g.home), A = team(g.away);
+  const tbl = (side, c) => `<div><h3>${tlink(c, 20)}</h3><div class="tbl"><table><thead><tr><th>Παίκτης</th><th class="n">Λεπ.</th><th class="n">Πόντοι</th><th class="n">80%</th><th>κατανομή πόντων</th><th class="n">Ριμπ.</th><th class="n">Ασίστ</th><th class="n">PIR</th><th class="n">10+</th><th class="n">20+</th><th class="n">DD</th></tr></thead><tbody>
+    ${S.players[side].map((p) => `<tr><td>${pbtn(p.pid)}</td><td class="n">${f1(p.min)}</td><td class="n"><b>${f1(p.pts.mean)}</b></td><td class="n muted">${rangeTxt(p.pts)}</td>
+      <td style="width:140px;padding-block:2px">${histo({ ...p.pts, hist: p.pts.hist.slice(0, 31) }, { W: 140, H: 30, label: () => "" })}</td>
+      <td class="n">${f1(p.reb.mean)}</td><td class="n">${f1(p.ast.mean)}</td><td class="n">${f1(p.pir.mean)}</td><td class="n">${pct(p.p_pts10)}</td><td class="n">${pct(p.p_pts20)}</td><td class="n">${pct(p.p_dd)}</td></tr>`).join("")}</tbody></table></div></div>`;
+  return `<section><div class="section-head"><h2>${S.n.toLocaleString("el-GR")} προσομοιώσεις</h2><span class="muted" style="font-size:12px">ενημέρωση ${esc(SIMS.generated)} · <a href="#/sims">πώς δουλεύει</a></span></div>
+    <div class="card"><div class="bar2" style="height:14px"><i style="width:${100 * S.p_home}%;background:${H.c1}"></i><i style="width:${100 * (1 - S.p_home)}%;background:${A.c1}"></i></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><b>${esc(H.name)} ${pct(S.p_home)}</b><span class="muted">παράταση ${pct(S.p_ot)} · ρυθμός ${S.pace} κατοχές</span><b>${pct(1 - S.p_home)} ${esc(A.name)}</b></div></div>
+    <div class="tiles" style="margin-top:10px">${tile(`${Math.round(S.score[0].mean)}–${Math.round(S.score[1].mean)}`, "μέσο σκορ")}${tile(rangeTxt(S.score[0]), `${esc(H.abbr)}: 80% των αγώνων`)}${tile(rangeTxt(S.score[1]), `${esc(A.abbr)}: 80% των αγώνων`)}
+      ${tile(sgn(Math.round(S.margin.mean)), "μέση διαφορά (γηπ.)")}${tile(Math.round(S.total.mean), `σύνολο (${rangeTxt(S.total)})`)}</div>
+    <div class="grid" style="margin-top:10px"><div class="card"><h3>Διαφορά πόντων (γηπεδούχος − φιλοξενούμενος)</h3>${histo(S.margin, { label: (v) => (v > 0 ? "+" : "") + v, color: H.c1, mark: (v) => v > 0 })}
+        <div class="muted" style="font-size:12px">Χρωματιστές οι νίκες του γηπεδούχου.</div></div>
+      <div class="card"><h3>Σύνολο πόντων</h3>${histo(S.total, { color: "var(--c3)" })}</div></div>
+    <h3 style="margin-top:14px">Κατανομές απόδοσης παικτών</h3>
+    <div style="display:flex;flex-direction:column;gap:14px">${tbl(0, g.home)}${tbl(1, g.away)}</div>
+    <p class="muted" style="font-size:12px">«80%»: το 80% των προσομοιωμένων αγώνων πέφτει σε αυτό το διάστημα. 10+/20+: πιθανότητα για τόσους πόντους. DD: double-double.</p></section>`;
+}
+
+Views.sims = () => {
+  const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
+  const C = SIMS?.check;
+  return `<section><h2>Προσομοιώσεις</h2>
+    ${G.length ? `<div class="card" style="padding:0">${G.map(([code, S]) => { const g = DB.games[code];
+      return `<a class="game-row" href="#/game/${code}"><span class="d">${dateGR(S.date, true)}<br>${S.n.toLocaleString("el-GR")} αγώνες</span>
+        <span class="h">${esc(team(S.home).name)} ${badge(S.home, 20)} <b class="num">${pct(S.p_home)}</b></span><span class="sc">${Math.round(S.score[0].mean)} – ${Math.round(S.score[1].mean)}</span>
+        <span><b class="num">${pct(1 - S.p_home)}</b> ${badge(S.away, 20)} ${esc(team(S.away).name)}</span><span class="go">›</span></a>`; }).join("")}</div>`
+      : `<div class="empty">Δεν υπάρχουν ακόμα προσομοιώσεις.</div>`}
+  </section>
+  <section class="card"><h2>Πώς δουλεύει</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Μοντέλο κατοχής (αλυσίδα Markov) και Monte Carlo: κάθε αγώνας «παίζεται» φάση-φάση, με τα ζάρια να ρίχνονται από τα στατιστικά των παικτών, και επαναλαμβάνεται ${SIMS ? SIMS.n.toLocaleString("el-GR") : "50.000"} φορές.</p>
+    <ol style="margin:0;max-width:80ch">
+      <li><b>Κατοχές:</b> από τον μέσο ρυθμό των δύο ομάδων (± 3.5). <b>Τζάμπολ:</b> 50/50.</li>
+      <li><b>Ποιος παίζει τη φάση:</b> επιθετικός ανάλογα με τις φάσεις που τελειώνει ανά αγώνα (σουτ, βολές, λάθη), αμυνόμενος ανάλογα με τα λεπτά. Όσοι δεν έπαιξαν στους 3 τελευταίους αγώνες μετρούν ελάχιστα.</li>
+      <li><b>Κοντράρισμα (log5):</b> η πιθανότητα του επιθετικού συνδυάζεται με την άμυνα του αντιπάλου, ως προς τον μέσο όρο της λίγκας. Η άμυνα της ομάδας επηρεάζει ευστοχία, λάθη, φάουλ· ο αμυνόμενος παίκτης κλεψίματα, τάπες, φάουλ.</li>
+      <li><b>Φάση:</b> λάθος (ίσως κλέψιμο) → αλλάζει η κατοχή · φάουλ → βολές · σουτ 2π/3π → τάπα / εύστοχο (ίσως ασίστ, and-one) / άστοχο → ριμπάουντ (επιθετικό: η κατοχή συνεχίζει).</li>
+      <li><b>Παράταση:</b> με τις κατοχές 5 λεπτών, όσο υπάρχει ισοπαλία. <b>Έδρα:</b> μικρή ώθηση στις ευστοχίες του γηπεδούχου.</li>
+    </ol>
+    ${C ? `<h3 style="margin-top:14px">Έλεγχος σε ${C.games} παιγμένους αγώνες (${C.sims_each.toLocaleString("el-GR")} προσομοιώσεις ο καθένας)</h3>
+      <div class="tiles">${tile(pct(C.acc), "σωστός νικητής")}${tile(C.brier.toFixed(3), `Brier (απλό «κερδίζει ο γηπεδούχος»: ${C.brier_home_rate.toFixed(3)})`)}${tile("±" + C.mae_margin, "σφάλμα στη διαφορά")}${tile(`${C.avg_total_pred} / ${C.avg_total_real}`, "μέσο σύνολο: πρόβλεψη / πραγματικό")}</div>
+      <p class="muted" style="font-size:12px">Προσοχή: τα στατιστικά της σεζόν περιέχουν και αυτούς τους αγώνες, άρα ο έλεγχος είναι «μέσα στο δείγμα» και ελαφρά αισιόδοξος.</p>` : ""}
+    <p class="muted" style="font-size:12px;margin-bottom:0">Απλοποιήσεις: χωρίς ρολόι και πεντάδες, οι παίκτες θεωρούνται ανεξάρτητοι, χωρίς αποβολές με 5 φάουλ και απουσίες. Ποσοστά από μικρό δείγμα τραβιούνται προς τον μέσο όρο της λίγκας, γι' αυτό οι πρωταγωνιστές βγαίνουν λίγο πιο «συντηρητικοί» από τους μέσους όρους τους.</p></section>`;
+};
+
+// ----------------------------------------------------------------------------- ζωντανός αγώνας (play-by-play)
+const Live = {
+  stop: null,
+  mount(el, g) {
+    if (!g || !window.SIM) { el.remove(); return; }
+    const H = team(g.home), A = team(g.away);
+    let ctx;
+    try { ctx = SIM.prepare(DB, g.home, g.away); } catch (e) { el.innerHTML = `<div class="muted">Δεν γίνεται προσομοίωση: ${esc(e.message)}</div>`; return; }
+    if (ctx.T[0].pl.length < 5 || ctx.T[1].pl.length < 5) { el.innerHTML = `<div class="muted">Δεν υπάρχουν αρκετοί παίκτες για προσομοίωση.</div>`; return; }
+    const SPEEDS = [["×10", 10], ["×60", 60], ["×240", 240], ["άμεσα", 1e9]];
+    let speed = 60, log = [], idx = 0, clock = 0, raf = 0, last = 0, running = false, box = {};
+    el.innerHTML = `<div class="section-head"><h2 style="margin:0">Ζωντανή προσομοίωση</h2>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="lv-ctl"><button class="btn primary" id="lv-go">▶ Παίξε έναν αγώνα</button>
+          ${SPEEDS.map(([l, v]) => `<button class="btn" data-sp="${v}" style="${v === speed ? "border-color:var(--accent)" : ""}">${l}</button>`).join("")}</div></div>
+      <div class="muted" style="font-size:12px;margin:4px 0 10px">Ένας τυχαίος αγώνας με την ίδια μηχανή που τρέχει τις ${SIMS ? SIMS.n.toLocaleString("el-GR") : ""} προσομοιώσεις. Κάθε φορά βγαίνει διαφορετικός.</div>
+      <div class="matchup" style="margin-bottom:8px"><div class="side">${badge(g.home, 36)}<b>${esc(H.name)}</b></div>
+        <div><div class="score" id="lv-sc">0 – 0</div><div class="muted" id="lv-clk">–</div></div><div class="side">${badge(g.away, 36)}<b>${esc(A.name)}</b></div></div>
+      <svg id="lv-mg" viewBox="0 0 600 90" style="width:100%;height:auto;display:block"></svg>
+      <div class="grid" style="margin-top:10px"><div><h3>Play-by-play</h3><div id="lv-feed" style="max-height:340px;overflow:auto;font-size:13px" class="tbl"></div></div>
+        <div><h3>Box score</h3><div id="lv-box"></div></div></div>`;
+    const fmtClock = (t) => { const ot = t >= 2400, q = ot ? Math.floor((t - 2400) / 300) : Math.min(3, Math.floor(t / 600)), qlen = ot ? 300 : 600, base = ot ? 2400 + q * 300 : q * 600;
+      const left = Math.max(0, qlen - (t - base)); return `${ot ? "Παράταση " + (q + 1) : q + 1 + "η περίοδος"} · ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`; };
+    const add = (pid, k, v = 1) => { const b = (box[pid] ||= { pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, fgm: 0, fga: 0, f3m: 0, f3a: 0, ftm: 0, fta: 0 }); b[k] += v; };
+    const apply = (e) => {
+      if (e.type === "2pm" || e.type === "3pm") { add(e.pid, "pts", e.pts + (e.and1 || 0)); add(e.pid, "fgm"); add(e.pid, "fga"); if (e.type === "3pm") { add(e.pid, "f3m"); add(e.pid, "f3a"); }
+        if (e.pid2) add(e.pid2, "ast"); if (e.and1 != null) { add(e.pid, "fta"); add(e.pid, "ftm", e.and1); add(e.fouler, "pf"); } }
+      if (e.type === "2pa" || e.type === "3pa") { add(e.pid, "fga"); if (e.type === "3pa") add(e.pid, "f3a"); }
+      if (e.type === "blk") { add(e.pid, "fga"); if (e.three) add(e.pid, "f3a"); add(e.pid2, "blk"); }
+      if (e.type === "ft") { add(e.pid, "pts", e.pts); add(e.pid, "ftm", e.pts); add(e.pid, "fta", e.fta); add(e.pid2, "pf"); }
+      if (e.type === "tov") { add(e.pid, "tov"); if (e.pid2) add(e.pid2, "stl"); }
+      if (e.type === "oreb" || e.type === "dreb") add(e.pid, "reb");
+    };
+    const drawMargin = () => {
+      const pts = log.slice(0, idx).filter((e) => e.s), tmax = Math.max(2400, log.at(-1)?.t || 2400), mx = Math.max(10, ...pts.map((e) => Math.abs(e.s[0] - e.s[1])));
+      const X = (t) => 5 + (t / tmax) * 590, Y = (m) => 45 - (m / mx) * 40;
+      let s = `<line x1="5" x2="595" y1="45" y2="45" stroke="var(--line)"/>`;
+      for (let q = 1; q < 4; q++) s += `<line x1="${X(q * 600)}" x2="${X(q * 600)}" y1="3" y2="87" stroke="var(--line)" stroke-dasharray="2 3"/>`;
+      s += `<text x="8" y="12" style="fill:${H.c1};font:10px var(--font-num)">${esc(H.abbr)} μπροστά</text><text x="8" y="86" style="fill:var(--muted);font:10px var(--font-num)">${esc(A.abbr)} μπροστά</text>`;
+      if (pts.length) s += `<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts.map((e) => `${X(e.t).toFixed(1)},${Y(e.s[0] - e.s[1]).toFixed(1)}`).join(" ")}"/>`;
+      $("#lv-mg", el).innerHTML = s;
+    };
+    const drawBox = () => {
+      const side = (ti) => `<div class="tbl" style="margin-bottom:8px"><table><thead><tr><th>${esc(ti ? A.abbr : H.abbr)}</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">Σουτ</th><th class="n">3π</th><th class="n">Βολ</th></tr></thead><tbody>
+        ${ctx.T[ti].pl.map((p) => { const b = box[p.pid] || {}; return `<tr><td>${pbtn(p.pid)}</td><td class="n"><b>${b.pts || 0}</b></td><td class="n">${b.reb || 0}</td><td class="n">${b.ast || 0}</td><td class="n">${b.fgm || 0}/${b.fga || 0}</td><td class="n">${b.f3m || 0}/${b.f3a || 0}</td><td class="n">${b.ftm || 0}/${b.fta || 0}</td></tr>`; }).join("")}</tbody></table></div>`;
+      $("#lv-box", el).innerHTML = side(0) + side(1);
+    };
+    const step = (now) => {
+      const dt = last ? (now - last) / 1000 : 0; last = now; clock += dt * speed;
+      const feed = $("#lv-feed", el); let added = "";
+      while (idx < log.length && log[idx].t <= clock) {
+        const e = log[idx++]; apply(e);
+        const col = e.team == null ? "var(--fg)" : team(e.team === 0 ? g.home : g.away).c1;
+        const big = ["2pm", "3pm", "ft"].includes(e.type) && e.pts;
+        added = `<div style="display:grid;grid-template-columns:64px 1fr 58px;gap:8px;padding:5px 10px;border-bottom:1px solid var(--line);${big ? "font-weight:600" : ""}">
+          <span class="muted num">${e.type === "end" || e.type === "ot" ? "" : fmtClock(e.t).split(" · ")[1]}</span><span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px"></i>${esc(e.text)}</span><span class="num" style="text-align:right">${e.s[0]}–${e.s[1]}</span></div>` + added;
+        $("#lv-sc", el).textContent = `${e.s[0]} – ${e.s[1]}`;
+      }
+      if (added) { feed.insertAdjacentHTML("afterbegin", added); drawMargin(); drawBox(); }
+      $("#lv-clk", el).textContent = idx >= log.length ? "Τελικό" : fmtClock(Math.min(clock, log.at(-1).t));
+      if (idx < log.length && running) raf = requestAnimationFrame(step); else { running = false; $("#lv-go", el).textContent = "▶ Νέος αγώνας"; }
+    };
+    const start = () => {
+      log = []; SIM.game(ctx, SIM.rng((Math.random() * 2 ** 31) | 0), log);
+      idx = 0; clock = 0; last = 0; box = {}; running = true;
+      $("#lv-feed", el).innerHTML = ""; $("#lv-sc", el).textContent = "0 – 0"; drawMargin(); drawBox();
+      $("#lv-go", el).textContent = "⏸ Παύση";
+      raf = requestAnimationFrame(step);
+    };
+    $("#lv-go", el).addEventListener("click", () => {
+      if (running) { running = false; cancelAnimationFrame(raf); $("#lv-go", el).textContent = "▶ Συνέχεια"; return; }
+      if (log.length && idx < log.length) { running = true; last = 0; $("#lv-go", el).textContent = "⏸ Παύση"; raf = requestAnimationFrame(step); return; }
+      start();
+    });
+    $("#lv-ctl", el).addEventListener("click", (e) => { const b = e.target.closest("[data-sp]"); if (!b) return; speed = +b.dataset.sp;
+      $("#lv-ctl", el).querySelectorAll("[data-sp]").forEach((x) => (x.style.borderColor = x === b ? "var(--accent)" : "")); });
+    drawMargin(); drawBox();
+    Live.stop = () => { running = false; cancelAnimationFrame(raf); Live.stop = null; };
+  },
 };
 
 // ----------------------------------------------------------------------------- pop-up παίκτη
@@ -234,6 +394,7 @@ function popup(pid) {
     <div class="muted" style="font-size:12px">${p.gp} αγώνες · μέσοι όροι ανά αγώνα</div>
     ${last.length ? `<div class="tbl"><table><thead><tr><th>Τελευταίοι</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">PIR</th></tr></thead><tbody>
       ${last.map((g) => `<tr><td><a href="#/game/${g.g}" data-close>${dateGR(g.date)} ${g.home ? "vs" : "@"} ${esc(team(g.opp).abbr)}</a> <span style="color:var(--${g.res === "W" ? "good" : "bad"})">${g.res === "W" ? "Ν" : "Η"}</span></td><td class="n">${f1(g.min)}</td><td class="n">${g.pts}</td><td class="n">${g.reb}</td><td class="n">${g.ast}</td><td class="n"><b>${g.pir}</b></td></tr>`).join("")}</tbody></table></div>` : ""}
+    ${nextDist(pid, true)}
     <div style="display:flex;justify-content:space-between;gap:8px"><button class="btn" data-close>Κλείσιμο</button><a class="btn primary" href="#/player/${esc(pid)}" data-close>Σελίδα παίκτη →</a></div></div>`;
   d.showModal();
 }
@@ -244,11 +405,13 @@ function route() {
   const [, view = "", arg = ""] = (location.hash || "#/").split("/");
   return { view: view || "home", arg: decodeURIComponent(arg) };
 }
-const NAV = { home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
+const NAV = { sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
 function render() {
   const { view, arg } = route(), V = Views[view] || Views.home, el = $("#view");
+  if (Live.stop) Live.stop();
   el.innerHTML = V(arg);
-  V.bind?.(el);
+  V.bind?.(el, arg);
+  const lv = $("#live", el); if (lv) Live.mount(lv, DB.games[lv.dataset.game]);
   document.querySelectorAll("#nav a").forEach((a) => a.setAttribute("aria-current", a.getAttribute("href") === (NAV[view] || "#/") ? "page" : "false"));
   const titles = { team: () => DB.teams[arg]?.name, player: () => DB.players[arg]?.name, game: () => { const g = DB.games[arg]; return g && `${team(g.home).name} – ${team(g.away).name}`; } };
   document.title = [titles[view]?.(), "o-dimarxos"].filter(Boolean).join(" · ");
@@ -268,6 +431,7 @@ $("#theme").addEventListener("click", () => {
 (async () => {
   try {
     DB = await fetch("db/demo.json?v=__BUILD__").then((r) => { if (!r.ok) throw new Error("db/demo.json"); return r.json(); });
+    SIMS = await fetch("db/sims.json?v=__BUILD__").then((r) => (r.ok ? r.json() : null)).catch(() => null);
     $("#sub").textContent = `${DB.league} ${DB.season}-${String((DB.season + 1) % 100).padStart(2, "0")} · demo: ${DB.demo.map((c) => team(c).name).join(", ")}`;
     $("#foot").textContent = `Δεδομένα: esake.gr (box scores), EuroLeague API/ESPN (βιογραφικά) · ενημέρωση ${DB.updated}`;
     render();

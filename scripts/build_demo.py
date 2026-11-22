@@ -7,7 +7,9 @@
   teams      ομάδα -> στοιχεία, ρεκόρ, φόρμα, ρόστερ, αγώνες        (μόνο οι ομάδες του demo)
   opponents  ομάδα -> όνομα/σήμα                                     (οι αντίπαλοί τους)
   standings  βαθμολογία όλης της λίγκας (από όλους τους αγώνες)
-  players    παίκτης -> βιογραφικά, μέσοι όροι, αγώνας-αγώνας        (όσοι έπαιξαν σε αγώνες του demo)
+  players    παίκτης -> βιογραφικά, μέσοι όροι, αγώνας-αγώνας        (όλη η λίγκα: χρειάζονται για την προσομοίωση)
+  teamstats  ομάδα -> ρυθμός, ποσοστά επίθεσης/άμυνας                 (όλη η λίγκα, για την προσομοίωση)
+  league     μέσοι όροι λίγκας
   games      αγώνας -> σκορ, box score ή πρόγνωση                    (αγώνες των ομάδων του demo)
 
     python scripts/build_demo.py         # -> site/db/demo.json
@@ -32,6 +34,50 @@ def nice(n: str) -> str:
     s = " ".join(reversed(parts)) if len(parts) == 2 else str(n or "")
     cap = lambda w: "-".join(x[:1].upper() + x[1:].lower() for x in w.split("-")) if w.isupper() or w.islower() else w
     return " ".join(cap(w) for w in s.split())
+
+
+def team_stats(logs):
+    """Ανά ομάδα (όλη η λίγκα): σύνολα ανά αγώνα για την ίδια και τους αντιπάλους της -> ρυθμός και ποσοστά.
+    Κατοχές = FGA + 0.44·FTA − OREB + TOV (εκτίμηση από το box score)."""
+    K = ["PTS", "FG2M", "FG2A", "FG3M", "FG3A", "FTM", "FTA", "OREB", "DREB", "AST", "STL", "BLK", "TOV", "PF"]
+    by = {}
+    for l in logs:
+        t = by.setdefault((l["gameCode"], l["team"]), {k: 0.0 for k in K})
+        for k in K:
+            t[k] += float(l.get(k) or 0)
+    games = {}
+    for (g, t), v in by.items():
+        games.setdefault(g, {})[t] = v
+    poss = lambda v: v["FG2A"] + v["FG3A"] + 0.44 * v["FTA"] - v["OREB"] + v["TOV"]
+    acc = {}
+    for g, two in games.items():
+        if len(two) != 2:
+            continue
+        (a, va), (b, vb) = two.items()
+        for t, me, op in ((a, va, vb), (b, vb, va)):
+            s = acc.setdefault(t, {"gp": 0, "me": {k: 0.0 for k in K}, "op": {k: 0.0 for k in K}, "poss": 0.0, "opp_poss": 0.0})
+            s["gp"] += 1
+            s["poss"] += poss(me); s["opp_poss"] += poss(op)
+            for k in K:
+                s["me"][k] += me[k]; s["op"][k] += op[k]
+    def rates(me, op, pos, opos, gp):
+        fga = me["FG2A"] + me["FG3A"]
+        return {"gp": gp, "pace": round((pos + opos) / 2 / gp, 2), "ortg": round(100 * me["PTS"] / pos, 2), "drtg": round(100 * op["PTS"] / opos, 2),
+                "efg": round((me["FG2M"] + 1.5 * me["FG3M"]) / max(fga, 1), 4),
+                "opp_efg": round((op["FG2M"] + 1.5 * op["FG3M"]) / max(op["FG2A"] + op["FG3A"], 1), 4),
+                "tov": round(me["TOV"] / pos, 4), "opp_tov": round(op["TOV"] / opos, 4),
+                "orb": round(me["OREB"] / max(me["OREB"] + op["DREB"], 1), 4), "drb": round(me["DREB"] / max(me["DREB"] + op["OREB"], 1), 4),
+                "ftr": round(me["FTA"] / max(fga, 1), 4), "opp_ftr": round(op["FTA"] / max(op["FG2A"] + op["FG3A"], 1), 4)}
+    TS = {t: rates(s["me"], s["op"], s["poss"], s["opp_poss"], s["gp"]) for t, s in acc.items()}
+    tot = {k: sum(s["me"][k] for s in acc.values()) for k in K}
+    P = sum(s["poss"] for s in acc.values()); G = sum(s["gp"] for s in acc.values())
+    fga = tot["FG2A"] + tot["FG3A"]
+    LG = {"pace": round(P / G, 2), "ortg": round(100 * tot["PTS"] / P, 2), "efg": round((tot["FG2M"] + 1.5 * tot["FG3M"]) / fga, 4),
+          "fg2": round(tot["FG2M"] / tot["FG2A"], 4), "fg3": round(tot["FG3M"] / tot["FG3A"], 4), "ft": round(tot["FTM"] / tot["FTA"], 4),
+          "tov": round(tot["TOV"] / P, 4), "orb": round(tot["OREB"] / (tot["OREB"] + tot["DREB"]), 4), "ftr": round(tot["FTA"] / fga, 4),
+          "three_rate": round(tot["FG3A"] / fga, 4), "ast_fgm": round(tot["AST"] / (tot["FG2M"] + tot["FG3M"]), 4),
+          "stl_tov": round(tot["STL"] / tot["TOV"], 4), "blk_fg2a": round(tot["BLK"] / tot["FG2A"], 4)}
+    return TS, LG
 
 
 def main():
@@ -75,13 +121,10 @@ def main():
                                 "away": u["away"], "played": False,
                                 "model": {"p_home": p["p_home"], "line": p["line"], "total": p["total"]} if p else None}
 
-    # ---- παίκτες: όσοι έπαιξαν σε αγώνες του demo (και οι αντίπαλοι), με όλη τη σεζόν τους
-    in_demo = {l["pid"] for l in logs if l["gameCode"] in G}
+    # ---- παίκτες: όλη η λίγκα, με όλη τη σεζόν τους (η προσομοίωση χρειάζεται και τους αντιπάλους)
     bio_cols = S.get("bio_cols", [])
     P = {}
     for l in sorted(logs, key=lambda l: (gdate.get(l["gameCode"], ""), l["gameCode"])):
-        if l["pid"] not in in_demo:
-            continue
         p = P.get(l["pid"])
         if not p:
             b = dict(zip(bio_cols, S.get("bio", {}).get(l["pid"], []))) if l["pid"] in S.get("bio", {}) else {}
@@ -122,8 +165,10 @@ def main():
                 "roster": [p["pid"] for p in roster], "games": [g["code"] for g in G.values() if c in (g["home"], g["away"])]}
     opp = {c: tm(c) for c in {g[s] for g in G.values() for s in ("home", "away")} | {r["code"] for r in standings} if c not in T}
 
+    TS, LG = team_stats(logs)
     out = {"league": "Stoiximan GBL", "season": season, "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-           "demo": DEMO, "teams": T, "opponents": opp, "standings": standings, "players": P, "games": G}
+           "demo": DEMO, "teams": T, "opponents": opp, "standings": standings, "players": P, "games": G,
+           "teamstats": TS, "lg": LG}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
     print(f"-> {OUT.relative_to(ROOT)}: {len(T)} ομάδες, {len(P)} παίκτες, {len(G)} αγώνες "

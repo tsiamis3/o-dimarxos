@@ -1,5 +1,7 @@
 # το site/data χτίζεται σε κάθε run του Action
 site/data/
+# η βάση και οι προσομοιώσεις του σάιτ v2 χτίζονται επίσης στο Action (build_demo.py, run_sims.js)
+site/db/
 __pycache__/
 *.pyc
 .venv/

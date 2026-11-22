@@ -110,6 +110,11 @@ jobs:
       - name: Demo database (v2)
         run: python scripts/build_demo.py
 
+      # Προσομοιώσεις: 50.000 αγώνες για τους επόμενους αγώνες του demo (ίδια μηχανή με τον browser: site/sim.js)
+      - name: Simulations (50k per game)
+        continue-on-error: true
+        run: node scripts/run_sims.js
+
       - name: Commit data and model
         run: |
           git config user.name "github-actions[bot]"
