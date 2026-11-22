@@ -237,7 +237,7 @@ const rangeTxt = (d) => `${d.p10}–${d.p90}`;
 function simFor(pid) {                                   // ο επόμενος προσομοιωμένος αγώνας του παίκτη
   if (!SIMS) return null;
   const G = Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date));
-  for (const [code, g] of G) for (const side of [0, 1]) { const p = g.players[side].find((x) => x.pid === pid); if (p) return { code, g, p, side }; }
+  for (const [code, g] of G) { if (g.played) continue; for (const side of [0, 1]) { const p = g.players[side].find((x) => x.pid === pid); if (p) return { code, g, p, side }; } }
   return null;
 }
 function nextDist(pid, compact) {
@@ -255,50 +255,110 @@ function nextDist(pid, compact) {
     ${probs}</section>`;
 }
 
+// boxplot σε σειρές: κάθε σειρά {label (html), d (κατανομή), actual (πραγματικό ή null)}. Κουτί 25–75%, κεραίες 5–95%, γραμμή διάμεσος, ◆ μέσος.
+function boxRows(rows, { fmt = (v) => v, color = "var(--accent)" } = {}) {
+  if (!rows.length) return "";
+  const vals = rows.flatMap((r) => [r.d.p5, r.d.p95, ...(r.actual != null ? [r.actual] : [])]);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max(1, (hi - lo) * 0.06); lo -= pad; hi += pad;
+  const W = 520, X = (v) => (((v - lo) / (hi - lo)) * (W - 12) + 6).toFixed(1);
+  const ticks = []; const st = Math.max(1, Math.pow(10, Math.floor(Math.log10((hi - lo) / 4))) * ([1, 2, 5].find((k) => (hi - lo) / (k * Math.pow(10, Math.floor(Math.log10((hi - lo) / 4)))) <= 6) || 10));
+  for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) ticks.push(v);
+  const row = (r) => { const d = r.d, a = r.actual, inBox = a != null && a >= d.p25 && a <= d.p75, inW = a != null && a >= d.p5 && a <= d.p95;
+    const ac = a == null ? "" : `<g><title>Πραγματικό: ${fmt(a)}${inBox ? " (μέσα στο κουτί)" : inW ? " (μέσα στις κεραίες)" : " (εκτός)"}</title>
+      <circle cx="${X(a)}" cy="11" r="5.5" fill="${inBox ? "var(--good)" : inW ? "#d9a227" : "var(--bad)"}" stroke="var(--surface)" stroke-width="1.5"/></g>`;
+    return `<div class="bx-row"><div class="bx-l">${r.label}</div><svg viewBox="0 0 ${W} 22" preserveAspectRatio="none" class="bx" role="img">
+      <title>${esc(r.title || "")} 5%: ${fmt(d.p5)} · 25%: ${fmt(d.p25)} · διάμεσος ${fmt(d.p50)} · 75%: ${fmt(d.p75)} · 95%: ${fmt(d.p95)} · μέσος ${d.mean}</title>
+      ${ticks.map((v) => `<line x1="${X(v)}" x2="${X(v)}" y1="0" y2="22" stroke="var(--line)"/>`).join("")}
+      <line x1="${X(d.p5)}" x2="${X(d.p95)}" y1="11" y2="11" stroke="${color}" stroke-width="1.5"/>
+      <line x1="${X(d.p5)}" x2="${X(d.p5)}" y1="6" y2="16" stroke="${color}" stroke-width="1.5"/><line x1="${X(d.p95)}" x2="${X(d.p95)}" y1="6" y2="16" stroke="${color}" stroke-width="1.5"/>
+      <rect x="${X(d.p25)}" y="4" width="${Math.max(1.5, X(d.p75) - X(d.p25))}" height="14" fill="${color}" fill-opacity=".22" stroke="${color}" stroke-width="1.5" rx="2"/>
+      <line x1="${X(d.p50)}" x2="${X(d.p50)}" y1="4" y2="18" stroke="${color}" stroke-width="2.5"/>
+      <path d="M${X(d.mean)} 7 l3 4 l-3 4 l-3 -4 z" fill="var(--fg)" opacity=".7"/>${ac}</svg>
+      <div class="bx-v num">${a != null ? `<b>${fmt(a)}</b> <span class="muted">/ ${fmt(d.p50)}</span>` : `<span class="muted">${fmt(d.p25)}–${fmt(d.p75)}</span>`}</div></div>`; };
+  return `<div class="bx-wrap">${rows.map(row).join("")}<div class="bx-row"><div></div><div class="bx-axis">${ticks.map((v) => `<span style="left:${((v - lo) / (hi - lo)) * 100}%">${fmt(v)}</span>`).join("")}</div><div></div></div></div>`;
+}
+const momTable = (rows) => `<div class="tbl"><table><thead><tr><th></th><th class="n">μέσος</th><th class="n">διασπορά</th><th class="n">τυπ. απόκλ.</th><th class="n">ασυμμετρία</th><th class="n">κύρτωση</th><th class="n">CV</th><th class="n">5%</th><th class="n">25%</th><th class="n">διάμεσος</th><th class="n">75%</th><th class="n">95%</th></tr></thead><tbody>
+  ${rows.map((r) => `<tr><td>${r.label}</td><td class="n"><b>${r.d.mean}</b></td><td class="n">${r.d.var}</td><td class="n">${r.d.sd}</td><td class="n">${r.d.skew}</td><td class="n">${r.d.kurt}</td><td class="n">${r.d.cv ?? "–"}</td><td class="n">${r.d.p5}</td><td class="n">${r.d.p25}</td><td class="n">${r.d.p50}</td><td class="n">${r.d.p75}</td><td class="n">${r.d.p95}</td></tr>`).join("")}</tbody></table></div>`;
+const SIM_STATS = [["pts", "Πόντοι"], ["reb", "Ριμπάουντ"], ["ast", "Ασίστ"], ["pir", "PIR"], ["fg3m", "Τρίποντα"], ["stl", "Κλεψίματα"], ["blk", "Κοψίματα"]];
+const simUI = { stat: "pts", moments: false };
+
 function simSection(code) {
   const S = SIMS?.games?.[code]; if (!S) return "";
-  const g = DB.games[code], H = team(g.home), A = team(g.away);
-  const tbl = (side, c) => `<div><h3>${tlink(c, 20)}</h3><div class="tbl"><table><thead><tr><th>Παίκτης</th><th class="n">Λεπ.</th><th class="n">Πόντοι</th><th class="n">80%</th><th>κατανομή πόντων</th><th class="n">Ριμπ.</th><th class="n">Ασίστ</th><th class="n">PIR</th><th class="n">10+</th><th class="n">20+</th><th class="n">DD</th></tr></thead><tbody>
-    ${S.players[side].map((p) => `<tr><td>${pbtn(p.pid)}</td><td class="n">${f1(p.min)}</td><td class="n"><b>${f1(p.pts.mean)}</b></td><td class="n muted">${rangeTxt(p.pts)}</td>
-      <td style="width:140px;padding-block:2px">${histo({ ...p.pts, hist: p.pts.hist.slice(0, 31) }, { W: 140, H: 30, label: () => "" })}</td>
-      <td class="n">${f1(p.reb.mean)}</td><td class="n">${f1(p.ast.mean)}</td><td class="n">${f1(p.pir.mean)}</td><td class="n">${pct(p.p_pts10)}</td><td class="n">${pct(p.p_pts20)}</td><td class="n">${pct(p.p_dd)}</td></tr>`).join("")}</tbody></table></div></div>`;
-  return `<section><div class="section-head"><h2>${S.n.toLocaleString("el-GR")} προσομοιώσεις</h2><span class="muted" style="font-size:12px">ενημέρωση ${esc(SIMS.generated)} · <a href="#/sims">πώς δουλεύει</a></span></div>
+  const g = DB.games[code], H = team(g.home), A = team(g.away), act = S.actual;
+  const sgnF = (v) => (v > 0 ? "+" : "") + v;
+  const teamRows = [
+    { label: `${badge(g.home, 16)} πόντοι ${esc(H.abbr)}`, d: S.score[0], actual: act?.hs, title: `Πόντοι ${H.name}.` },
+    { label: `${badge(g.away, 16)} πόντοι ${esc(A.abbr)}`, d: S.score[1], actual: act?.as, title: `Πόντοι ${A.name}.` },
+    { label: `Διαφορά (${esc(H.abbr)} − ${esc(A.abbr)})`, d: S.margin, actual: act ? act.hs - act.as : null, title: "Διαφορά γηπεδούχου." },
+    { label: "Σύνολο πόντων", d: S.total, actual: act ? act.hs + act.as : null, title: "Σύνολο." } ];
+  const fair = S.hcap?.fair;
+  const hc = S.hcap ? `<div class="tbl"><table><thead><tr><th>Χάντικαπ ${esc(H.abbr)}</th>${S.hcap.lines.map(([L]) => `<th class="n">${sgnF(L)}</th>`).join("")}</tr></thead><tbody>
+      <tr><td>καλύπτει ${esc(H.abbr)}</td>${S.hcap.lines.map(([L, p]) => `<td class="n" style="${Math.abs(p - 0.5) < 0.06 ? "font-weight:700" : ""}">${pct(p)}</td>`).join("")}</tr>
+      <tr><td>καλύπτει ${esc(A.abbr)}</td>${S.hcap.lines.map(([, p]) => `<td class="n">${pct(1 - p)}</td>`).join("")}</tr>
+      ${act ? `<tr><td class="muted">πραγματικό</td>${S.hcap.lines.map(([L]) => `<td class="n" style="color:var(--${act.hs - act.as + L > 0 ? "good" : "bad"})">${act.hs - act.as + L > 0 ? esc(H.abbr) : esc(A.abbr)}</td>`).join("")}</tr>` : ""}</tbody></table></div>` : "";
+  const st = simUI.stat, stLabel = SIM_STATS.find(([k]) => k === st)[1];
+  const playerBlock = (side, c) => {
+    const P = S.players[side], shown = P.filter((p) => p[st].show), hidden = P.filter((p) => !p[st].show);
+    const rows = shown.map((p) => ({ label: `${pbtn(p.pid)} <span class="muted" style="font-size:11px">${f1(p.min)}′</span>`, d: p[st],
+      actual: act ? (act.box[p.pid]?.[st] ?? null) : null, title: `${DB.players[p.pid]?.name}: ${stLabel}.` }));
+    const dnp = act ? P.filter((p) => !act.box[p.pid]).map((p) => DB.players[p.pid]?.name) : [];
+    return `<div><h3 style="margin-bottom:6px">${tlink(c, 20)}</h3>${rows.length ? (simUI.moments ? momTable(rows) : boxRows(rows, { color: team(c).c1 === "#ffffff" ? "var(--accent)" : team(c).c1 }))
+      : `<div class="muted">Καμία κατανομή αρκετά «σφιχτή» για να δειχτεί.</div>`}
+      ${hidden.length ? `<div class="muted" style="font-size:12px;margin-top:4px">Δεν δείχνονται (μεγάλη διασπορά ή μέσος &lt; ${SIMS.show_min ?? 1}): ${hidden.map((p) => esc(DB.players[p.pid]?.name)).join(", ")}</div>` : ""}
+      ${dnp.length ? `<div class="muted" style="font-size:12px">Δεν αγωνίστηκαν: ${dnp.map(esc).join(", ")}</div>` : ""}</div>`;
+  };
+  return `<section id="simsec"><div class="section-head"><h2>${S.played ? "Προσομοίωση πριν από τον αγώνα, απέναντι στο αποτέλεσμα" : `${S.n.toLocaleString("el-GR")} προσομοιώσεις`}</h2>
+      <span class="muted" style="font-size:12px">${S.n.toLocaleString("el-GR")} αγώνες${S.wf ? " · μόνο με όσα ήταν γνωστά πριν (walk-forward)" : ""} · <a href="#/sims">πώς δουλεύει</a></span></div>
     <div class="card"><div class="bar2" style="height:14px"><i style="width:${100 * S.p_home}%;background:${H.c1}"></i><i style="width:${100 * (1 - S.p_home)}%;background:${A.c1}"></i></div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px"><b>${esc(H.name)} ${pct(S.p_home)}</b><span class="muted">παράταση ${pct(S.p_ot)} · ρυθμός ${S.pace} κατοχές</span><b>${pct(1 - S.p_home)} ${esc(A.name)}</b></div></div>
-    <div class="tiles" style="margin-top:10px">${tile(`${Math.round(S.score[0].mean)}–${Math.round(S.score[1].mean)}`, "μέσο σκορ")}${tile(rangeTxt(S.score[0]), `${esc(H.abbr)}: 80% των αγώνων`)}${tile(rangeTxt(S.score[1]), `${esc(A.abbr)}: 80% των αγώνων`)}
-      ${tile(sgn(Math.round(S.margin.mean)), "μέση διαφορά (γηπ.)")}${tile(Math.round(S.total.mean), `σύνολο (${rangeTxt(S.total)})`)}</div>
-    <div class="grid" style="margin-top:10px"><div class="card"><h3>Διαφορά πόντων (γηπεδούχος − φιλοξενούμενος)</h3>${histo(S.margin, { label: (v) => (v > 0 ? "+" : "") + v, color: H.c1, mark: (v) => v > 0 })}
-        <div class="muted" style="font-size:12px">Χρωματιστές οι νίκες του γηπεδούχου.</div></div>
-      <div class="card"><h3>Σύνολο πόντων</h3>${histo(S.total, { color: "var(--c3)" })}</div></div>
-    <h3 style="margin-top:14px">Κατανομές απόδοσης παικτών</h3>
-    <div style="display:flex;flex-direction:column;gap:14px">${tbl(0, g.home)}${tbl(1, g.away)}</div>
-    <p class="muted" style="font-size:12px">«80%»: το 80% των προσομοιωμένων αγώνων πέφτει σε αυτό το διάστημα. 10+/20+: πιθανότητα για τόσους πόντους. DD: double-double.</p></section>`;
+      <div style="display:flex;justify-content:space-between;margin-top:6px;gap:8px;flex-wrap:wrap"><b>${esc(H.name)} ${pct(S.p_home)}</b>
+        <span class="muted">«δίκαιο» χάντικαπ: ${esc(H.abbr)} ${sgnF(fair)} · παράταση ${pct(S.p_ot)} · ρυθμός ${S.pace}</span><b>${pct(1 - S.p_home)} ${esc(A.name)}</b></div>
+      ${act ? `<div style="margin-top:6px">Αποτέλεσμα: <b>${act.hs}–${act.as}</b> · νικητής ${esc(team(act.hs > act.as ? g.home : g.away).name)}, με πιθανότητα ${pct(act.hs > act.as ? S.p_home : 1 - S.p_home)} πριν από τον αγώνα</div>` : ""}</div>
+    <div class="grid" style="margin-top:12px"><div class="card"><h3>Αποτέλεσμα και πόντοι</h3>
+        <div class="muted" style="font-size:12px">Πόντοι ομάδων</div>${boxRows(teamRows.slice(0, 2))}
+        <div class="muted" style="font-size:12px;margin-top:8px">Διαφορά (χάντικαπ)</div>${boxRows(teamRows.slice(2, 3), { fmt: (v) => (v > 0 ? "+" : "") + v })}
+        <div class="muted" style="font-size:12px;margin-top:8px">Σύνολο πόντων</div>${boxRows(teamRows.slice(3), { color: "var(--c3)" })}
+        <div class="muted" style="font-size:12px;margin-top:6px">Κουτί: το μεσαίο 50% των προσομοιώσεων · κεραίες: 5%–95% · γραμμή: διάμεσος · ◆ μέσος.${act ? ` Κουκκίδα: πραγματικό (<span style="color:var(--good)">●</span> στο κουτί, <span style="color:#d9a227">●</span> στις κεραίες, <span style="color:var(--bad)">●</span> εκτός).` : ""}</div></div>
+      <div class="card"><h3>Ροπές</h3>${momTable(teamRows)}</div></div>
+    <div class="card" style="margin-top:12px"><h3>Χάντικαπ</h3>${hc}<div class="muted" style="font-size:12px;margin-top:4px">Γραμμή −5.5: ο ${esc(H.abbr)} καλύπτει αν κερδίσει με 6+. Με έντονα: οι γραμμές κοντά στο 50%.</div></div>
+    ${!S.played && S.margin.hist ? `<div class="grid" style="margin-top:12px"><div class="card"><h3>Διαφορά πόντων</h3>${histo(S.margin, { label: (v) => (v > 0 ? "+" : "") + v, color: H.c1, mark: (v) => v > 0 })}</div>
+      <div class="card"><h3>Σύνολο πόντων</h3>${histo(S.total, { color: "var(--c3)" })}</div></div>` : ""}
+    <div class="section-head" style="margin-top:16px"><h3 style="margin:0">Παίκτες: ${esc(stLabel)}</h3>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${SIM_STATS.map(([k, l]) => `<button class="btn" data-simstat="${k}" style="${k === st ? "border-color:var(--accent);color:var(--accent)" : ""}">${l}</button>`).join("")}
+        <button class="btn" data-simmom style="${simUI.moments ? "border-color:var(--accent);color:var(--accent)" : ""}">${simUI.moments ? "boxplots" : "ροπές"}</button></div></div>
+    <div style="display:flex;flex-direction:column;gap:16px;margin-top:8px">${playerBlock(0, g.home)}${playerBlock(1, g.away)}</div>
+    <p class="muted" style="font-size:12px">Δείχνονται μόνο οι κατανομές με τυπική απόκλιση έως ${Math.round(100 * (SIMS.show_cv ?? 0.8))}% του μέσου (CV ≤ ${SIMS.show_cv ?? 0.8}) και μέσο ≥ ${SIMS.show_min ?? 1}: οι υπόλοιπες είναι κυρίως θόρυβος.${act ? " Δεξιά: πραγματικό / διάμεσος της προσομοίωσης." : " Δεξιά: το μεσαίο 50%."}</p></section>`;
 }
 
 Views.sims = () => {
   const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
-  const C = SIMS?.check;
-  return `<section><h2>Προσομοιώσεις</h2>
-    ${G.length ? `<div class="card" style="padding:0">${G.map(([code, S]) => { const g = DB.games[code];
-      return `<a class="game-row" href="#/game/${code}"><span class="d">${dateGR(S.date, true)}<br>${S.n.toLocaleString("el-GR")} αγώνες</span>
-        <span class="h">${esc(team(S.home).name)} ${badge(S.home, 20)} <b class="num">${pct(S.p_home)}</b></span><span class="sc">${Math.round(S.score[0].mean)} – ${Math.round(S.score[1].mean)}</span>
-        <span><b class="num">${pct(1 - S.p_home)}</b> ${badge(S.away, 20)} ${esc(team(S.away).name)}</span><span class="go">›</span></a>`; }).join("")}</div>`
-      : `<div class="empty">Δεν υπάρχουν ακόμα προσομοιώσεις.</div>`}
-  </section>
+  const C = SIMS?.check, up = G.filter(([, S]) => !S.played), pl = G.filter(([, S]) => S.played).reverse();
+  const row = ([code, S]) => { const a = S.actual, ok = a && (a.hs > a.as) === (S.p_home >= 0.5);
+    return `<a class="game-row" href="#/game/${code}"><span class="d">${dateGR(S.date, true)}<br>${a ? `<span style="color:var(--${ok ? "good" : "bad"})">${ok ? "✓ σωστό" : "✗ λάθος"}</span>` : `${S.n.toLocaleString("el-GR")} αγώνες`}</span>
+      <span class="h">${esc(team(S.home).name)} ${badge(S.home, 20)} <b class="num">${pct(S.p_home)}</b></span>
+      <span class="sc">${a ? `${a.hs} – ${a.as}` : `${Math.round(S.score[0].mean)} – ${Math.round(S.score[1].mean)}`}${a ? `<div class="muted" style="font:11px var(--font-num)">προσ. ${Math.round(S.score[0].mean)}–${Math.round(S.score[1].mean)}</div>` : ""}</span>
+      <span><b class="num">${pct(1 - S.p_home)}</b> ${badge(S.away, 20)} ${esc(team(S.away).name)}</span><span class="go">›</span></a>`; };
+  const COVL = { score: "Πόντοι ομάδας", margin: "Διαφορά (χάντικαπ)", total: "Σύνολο πόντων", pts: "Πόντοι παίκτη", reb: "Ριμπάουντ παίκτη", ast: "Ασίστ παίκτη", pir: "PIR παίκτη" };
+  return `<section><h2>Επόμενοι αγώνες</h2>${up.length ? `<div class="card" style="padding:0">${up.map(row).join("")}</div>` : `<div class="empty">Κανένας.</div>`}</section>
+  <section><h2>Παιγμένοι: προσομοίωση πριν από τον αγώνα, απέναντι στο αποτέλεσμα</h2>${pl.length ? `<div class="card" style="padding:0">${pl.map(row).join("")}</div>` : `<div class="empty">Κανένας.</div>`}</section>
+  ${C ? `<section class="card"><h2>Βαθμονόμηση</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Σε ${C.games} παιγμένους αγώνες όλης της λίγκας, με ${C.sims_each.toLocaleString("el-GR")} προσομοιώσεις ο καθένας και στατιστικά μόνο από τους αγώνες πριν από αυτόν: πόσο συχνά το πραγματικό έπεσε μέσα στο κουτί (θέλουμε ~50%) και μέσα στις κεραίες (θέλουμε ~90%).</p>
+    <div class="tiles">${tile(pct(C.acc), "σωστός νικητής")}${tile(C.brier.toFixed(3), `Brier (ποσοστό γηπεδούχου: ${C.brier_home_rate.toFixed(3)})`)}${tile("±" + C.mae_margin, "σφάλμα στη διαφορά")}${tile("±" + C.mae_total, "σφάλμα στο σύνολο")}</div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>Μέγεθος</th><th class="n">περιπτώσεις</th><th class="n">μέσα στο κουτί (25–75%)</th><th class="n">μέσα στις κεραίες (5–95%)</th><th class="n">κάτω από τη διάμεσο</th></tr></thead><tbody>
+      ${Object.entries(C.coverage || {}).map(([k, c]) => `<tr><td>${COVL[k] || k}</td><td class="n">${c.n}</td><td class="n" style="color:var(--${Math.abs(c.box - 0.5) <= 0.07 ? "good" : "bad"})">${pct(c.box)}</td>
+        <td class="n" style="color:var(--${Math.abs(c.whisk - 0.9) <= 0.05 ? "good" : "bad"})">${pct(c.whisk)}</td><td class="n">${pct(c.below_median)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">Πράσινο: κοντά στον στόχο. Αν το «κουτί» πιάνει πολύ περισσότερο από 50%, η προσομοίωση είναι πιο αβέβαιη απ' όσο χρειάζεται (πολύ φαρδιά)· αν πιάνει λιγότερο, είναι πολύ σίγουρη.</p></section>` : ""}
   <section class="card"><h2>Πώς δουλεύει</h2>
-    <p style="margin:0 0 8px;max-width:80ch">Μοντέλο κατοχής (αλυσίδα Markov) και Monte Carlo: κάθε αγώνας «παίζεται» φάση-φάση, με τα ζάρια να ρίχνονται από τα στατιστικά των παικτών, και επαναλαμβάνεται ${SIMS ? SIMS.n.toLocaleString("el-GR") : "50.000"} φορές.</p>
+    <p style="margin:0 0 8px;max-width:80ch">Μοντέλο κατοχής (αλυσίδα Markov) και Monte Carlo: κάθε αγώνας «παίζεται» φάση-φάση, με τα ζάρια να ρίχνονται από τα στατιστικά των παικτών, και επαναλαμβάνεται ${SIMS ? SIMS.n.toLocaleString("el-GR") : "50.000"} φορές. Από τις κατανομές κρατάμε τις ροπές (μέσος, διασπορά, ασυμμετρία, κύρτωση) και τα ποσοστημόρια.</p>
     <ol style="margin:0;max-width:80ch">
       <li><b>Κατοχές:</b> από τον μέσο ρυθμό των δύο ομάδων (± 3.5). <b>Τζάμπολ:</b> 50/50.</li>
-      <li><b>Ποιος παίζει τη φάση:</b> επιθετικός ανάλογα με τις φάσεις που τελειώνει ανά αγώνα (σουτ, βολές, λάθη), αμυνόμενος ανάλογα με τα λεπτά. Όσοι δεν έπαιξαν στους 3 τελευταίους αγώνες μετρούν ελάχιστα.</li>
-      <li><b>Κοντράρισμα (log5):</b> η πιθανότητα του επιθετικού συνδυάζεται με την άμυνα του αντιπάλου, ως προς τον μέσο όρο της λίγκας. Η άμυνα της ομάδας επηρεάζει ευστοχία, λάθη, φάουλ· ο αμυνόμενος παίκτης κλεψίματα, τάπες, φάουλ.</li>
-      <li><b>Φάση:</b> λάθος (ίσως κλέψιμο) → αλλάζει η κατοχή · φάουλ → βολές · σουτ 2π/3π → τάπα / εύστοχο (ίσως ασίστ, and-one) / άστοχο → ριμπάουντ (επιθετικό: η κατοχή συνεχίζει).</li>
-      <li><b>Παράταση:</b> με τις κατοχές 5 λεπτών, όσο υπάρχει ισοπαλία. <b>Έδρα:</b> μικρή ώθηση στις ευστοχίες του γηπεδούχου.</li>
-    </ol>
-    ${C ? `<h3 style="margin-top:14px">Έλεγχος σε ${C.games} παιγμένους αγώνες (${C.sims_each.toLocaleString("el-GR")} προσομοιώσεις ο καθένας)</h3>
-      <div class="tiles">${tile(pct(C.acc), "σωστός νικητής")}${tile(C.brier.toFixed(3), `Brier (απλό «κερδίζει ο γηπεδούχος»: ${C.brier_home_rate.toFixed(3)})`)}${tile("±" + C.mae_margin, "σφάλμα στη διαφορά")}${tile(`${C.avg_total_pred} / ${C.avg_total_real}`, "μέσο σύνολο: πρόβλεψη / πραγματικό")}</div>
-      <p class="muted" style="font-size:12px">Προσοχή: τα στατιστικά της σεζόν περιέχουν και αυτούς τους αγώνες, άρα ο έλεγχος είναι «μέσα στο δείγμα» και ελαφρά αισιόδοξος.</p>` : ""}
-    <p class="muted" style="font-size:12px;margin-bottom:0">Απλοποιήσεις: χωρίς ρολόι και πεντάδες, οι παίκτες θεωρούνται ανεξάρτητοι, χωρίς αποβολές με 5 φάουλ και απουσίες. Ποσοστά από μικρό δείγμα τραβιούνται προς τον μέσο όρο της λίγκας, γι' αυτό οι πρωταγωνιστές βγαίνουν λίγο πιο «συντηρητικοί» από τους μέσους όρους τους.</p></section>`;
+      <li><b>Ποιος παίζει τη φάση:</b> επιθετικός ανάλογα με τις φάσεις που τελειώνει ανά αγώνα, αμυνόμενος ανάλογα με τα λεπτά. Όσοι δεν έπαιξαν στους 3 τελευταίους αγώνες μετρούν ελάχιστα.</li>
+      <li><b>Κοντράρισμα (log5):</b> επιθετικός ⊗ άμυνα αντιπάλου, ως προς τη λίγκα. Ο αμυνόμενος παίκτης: κλεψίματα, τάπες, φάουλ.</li>
+      <li><b>Φάση:</b> λάθος (ίσως κλέψιμο) · φάουλ → βολές · σουτ 2π/3π → τάπα / εύστοχο (ασίστ, and-one) / άστοχο → ριμπάουντ (επιθετικό: η κατοχή συνεχίζει).</li>
+      <li><b>Παράταση</b> με τις κατοχές 5 λεπτών. <b>Έδρα:</b> μικρή ώθηση στις ευστοχίες.</li>
+      <li><b>Παιγμένοι αγώνες:</b> walk-forward, με στατιστικά μόνο από τους αγώνες πριν από αυτόν (οι αγώνες των 2 πρώτων αγωνιστικών παραλείπονται).</li>
+    </ol></section>`;
 };
+Views.sims.bind = () => {};
 
 // ----------------------------------------------------------------------------- ζωντανός αγώνας (play-by-play)
 const Live = {
@@ -418,6 +478,9 @@ function render() {
 }
 document.addEventListener("click", (e) => {
   const p = e.target.closest("[data-pop]"); if (p) { e.preventDefault(); popup(p.dataset.pop); return; }
+  const ss = e.target.closest("[data-simstat],[data-simmom]");
+  if (ss) { if (ss.dataset.simstat) simUI.stat = ss.dataset.simstat; else simUI.moments = !simUI.moments;
+    const sec = $("#simsec"), code = route().arg; if (sec && code) { const y = window.scrollY; sec.outerHTML = simSection(code); window.scrollTo(0, y); } return; }
   const th = e.target.closest("th[data-sort]");
   if (th) { const id = th.closest("table").dataset.tbl, st = table.state[id]; st.dir = st.key === th.dataset.sort ? -st.dir : -1; st.key = th.dataset.sort; render(); }
 });
