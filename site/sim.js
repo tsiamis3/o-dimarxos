@@ -20,6 +20,8 @@
   const HCA = 0.07;            // πλεονέκτημα έδρας: log-odds στις ευστοχίες (~ +3 πόντοι)
   const PACE_SD = 3.5;
   const MAX_ROSTER = 12;
+  SIM.SHOW_CV = 0.8;           // κατανομές με τυπική απόκλιση > 80% του μέσου δεν δείχνονται (πολύς θόρυβος)
+  SIM.SHOW_MIN = 1;            // ούτε όσες έχουν μέσο < 1
 
   // ---------------------------------------------------------------- τυχαίοι αριθμοί (με seed)
   function rng(seed) {
@@ -204,21 +206,36 @@
         for (let k = 0; k < K.length; k++) store[ti][i][k][g] = l[K[k]];
       }
     }
-    const dist = (arr, lo, hi) => {
+    // κατανομή -> ροπές (μέσος, διασπορά, τυπική απόκλιση, ασυμμετρία, κύρτωση), ποσοστημόρια για boxplot,
+    // συντελεστής μεταβλητότητας και αν «αξίζει» να δειχτεί (όχι τεράστια διασπορά ως προς τον μέσο), προαιρετικά ιστόγραμμα
+    const dist = (arr, lo, hi, opts = {}) => {
       const a = Float64Array.from(arr).sort(), m = a.reduce((x, y) => x + y, 0) / n;
-      const sd = Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / n), q = (p) => a[Math.min(n - 1, Math.floor(p * n))];
-      const hist = []; for (let v = lo; v <= hi; v++) hist.push(0);
-      for (const v of arr) hist[clamp(v, lo, hi) - lo]++;
-      return { mean: +m.toFixed(2), sd: +sd.toFixed(2), p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9), lo, hist: hist.map((c) => +(c / n).toFixed(4)) };
+      let m2 = 0, m3 = 0, m4 = 0;
+      for (const v of a) { const d = v - m, d2 = d * d; m2 += d2; m3 += d2 * d; m4 += d2 * d2; }
+      m2 /= n; m3 /= n; m4 /= n;
+      const sd = Math.sqrt(m2), q = (p) => a[Math.min(n - 1, Math.floor(p * n))];
+      const cv = Math.abs(m) > 1e-9 ? sd / Math.abs(m) : Infinity;
+      const o = { mean: +m.toFixed(2), var: +m2.toFixed(2), sd: +sd.toFixed(2), skew: +(sd ? m3 / sd ** 3 : 0).toFixed(3), kurt: +(sd ? m4 / m2 ** 2 - 3 : 0).toFixed(3),
+        cv: Number.isFinite(cv) ? +cv.toFixed(3) : null, p5: q(0.05), p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9), p95: q(0.95),
+        show: opts.always ? true : Math.abs(m) >= SIM.SHOW_MIN && cv <= SIM.SHOW_CV };
+      if (lo != null && opts.hist !== false) { const hist = []; for (let v = lo; v <= hi; v++) hist.push(0);
+        for (const v of arr) hist[clamp(v, lo, hi) - lo]++; o.lo = lo; o.hist = hist.map((c) => +(c / n).toFixed(4)); }
+      return o;
     };
     const margin = Int16Array.from(sc[0], (v, i) => v - sc[1][i]), total = Int16Array.from(sc[0], (v, i) => v + sc[1][i]);
     const atLeast = (arr, x) => +(arr.reduce((c, v) => c + (v >= x), 0) / n).toFixed(4);
+    // χάντικαπ: «δίκαιη» γραμμή (διάμεσος της διαφοράς) και πιθανότητα κάλυψης του γηπεδούχου για μισές γραμμές γύρω της
+    // (γραμμή −5.5 = ο γηπεδούχος καλύπτει αν κερδίσει με 6+)
+    const hcap = (mg) => { const med = Float64Array.from(mg).sort()[Math.floor(n / 2)], c = Math.round(-med);
+      const lines = []; for (let L = c - 8; L <= c + 8; L += 2) lines.push(L - 0.5);
+      return { fair: -med, lines: lines.map((L) => [L, +(mg.reduce((k, v) => k + (v + L > 0), 0) / n).toFixed(4)]) }; };
     return {
       n, pace: +ctx.pace.toFixed(1), p_home: +(wins / n).toFixed(4), p_ot: +(ots / n).toFixed(4),
-      score: [dist(sc[0], 40, 140), dist(sc[1], 40, 140)], margin: dist(margin, -45, 45), total: dist(total, 110, 230),
+      score: [dist(sc[0], 40, 140), dist(sc[1], 40, 140)], margin: dist(margin, -45, 45, { always: true }), total: dist(total, 110, 230),
+      hcap: hcap(margin),
       players: T.map((t, ti) => t.pl.map((p, i) => {
         const st = store[ti][i], o = { pid: p.pid, min: +(p.minShare * 200).toFixed(1) };
-        K.forEach((k, j) => { o[k] = dist(st[j], k === "pir" ? -10 : 0, k === "pts" ? 45 : k === "pir" ? 50 : 20); });
+        K.forEach((k, j) => { o[k] = dist(st[j], k === "pir" ? -10 : 0, k === "pts" ? 45 : k === "pir" ? 50 : 20, { hist: k === "pts" || k === "reb" || k === "ast" || k === "pir" }); });
         o.p_pts10 = atLeast(st[0], 10); o.p_pts15 = atLeast(st[0], 15); o.p_pts20 = atLeast(st[0], 20);
         o.p_reb10 = atLeast(st[1], 10);
         let dd = 0; for (let g = 0; g < n; g++) dd += ((st[0][g] >= 10) + (st[1][g] >= 10) + (st[2][g] >= 10)) >= 2;

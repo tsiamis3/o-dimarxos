@@ -96,3 +96,13 @@ input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); 
 .empty { padding: 26px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: var(--r); background: var(--surface); }
 .spark rect { fill: var(--accent); }
 .spark text { fill: var(--muted); font: 10px var(--font-num); }
+
+/* ---------- boxplots προσομοίωσης ---------- */
+.bx-wrap { display: flex; flex-direction: column; gap: 2px; }
+.bx-row { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 86px; gap: 8px; align-items: center; min-height: 24px; }
+.bx-l { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bx { width: 100%; height: 22px; display: block; }
+.bx-v { font-size: 12px; text-align: right; white-space: nowrap; }
+.bx-axis { position: relative; height: 14px; font: 10px var(--font-num); color: var(--muted); }
+.bx-axis span { position: absolute; transform: translateX(-50%); }
+@media (max-width: 560px) { .bx-row { grid-template-columns: 96px 1fr 58px; gap: 4px; } }
