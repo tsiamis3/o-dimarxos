@@ -3,48 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Προγνωστικά</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<!-- εδώ μπαίνουν τυχόν Google Fonts -->
+<title>o-dimarxos · Stoiximan GBL</title>
+<script>
+  // θέμα πριν από το πρώτο σχεδίασμα (light/dark· αλλιώς ακολουθεί τη συσκευή)
+  (function () { try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* - */ } })();
+</script>
 <link rel="stylesheet" href="theme.css?v=__BUILD__">
-<link rel="stylesheet" href="style.css?v=__BUILD__">
+<link rel="stylesheet" href="app.css?v=__BUILD__">
 </head>
 <body>
 <header class="top">
   <div class="wrap">
-    <div class="brand-row">
-      <div class="brand">
-        <!-- όνομα / λογότυπο του site -->
-        <h1>Προγνωστικά</h1>
-        <small id="updated"></small>
-      </div>
-      <div class="controls">
-        <div class="seg" id="section-seg" role="group" aria-label="Ενότητα"></div>
-        <div class="seg" id="comp-seg" role="group" aria-label="Διοργάνωση"></div>
-        <select id="season-sel" aria-label="Σεζόν"></select>
-      </div>
+    <div class="top-row">
+      <a class="brand" href="#/" style="color:inherit;text-decoration:none"><b>o-dimarxos</b><small id="sub">Stoiximan GBL</small></a>
+      <span class="sp"></span>
+      <button class="icon-btn" id="theme" title="Φωτεινό / σκοτεινό θέμα" aria-label="Αλλαγή θέματος">◐</button>
     </div>
-    <nav class="tabs" id="tabs">
-      <a href="#home">Αρχική</a>
-      <a href="#teams">Ομάδες</a>
-      <a href="#players">Παίκτες</a>
-      <a href="#court">Ματσάρισμα</a>
-      <a href="#analysis">Ανάλυση</a>
-      <a href="#explorer">Βάση</a>
-      <a href="#predictions">Μοντέλα</a>
-      <a href="#edge">Στοίχημα</a>
-      <a href="notes.html">Σημειώσεις</a>
-      <a href="gnn.html">Δεδομένα GNN</a>
-      <a href="plan.html">Πλάνο</a>
-      <a href="lab/" title="Προσωπικό εργαστήριο">Lab</a>
+    <nav class="tabs" id="nav">
+      <a href="#/">Αρχική</a>
+      <a href="#/standings">Βαθμολογία</a>
+      <a href="#/teams">Ομάδες</a>
+      <a href="#/players">Παίκτες</a>
+      <a href="#/games">Αγώνες</a>
     </nav>
   </div>
 </header>
-<div class="demo-banner" id="demo-banner" hidden>
-  <div class="wrap">Δεδομένα επίδειξης: φανταστικές ομάδες και παίκτες. Με το πρώτο run του GitHub Action αντικαθίστανται από πραγματικά δεδομένα EuroLeague/EuroCup.</div>
-</div>
-<main class="wrap" id="view"><div class="empty">Φόρτωση δεδομένων…</div></main>
-<footer class="wrap">Δεδομένα: EuroLeague API, esake.gr, ESPN, ΕΟΚ (apps.basket.gr). PIR = Performance Index Rating. Προβλέψεις: Monte Carlo πάνω σε ratings ομάδων προσαρμοσμένα στον αντίπαλο, με απουσίες. Αποδόσεις NBA: ESPN. Το στοίχημα ενέχει κίνδυνο· 18+.</footer>
+<main class="wrap" id="view"><div class="empty">Φόρτωση…</div></main>
+<dialog class="pop" id="pop" aria-label="Παίκτης"></dialog>
+<footer class="wrap" id="foot"></footer>
 <script src="app.js?v=__BUILD__"></script>
 </body>
 </html>
