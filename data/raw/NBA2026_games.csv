@@ -234,12 +234,12 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909311,5,2026-11-20,21:30,UTAH,Utah Jazz,PHX,Phoenix Suns,101.0,111.0,True
 401909312,5,2026-11-20,22:00,DEN,Denver Nuggets,HOU,Houston Rockets,133.0,124.0,True
 401909313,5,2026-11-20,22:00,LAL,Los Angeles Lakers,SAC,Sacramento Kings,106.0,104.0,True
-401910023,5,2026-11-21,13:00,PHI,Philadelphia 76ers,MIL,Milwaukee Bucks,,,False
-401910024,5,2026-11-21,19:30,NY,New York Knicks,POR,Portland Trail Blazers,,,False
-401910025,5,2026-11-21,20:00,DAL,Dallas Mavericks,LAC,LA Clippers,,,False
-401910026,5,2026-11-21,20:00,MIN,Minnesota Timberwolves,MEM,Memphis Grizzlies,,,False
-401910027,5,2026-11-21,20:00,SA,San Antonio Spurs,NO,New Orleans Pelicans,,,False
-401910028,5,2026-11-21,22:00,SAC,Sacramento Kings,BOS,Boston Celtics,,,False
+401910023,5,2026-11-21,13:00,PHI,Philadelphia 76ers,MIL,Milwaukee Bucks,132.0,129.0,True
+401910024,5,2026-11-21,19:30,NY,New York Knicks,POR,Portland Trail Blazers,97.0,96.0,True
+401910025,5,2026-11-21,20:00,DAL,Dallas Mavericks,LAC,LA Clippers,110.0,100.0,True
+401910026,5,2026-11-21,20:00,MIN,Minnesota Timberwolves,MEM,Memphis Grizzlies,104.0,95.0,True
+401910027,5,2026-11-21,20:00,SA,San Antonio Spurs,NO,New Orleans Pelicans,114.0,91.0,True
+401910028,5,2026-11-21,22:00,SAC,Sacramento Kings,BOS,Boston Celtics,97.0,96.0,True
 401910029,5,2026-11-22,15:30,ATL,Atlanta Hawks,DET,Detroit Pistons,,,False
 401910030,5,2026-11-22,18:00,MIA,Miami Heat,OKC,Oklahoma City Thunder,,,False
 401910031,5,2026-11-22,19:00,WSH,Washington Wizards,ORL,Orlando Magic,,,False
