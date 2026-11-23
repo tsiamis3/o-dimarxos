@@ -106,3 +106,21 @@ input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); 
 .bx-axis { position: relative; height: 14px; font: 10px var(--font-num); color: var(--muted); }
 .bx-axis span { position: absolute; transform: translateX(-50%); }
 @media (max-width: 560px) { .bx-row { grid-template-columns: 96px 1fr 58px; gap: 4px; } }
+
+/* ---------- διάγραμμα της προσομοίωσης ---------- */
+.dg-wrap { overflow-x: auto; }
+.dg-svg { width: 100%; min-width: 720px; height: auto; display: block; color: var(--muted); }
+.dg-svg text { font: 12px var(--font-body); fill: var(--fg); text-anchor: middle; }
+.dg-svg text.a { font-weight: 600; }
+.dg-svg text.b { font: 11px var(--font-num); fill: var(--muted); }
+.dg-svg text.h { font: 700 13px var(--font-display); }
+.dg-svg text.lab { font-size: 11px; fill: var(--muted); }
+.dg-svg text.lab.l { text-anchor: start; }
+.dg-svg text.lab.r { text-anchor: end; }
+.dg rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.dg.q rect { stroke: var(--accent); stroke-width: 1.6; }
+.dg.out rect { fill: var(--accent-soft); }
+.dg.hot rect { stroke: var(--accent); stroke-width: 2; }
+.dg.file rect { fill: var(--surface-2); }
+.dg-ar { fill: none; stroke: currentColor; stroke-width: 1.3; }
+.dg-ar.dash { stroke-dasharray: 4 4; }

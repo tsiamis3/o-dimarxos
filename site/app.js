@@ -333,14 +333,56 @@ const BETAL = { tov: "Λάθη (ανά φάση)", ftrip: "Φάουλ → βολ
 function betaCard(F) {
   const f = (v) => (v == null ? "–" : v.toFixed(2));
   return `<section class="card"><h2>Βάρη του log5</h2>
-    <p style="margin:0 0 8px;max-width:80ch"><span class="num">logit p = logit(λίγκα) + β0 + β1·[επίθεση − λίγκα] + β2·[άμυνα − λίγκα]</span> (σε log-odds). Το κλασικό log5 είναι β1 = β2 = 1.
+    <p style="margin:0 0 8px;max-width:80ch"><span class="num">logit p = logit(λίγκα) + β0 + β1·[παίκτης − ομάδα] + β3·[ομάδα − λίγκα] + β2·[άμυνα − λίγκα]</span> (σε log-odds). Το κλασικό log5 είναι β1 = β2 = β3 = 1.
+    «Ομάδα» είναι ο μέσος όρος της επίθεσης της ομάδας του παίκτη: έτσι η διαφορά ανάμεσα σε συμπαίκτες (β1, με πολύ θόρυβο) χωρίζεται από τη διαφορά δύναμης ανάμεσα σε ομάδες (β3).
     Τα β βγαίνουν με λογιστική παλινδρόμηση στα box scores (παίκτης × αγώνας), με στατιστικά μόνο από τους προηγούμενους αγώνες, και ήπια έλξη προς το 1.
-    β &lt; 1 σημαίνει ότι η απόκλιση από τον μέσο όρο της λίγκας «περνάει» μόνο εν μέρει στον αγώνα.</p>
-    <div class="tbl"><table><thead><tr><th>Φάση</th><th class="n">παρατηρήσεις</th><th class="n">β1 επίθεση</th><th class="n">β2 άμυνα</th><th class="n">β0</th><th class="n">κέρδος εκτός δείγματος</th></tr></thead><tbody>
-    ${SIM.EVENTS.filter((k) => F[k]).map((k) => { const x = F[k]; return `<tr><td>${BETAL[k]}</td><td class="n">${x.n}</td><td class="n">${f(x.b[1])}${x.se ? ` <span class="muted">±${f(x.se[1])}</span>` : ""}</td>
-      <td class="n">${f(x.b[2])}${x.se ? ` <span class="muted">±${f(x.se[2])}</span>` : ""}</td><td class="n">${f(x.b[0])}</td>
+    β &lt; 1 σημαίνει ότι η απόκλιση «περνάει» μόνο εν μέρει στον αγώνα.</p>
+    <div class="tbl"><table><thead><tr><th>Φάση</th><th class="n">παρατηρήσεις</th><th class="n">β1 παίκτης − ομάδα</th><th class="n">β3 ομάδα − λίγκα</th><th class="n">β2 άμυνα</th><th class="n">β0</th><th class="n">κέρδος εκτός δείγματος</th></tr></thead><tbody>
+    ${SIM.EVENTS.filter((k) => F[k]).map((k) => { const x = F[k], c = (i) => `<td class="n">${k === "orb" && i === 1 ? "–" : f(x.b[i] ?? x.b[1])}${x.se && !(k === "orb" && i === 1) ? ` <span class="muted">±${f(x.se[i])}</span>` : ""}</td>`;
+      return `<tr><td>${BETAL[k]}</td><td class="n">${x.n}</td>${c(1)}${c(3)}${c(2)}<td class="n">${f(x.b[0])}</td>
       <td class="n" style="color:var(--${x.oos_dll > 0 ? "good" : x.oos_dll < 0 ? "bad" : "muted"})">${x.se ? (x.oos_dll >= 0 ? "+" : "") + (1000 * x.oos_dll).toFixed(2) + "‰" : "λίγα δεδομένα"}</td></tr>`; }).join("")}</tbody></table></div>
-    <p class="muted" style="font-size:12px">± = τυπικό σφάλμα. Κέρδος εκτός δείγματος: πόσο καλύτερα (log-likelihood ανά προσπάθεια) προβλέπει κάθε αγώνα με τα β των προηγούμενων αγώνων απ' ό,τι το κλασικό log5.</p></section>`;
+    <p class="muted" style="font-size:12px">Το επιθ. ριμπάουντ μετριέται μόνο σε επίπεδο ομάδας, γι' αυτό δεν έχει β1. ± = τυπικό σφάλμα. Κέρδος εκτός δείγματος: πόσο καλύτερα (log-likelihood ανά προσπάθεια) προβλέπει κάθε αγώνα με τα β των προηγούμενων αγώνων απ' ό,τι το κλασικό log5.</p></section>`;
+}
+
+/** Διάγραμμα του κώδικα της προσομοίωσης: αριστερά η ροή αρχείων/συναρτήσεων, δεξιά μία κατοχή στο SIM.game. */
+function simDiagram() {
+  const t = (x, y, s, c = "") => `<text x="${x}" y="${y}" class="${c}">${s}</text>`;
+  const box = (x, y, w, h, a, b, kind = "") => `<g class="dg ${kind}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/>` +
+    t(x + w / 2, y + (b ? h / 2 - 3 : h / 2 + 4), a, "a") + (b ? t(x + w / 2, y + h / 2 + 13, b, "b") : "") + `</g>`;
+  const ar = (x1, y1, x2, y2, lab = "", dash = false) => `<path d="M${x1},${y1} L${x2},${y2}" class="dg-ar${dash ? " dash" : ""}" marker-end="url(#dgm)"/>` +
+    (lab ? t((x1 + x2) / 2 + (x1 === x2 ? 6 : 0), (y1 + y2) / 2 + (x1 === x2 ? 4 : -5), lab, "lab" + (x1 === x2 ? " l" : "")) : "");
+  // αριστερά: η αλυσίδα των αρχείων
+  const L = [["scripts/run_sims.js", "για κάθε αγώνα του demo"], ["dbAsOf(ημερομηνία)", "βάση μόνο με προηγούμενους αγώνες"],
+    ["fitBeta()", "β του log5 από προηγούμενους αγώνες"], ["SIM.prepare()", "ρόστερ · συρρίκνωση · άμυνα"],
+    ["SIM.many(50.000)", "καλεί SIM.game ξανά και ξανά"], ["dist() · hcap()", "ροπές · ποσοστημόρια · χάντικαπ"],
+    ["site/db/sims.json → app.js", "boxplots · βαθμονόμηση · ζωντανά"]];
+  let svg = t(140, 14, "Ροή του κώδικα", "h");
+  L.forEach(([a, b], i) => { const y = 26 + i * 78; svg += box(20, y, 240, 54, a, b, i === 4 ? "hot" : i === 0 || i === 6 ? "file" : "");
+    if (i) svg += ar(140, y - 24, 140, y - 2); });
+  const ym = 26 + 4 * 78 + 27;   // SIM.many -> η αρχή του αγώνα
+  svg += `<path d="M262,${ym} H282 V49 H326" class="dg-ar dash" marker-end="url(#dgm)"/>`;
+  // δεξιά: μία κατοχή
+  const X = 330, W = 250, SX = 640, SW = 250, row = (i) => 26 + i * 70, H = 46;
+  svg += t(X + W / 2 + 155, 14, "SIM.game: μία κατοχή", "h");
+  const M = [["Κατοχές ~ Κανονική(ρυθμός, 3.5)", "τζάμπολ 50/50", ""], ["Επιλογή παικτών", "επίθεση ∝ φάσεις · άμυνα ∝ λεπτά", ""],
+    ["Λάθος;", "comb(β.tov)", "q"], ["Φάουλ σε σουτ;", "comb(β.ftrip)", "q"], ["Σουτ 3π ή 2π · τάπα;", "p(3π) παίκτη · τάπες αμυνόμενου", "q"],
+    ["Εύστοχο;", "comb(β.fg2 / β.fg3) + έδρα", "q"], ["Ριμπάουντ", "comb(β.orb)", "q"], ["Τέλος κατοχών", "ισοπαλία → παράταση (κατοχές 5′)", ""]];
+  const S = { 2: ["Λάθος (ίσως κλέψιμο)", "→ αλλαγή κατοχής"], 3: ["Βολές 2 ή 3", "άστοχη η τελευταία → ριμπάουντ"], 4: ["Τάπα", "→ ριμπάουντ"],
+    5: ["Πόντοι · ασίστ · and-one", "→ αλλαγή κατοχής"], 6: ["Αμυντικό", "→ αλλαγή κατοχής"] };
+  M.forEach(([a, b, k], i) => { const y = row(i); svg += box(X, y, W, H, a, b, k);
+    if (i) svg += ar(X + W / 2, y - 24, X + W / 2, y - 2, i === 3 || i === 4 ? "όχι" : i === 5 ? "όχι τάπα" : i === 6 ? "άστοχο" : "");
+    if (S[i]) svg += ar(X + W + 2, y + H / 2, SX - 2, y + H / 2, i === 6 ? "όχι" : "ναι") + box(SX, y, SW, H, S[i][0], S[i][1], "out"); });
+  // επιθετικό ριμπάουντ: η κατοχή συνεχίζει
+  const yr = row(6) + H / 2, y1 = row(1) + H / 2;
+  svg += `<path d="M${X - 2},${yr} H${X - 30} V${y1} H${X - 4}" class="dg-ar" marker-end="url(#dgm)"/>` + t(X - 15, yr - 6, "επιθ.", "lab");
+  // όλες οι «αλλαγές κατοχής» -> επόμενη κατοχή
+  svg += `<path d="M${SX + SW + 2},${row(6) + H / 2} H${SX + SW + 14} V${row(1) + H / 2} H${X + W + 4}" class="dg-ar dash" marker-end="url(#dgm)"/>` +
+    t(SX + SW / 2 + 10, row(1) + H / 2 - 6, "επόμενη κατοχή (ο αντίπαλος)", "lab");
+  return `<section class="card"><h2>Διάγραμμα του κώδικα</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Αριστερά: τι καλεί τι, από τα δεδομένα μέχρι το σάιτ (<span class="num">scripts/run_sims.js</span>, <span class="num">site/sim.js</span>, <span class="num">site/app.js</span>). Δεξιά: τι συμβαίνει σε κάθε κατοχή μέσα στο <span class="num">SIM.game</span>. Όπου γράφει <span class="num">comb(β…)</span> ρίχνεται ένα ζάρι με πιθανότητα από το log5 με βάρη.</p>
+    <div class="dg-wrap"><svg viewBox="0 0 920 600" class="dg-svg" role="img" aria-label="Διάγραμμα της προσομοίωσης">
+      <defs><marker id="dgm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      ${svg}</svg></div></section>`;
 }
 
 Views.sims = () => {
@@ -362,6 +404,7 @@ Views.sims = () => {
         <td class="n" style="color:var(--${Math.abs(c.whisk - 0.9) <= 0.05 ? "good" : "bad"})">${pct(c.whisk)}</td><td class="n">${pct(c.below_median)}</td></tr>`).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">Πράσινο: κοντά στον στόχο. Αν το «κουτί» πιάνει πολύ περισσότερο από 50%, η προσομοίωση είναι πιο αβέβαιη απ' όσο χρειάζεται (πολύ φαρδιά)· αν πιάνει λιγότερο, είναι πολύ σίγουρη.</p></section>` : ""}
   ${SIMS?.beta_fit ? betaCard(SIMS.beta_fit) : ""}
+  ${simDiagram()}
   <section class="card"><h2>Πώς δουλεύει</h2>
     <p style="margin:0 0 8px;max-width:80ch">Μοντέλο κατοχής (αλυσίδα Markov) και Monte Carlo: κάθε αγώνας «παίζεται» φάση-φάση, με τα ζάρια να ρίχνονται από τα στατιστικά των παικτών, και επαναλαμβάνεται ${SIMS ? SIMS.n.toLocaleString("el-GR") : "50.000"} φορές. Από τις κατανομές κρατάμε τις ροπές (μέσος, διασπορά, ασυμμετρία, κύρτωση) και τα ποσοστημόρια.</p>
     <ol style="margin:0;max-width:80ch">

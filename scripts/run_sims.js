@@ -7,8 +7,8 @@
  *   2. Ροπές κάθε κατανομής (μέσος, διασπορά, ασυμμετρία, κύρτωση), ποσοστημόρια για boxplot, χάντικαπ:
  *        αποτέλεσμα (διαφορά), πόντοι ομάδων, σύνολο, στατιστικά παικτών. Όσες έχουν τεράστια διασπορά σημαίνονται show=false.
  * Βάρη του log5 (β ανά τύπο φάσης): λογιστική παλινδρόμηση στα box scores (παίκτης × αγώνας, walk-forward),
- *   logit p = logit(λίγκα) + β0 + β1·[logit(παίκτης) − logit(λίγκα)] + β2·[logit(άμυνα) − logit(λίγκα)]
- *   με ήπια ridge προς το κλασικό log5 (0, 1, 1). Κάθε παιγμένος αγώνας χρησιμοποιεί β μόνο από τους προηγούμενους.
+ *   logit p = logit(λίγκα) + β0 + β1·[παίκτης − ομάδα] + β3·[ομάδα − λίγκα] + β2·[άμυνα − λίγκα]
+ *   με ήπια ridge προς το κλασικό log5 (0, 1, 1, 1). Κάθε παιγμένος αγώνας χρησιμοποιεί β μόνο από τους προηγούμενους.
  *   SIM_BETA=0: κλασικό log5 παντού (για σύγκριση).
  * Έλεγχος βαθμονόμησης: όλοι οι παιγμένοι αγώνες της λίγκας (walk-forward, SIM_CHECK ο καθένας):
  *   πόσο συχνά το πραγματικό πέφτει μέσα στο «κουτί» (25–75%, θέλουμε ~50%) και στις «κεραίες» (5–95%, ~90%).
@@ -62,7 +62,7 @@ function dbAsOf(date) {
 // ---------------------------------------------------------------- β: παρατηρήσεις και προσαρμογή
 const USE_BETA = process.env.SIM_BETA !== "0", RIDGE = 10, MIN_OBS = 150;
 const lgOf = (ctx, k) => ({ tov: ctx.lg.tovPlay, ftrip: ctx.lg.ftripPlay, fg2: ctx.lg.fg2, fg3: ctx.lg.fg3, orb: ctx.lg.orb })[k];
-/** Από ένα παιγμένο αγώνα: [τύπος, pa, pd, λίγκα, επιτυχίες k, προσπάθειες n] με τις εισόδους που βλέπει η μηχανή. */
+/** Από ένα παιγμένο αγώνα: [τύπος, pa, pd, λίγκα, επιτυχίες k, προσπάθειες n, ομάδα pt] με τις εισόδους που βλέπει η μηχανή. */
 function observations(ctx, code) {
   const obs = [], tm = {};
   for (const l of LOGS) if (l.g === code) { const t = (tm[l.team] ||= { oreb: 0, dreb: 0 }); t.oreb += l.oreb; t.dreb += l.dreb; }
@@ -70,36 +70,39 @@ function observations(ctx, code) {
     const Dx = ctx.D[ti], opp = ctx.T[1 - ti].code;
     for (const p of O.pl) { const a = LOGS.find((l) => l.g === code && l.pid === p.pid && l.min > 0); if (!a) continue;
       const plays = a.fg2a + a.fg3a + 0.44 * a.fta + a.tov;
-      if (plays > 0) { obs.push(["tov", p.tov, Dx.tov, lgOf(ctx, "tov"), a.tov, plays]); obs.push(["ftrip", p.ftrip, Dx.ftrip, lgOf(ctx, "ftrip"), 0.44 * a.fta, plays]); }
-      if (a.fg2a) obs.push(["fg2", p.fg2, Dx.fg2, lgOf(ctx, "fg2"), a.fg2m, a.fg2a]);
-      if (a.fg3a) obs.push(["fg3", p.fg3, Dx.fg3, lgOf(ctx, "fg3"), a.fg3m, a.fg3a]); }
+      if (plays > 0) { obs.push(["tov", p.tov, Dx.tov, lgOf(ctx, "tov"), a.tov, plays, O.off.tov]); obs.push(["ftrip", p.ftrip, Dx.ftrip, lgOf(ctx, "ftrip"), 0.44 * a.fta, plays, O.off.ftrip]); }
+      if (a.fg2a) obs.push(["fg2", p.fg2, Dx.fg2, lgOf(ctx, "fg2"), a.fg2m, a.fg2a, O.off.fg2]);
+      if (a.fg3a) obs.push(["fg3", p.fg3, Dx.fg3, lgOf(ctx, "fg3"), a.fg3m, a.fg3a, O.off.fg3]); }
     const me = tm[O.code], op = tm[opp];
-    if (me && op && me.oreb + op.dreb > 0) obs.push(["orb", Dx.orbO, Dx.orbD, lgOf(ctx, "orb"), me.oreb, me.oreb + op.dreb]);
+    if (me && op && me.oreb + op.dreb > 0) obs.push(["orb", Dx.orbO, Dx.orbD, lgOf(ctx, "orb"), me.oreb, me.oreb + op.dreb, Dx.orbO]);
   });
   return obs;
 }
-const feat = (o) => { const L = SIM.logit(o[3]); return [L, SIM.logit(o[1]) - L, SIM.logit(o[2]) - L]; };
-const loglik = (o, b) => { const [L, xa, xd] = feat(o), mu = 1 / (1 + Math.exp(-(L + b[0] + b[1] * xa + b[2] * xd)));
-  return o[4] * Math.log(mu) + (o[5] - o[4]) * Math.log(1 - mu); };
-function solve3(A, g) { // A x = g (3×3, Cramer)
-  const det = (M) => M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
-  const D = det(A); return [0, 1, 2].map((c) => det(A.map((r, i) => r.map((v, j) => (j === c ? g[i] : v)))) / D);
+// χαρακτηριστικά: [offset logit(λίγκα), x = (1, παίκτης−ομάδα, άμυνα−λίγκα, ομάδα−λίγκα)], ίδια σειρά με τα β
+const feat = (o) => { const L = SIM.logit(o[3]), T = SIM.logit(o[6]); return [L, [1, SIM.logit(o[1]) - T, SIM.logit(o[2]) - L, T - L]]; };
+const eta = (o, b) => { const [L, x] = feat(o); return L + x.reduce((s, v, i) => s + v * (b[i] ?? b[1]), 0); };
+const loglik = (o, b) => { const mu = 1 / (1 + Math.exp(-eta(o, b))); return o[4] * Math.log(mu) + (o[5] - o[4]) * Math.log(1 - mu); };
+function solve(A, g) { // A x = g, απαλοιφή Gauss με οδήγηση
+  const n = g.length, M = A.map((r, i) => [...r, g[i]]);
+  for (let c = 0; c < n; c++) { let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r; [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; } }
+  return M.map((r, i) => r[n] / r[i]);
 }
-/** Newton για binomial logit με offset logit(λίγκα) και ridge προς (0,1,1). Επιστρέφει { b, se, n } ανά τύπο. */
+/** Newton για binomial logit με offset logit(λίγκα) και ridge προς (0,1,1,1). Επιστρέφει { b, se, n } ανά τύπο. */
 function fitBeta(obs) {
   const out = {};
   for (const k of SIM.EVENTS) {
-    const O = obs.filter((o) => o[0] === k), b0 = [0, 1, 1];
+    const O = obs.filter((o) => o[0] === k), b0 = [0, 1, 1, 1], I = [0, 1, 2, 3];
     if (O.length < (k === "orb" ? 30 : MIN_OBS)) { out[k] = { b: b0, se: null, n: O.length }; continue; }
     let b = b0.slice(), H;
     for (let it = 0; it < 25; it++) {
-      const g = b.map((v, i) => -RIDGE * (v - b0[i])); H = [0, 1, 2].map((i) => [0, 1, 2].map((j) => (i === j ? RIDGE : 0)));
-      for (const o of O) { const [L, xa, xd] = feat(o), x = [1, xa, xd], mu = 1 / (1 + Math.exp(-(L + b[0] + b[1] * xa + b[2] * xd))), w = o[5] * mu * (1 - mu);
-        for (let i = 0; i < 3; i++) { g[i] += x[i] * (o[4] - o[5] * mu); for (let j = 0; j < 3; j++) H[i][j] += w * x[i] * x[j]; } }
-      const step = solve3(H, g); b = b.map((v, i) => v + step[i]);
+      const g = b.map((v, i) => -RIDGE * (v - b0[i])); H = I.map((i) => I.map((j) => (i === j ? RIDGE : 0)));
+      for (const o of O) { const x = feat(o)[1], mu = 1 / (1 + Math.exp(-eta(o, b))), w = o[5] * mu * (1 - mu);
+        for (const i of I) { g[i] += x[i] * (o[4] - o[5] * mu); for (const j of I) H[i][j] += w * x[i] * x[j]; } }
+      const step = solve(H, g); b = b.map((v, i) => v + step[i]);
       if (Math.max(...step.map(Math.abs)) < 1e-7) break;
     }
-    const se = [0, 1, 2].map((i) => Math.sqrt(solve3(H, [0, 1, 2].map((j) => +(i === j)))[i]));
+    const se = I.map((i) => Math.sqrt(solve(H, I.map((j) => +(i === j)))[i]));
     out[k] = { b: b.map((v) => +v.toFixed(4)), se: se.map((v) => +v.toFixed(4)), n: O.length };
   }
   return out;
@@ -115,7 +118,7 @@ const betaBefore = (date) => USE_BETA ? betaOnly(fitBeta([...WF.values()].filter
 const oos = {}; for (const w of WF.values()) { const B = betaBefore(w.g.date); w.beta = B;
   for (const o of w.obs) { const c = (oos[o[0]] ||= { n: 0, ll: 0, ll0: 0 }); c.n += o[5]; c.ll += loglik(o, B[o[0]]); c.ll0 += loglik(o, SIM.BETA0[o[0]]); } }
 const FIT = fitBeta([...WF.values()].flatMap((w) => w.obs)), BETA = USE_BETA ? betaOnly(FIT) : SIM.BETA0;
-console.log("  β (όλοι οι αγώνες):"); for (const k of SIM.EVENTS) console.log(`    ${k.padEnd(5)} n=${String(FIT[k].n).padStart(4)}  β0=${FIT[k].b[0]}  β1(επίθ.)=${FIT[k].b[1]} ±${FIT[k].se?.[1]}  β2(άμυνα)=${FIT[k].b[2]} ±${FIT[k].se?.[2]}` +
+console.log("  β (όλοι οι αγώνες):"); for (const k of SIM.EVENTS) console.log(`    ${k.padEnd(5)} n=${String(FIT[k].n).padStart(4)}  β0=${FIT[k].b[0]}  β1(παίκτ.−ομ.)=${FIT[k].b[1]} ±${FIT[k].se?.[1]}  β3(ομ.−λίγκα)=${FIT[k].b[3]} ±${FIT[k].se?.[3]}  β2(άμυνα)=${FIT[k].b[2]} ±${FIT[k].se?.[2]}` +
   `   εκτός δείγματος Δlog-lik/προσπ. ${(1000 * (oos[k].ll - oos[k].ll0) / oos[k].n).toFixed(2)}‰`);
 
 function canRun(DB, g) { return (DB.teamstats[g.home]?.gp || 0) >= MIN_PRIOR && (DB.teamstats[g.away]?.gp || 0) >= MIN_PRIOR; }

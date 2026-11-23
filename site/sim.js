@@ -7,8 +7,10 @@
      Β) τζάμπολ 50/50: ποιος ξεκινά
      Γ) κάθε φάση: επιθετικός ∝ φάσεις που τελειώνει ανά αγώνα (usage), αμυνόμενος ∝ λεπτά.
         Οι πιθανότητες «κοντράρονται» με log5 με βάρη: παίκτης (επίθεση) ⊗ άμυνα αντιπάλου, ως προς τη λίγκα,
-          logit p = logit(λίγκα) + β0 + β1·[logit(παίκτης) − logit(λίγκα)] + β2·[logit(άμυνα) − logit(λίγκα)]
-        ξεχωριστά β για λάθη, βολές, 2π, 3π, επιθ. ριμπάουντ (scripts/run_sims.js τα μαθαίνει). β = (0, 1, 1) είναι το κλασικό log5.
+          logit p = logit(λίγκα) + β0 + β1·[παίκτης − ομάδα] + β3·[ομάδα − λίγκα] + β2·[άμυνα − λίγκα]   (όλα σε log-odds)
+        ξεχωριστά β για λάθη, βολές, 2π, 3π, επιθ. ριμπάουντ (scripts/run_sims.js τα μαθαίνει). β = (0, 1, 1, 1) είναι το κλασικό log5.
+        «ομάδα» = ο μέσος της επίθεσης της ομάδας του (σταθμισμένος με τις προσπάθειες), ώστε ο θόρυβος ανάμεσα σε συμπαίκτες
+        (β1) να χωρίζεται από την πραγματική διαφορά δύναμης ομάδων (β3).
           1. λάθος (μέρος του κλέψιμο, του αμυνόμενου) -> αλλάζει η κατοχή
           2. φάουλ σε σουτ -> 2 βολές (3 σε τρίποντο)
           3. σουτ 2π ή 3π -> τάπα (του αμυνόμενου) / εύστοχο (ίσως ασίστ, ίσως and-one) / άστοχο
@@ -36,11 +38,12 @@
   const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
   const logit = (p) => Math.log(p / (1 - p)), inv = (x) => 1 / (1 + Math.exp(-x));
   const lc = (p) => logit(clamp(p, 0.005, 0.995));
-  /** log5 με βάρη b = [β0, β1 επίθεση, β2 άμυνα]· με b = [0, 1, 1] είναι ακριβώς το κλασικό log5. */
-  const comb = (pa, pd, pl, b) => { if (!(pl > 0 && pl < 1)) return pa; const L = logit(pl); return inv(L + b[0] + b[1] * (lc(pa) - L) + b[2] * (lc(pd) - L)); };
+  /** log5 με βάρη b = [β0, β1 παίκτης−ομάδα, β2 άμυνα, β3 ομάδα−λίγκα]· pt = η ομάδα του παίκτη. Με b = [0, 1, 1, 1] είναι ακριβώς το κλασικό log5. */
+  const comb = (pa, pd, pl, b, pt = pa) => { if (!(pl > 0 && pl < 1)) return pa; const L = logit(pl), T = lc(pt);
+    return inv(L + b[0] + b[1] * (lc(pa) - T) + (b[3] ?? b[1]) * (T - L) + b[2] * (lc(pd) - L)); };
   SIM.comb = comb; SIM.logit = lc;
   SIM.EVENTS = ["tov", "ftrip", "fg2", "fg3", "orb"];
-  SIM.BETA0 = Object.fromEntries(SIM.EVENTS.map((k) => [k, [0, 1, 1]]));
+  SIM.BETA0 = Object.fromEntries(SIM.EVENTS.map((k) => [k, [0, 1, 1, 1]]));
   function pick(R, w, total) { let r = R() * total; for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return w.length - 1; }
 
   // ---------------------------------------------------------------- προετοιμασία: ρόστερ και πιθανότητες
@@ -79,7 +82,11 @@
           pfF: 0.5 + 0.5 * (shrink(T(a.pf), T(a.min), lg.pfMin, 150) / lg.pfMin) };
       });
       const ts = DB.teamstats[code] || {};
-      return { code, name: DB.teams[code]?.name || DB.opponents[code]?.name || code, pl, ts,
+      // η επίθεση της ομάδας: μέσος των παικτών, σταθμισμένος με τις προσπάθειες του καθενός
+      const wavg = (f, w) => { const W = pl.reduce((x, p) => x + w(p), 0) || 1; return pl.reduce((x, p) => x + w(p) * f(p), 0) / W; };
+      const off = { tov: wavg((p) => p.tov, (p) => p.wOff), ftrip: wavg((p) => p.ftrip, (p) => p.wOff),
+        fg2: wavg((p) => p.fg2, (p) => p.wOff * (1 - p.three)), fg3: wavg((p) => p.fg3, (p) => p.wOff * p.three) };
+      return { code, name: DB.teams[code]?.name || DB.opponents[code]?.name || code, pl, ts, off,
         wOffT: pl.reduce((s, p) => s + p.wOff, 0), wDefT: pl.reduce((s, p) => s + p.wDef, 0),
         wOrebT: pl.reduce((s, p) => s + p.wOreb, 0), wDrebT: pl.reduce((s, p) => s + p.wDreb, 0) };
     };
@@ -115,7 +122,7 @@
         const i = pick(R, O.pl.map((p) => p.wOff), O.wOffT), j = pick(R, D.pl.map((p) => p.wDef), D.wDefT);
         const p = O.pl[i], d = D.pl[j];
         // 1. λάθος
-        const pT = comb(p.tov, Dx.tov, lg.tovPlay, B.tov);
+        const pT = comb(p.tov, Dx.tov, lg.tovPlay, B.tov, O.off.tov);
         if (R() < pT) {
           bo[i][11]++;
           const stl = R() < clamp(lg.stl_tov * d.stlF, 0, 0.9);
@@ -124,7 +131,7 @@
           return;
         }
         // 2. φάουλ σε σουτ -> βολές
-        const pF = comb(p.ftrip, clamp(Dx.ftrip * d.pfF, 0.03, 0.4), lg.ftripPlay, B.ftrip);
+        const pF = comb(p.ftrip, clamp(Dx.ftrip * d.pfF, 0.03, 0.4), lg.ftripPlay, B.ftrip, O.off.ftrip);
         let missedLast = false;
         if (R() < pF) {
           const n = R() < p.three * 0.15 ? 3 : 2;
@@ -144,7 +151,7 @@
             ev && ev({ t: tt, team: o, type: "blk", pid: p.pid, pid2: d.pid, three, text: `Τάπα ${names(1 - o, j)} σε ${names(o, i)}` });
           } else {
             // ευστοχία ανά προσπάθεια (όπως στο box score), μετά «όταν δεν κόβεται», μετά έδρα
-            const raw = three ? comb(p.fg3, Dx.fg3, lg.fg3, B.fg3) : comb(p.fg2, Dx.fg2, lg.fg2, B.fg2);
+            const raw = three ? comb(p.fg3, Dx.fg3, lg.fg3, B.fg3, O.off.fg3) : comb(p.fg2, Dx.fg2, lg.fg2, B.fg2, O.off.fg2);
             const mk = inv(logit(clamp(raw / (1 - (three ? 0.012 : lg.blk_fg2a)), 0.02, 0.97)) + adj);
             if (R() < mk) {
               const pts = three ? 3 : 2;
