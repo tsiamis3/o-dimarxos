@@ -337,6 +337,28 @@ function simSection(code) {
     <p class="muted" style="font-size:12px">Δείχνονται μόνο οι κατανομές με τυπική απόκλιση έως ${Math.round(100 * (SIMS.show_cv ?? 0.8))}% του μέσου (CV ≤ ${SIMS.show_cv ?? 0.8}) και μέσο ≥ ${SIMS.show_min ?? 1}: οι υπόλοιπες είναι κυρίως θόρυβος.${act ? " Δεξιά: πραγματικό / διάμεσος της προσομοίωσης." : " Δεξιά: το μεσαίο 50%."}</p></section>`;
 }
 
+/** Αβεβαιότητα πέρα από τα ζάρια: τι προσαρμόστηκε, πριν/μετά, και από πού έρχεται η διασπορά. */
+function reCard(F, re) {
+  const B = F.before?.ALL, A = F.after?.ALL; if (!B || !A) return "";
+  const good = (v, target, tol) => `style="color:var(--${Math.abs(v - target) <= tol ? "good" : "bad"})"`;
+  const row = (lab, k, target) => `<tr><td>${lab}</td><td class="n" ${good(B[k], target, target === 0.5 ? 0.07 : 0.04)}>${pct(B[k])}</td><td class="n" ${good(A[k], target, target === 0.5 ? 0.07 : 0.04)}><b>${pct(A[k])}</b></td></tr>`;
+  const crow = (lab, k) => `<tr><td>${lab}</td><td class="n">${B[k].toFixed(2)}</td><td class="n" style="color:var(--${A[k] < B[k] ? "good" : "bad"})"><b>${A[k].toFixed(2)}</b></td></tr>`;
+  const C = ["var(--c1, #4c78a8)", "var(--c2, #f58518)", "var(--c3, #54a24b)", "var(--c4, #e45756)", "var(--c5, #b279a2)", "var(--c6, #9d755d)"];
+  const bar = (k, lab) => { const D = (F.decomp?.[k] || []).map(([l, v]) => [l, Math.max(0, v)]), S = D.reduce((x, [, v]) => x + v, 0) || 1;
+    return `<div style="margin:6px 0"><div style="font-size:13px">${lab}</div><div class="bar2" style="height:16px">${D.map(([l, v], i) => `<i title="${esc(l)} ${pct(v / S)}" style="width:${(100 * v) / S}%;background:${C[i]}"></i>`).join("")}</div></div>`; };
+  const legend = (F.decomp?.total || []).map(([l], i) => `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><i style="width:10px;height:10px;border-radius:2px;background:${C[i]};display:inline-block"></i>${esc(l)}</span>`).join("");
+  return `<section class="card"><h2>Αβεβαιότητα: λεπτά, «μέρα» αγώνα, φόρμα</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Πέρα από τα ζάρια κάθε φάσης, κάθε προσομοιωμένος αγώνας κληρώνει: πόσες κατοχές θα έχει (± ${re.pace}), αν θα είναι αγώνας «υψηλού» ή «χαμηλού» σκορ και για τις δύο ομάδες (${re.g} σε log-odds), τη μέρα κάθε ομάδας (${re.t}), πόσα λεπτά θα παίξει ο καθένας (±${Math.round(100 * re.m)}%) και τη «βραδιά» του στο σουτ (${re.p}).
+    Οι τιμές βγήκαν από ${F.games} παιγμένους αγώνες GBL, EuroLeague και EuroCup (walk-forward), διαλέγοντας ό,τι δίνει τις καλύτερες κατανομές (CRPS).
+    Στα δεδομένα η ευστοχία από αγώνα σε αγώνα δεν κυμαίνεται περισσότερο απ' όσο δίνουν τα ζάρια· τα λεπτά όμως ναι (±22%).</p>
+    <div class="grid"><div class="tbl"><table><thead><tr><th>Μέσα στο κουτί / στις κεραίες</th><th class="n">πριν</th><th class="n">τώρα</th></tr></thead><tbody>
+      ${row("Διαφορά · κουτί (50%)", "margin_box", 0.5)}${row("Διαφορά · κεραίες (90%)", "margin_whisk", 0.9)}${row("Σύνολο · κουτί", "total_box", 0.5)}${row("Σύνολο · κεραίες", "total_whisk", 0.9)}${row("Πόντοι παίκτη · κουτί", "pts_box", 0.5)}${row("Πόντοι παίκτη · κεραίες", "pts_whisk", 0.9)}</tbody></table></div>
+      <div class="tbl"><table><thead><tr><th>CRPS (μικρότερο = καλύτερο)</th><th class="n">πριν</th><th class="n">τώρα</th></tr></thead><tbody>
+      ${crow("Διαφορά", "margin")}${crow("Σύνολο", "total")}${crow("Πόντοι ομάδας", "score")}${crow("Πόντοι παίκτη", "pts")}</tbody></table></div></div>
+    <h3 style="margin-top:12px">Από πού έρχεται η διασπορά</h3>${bar("total", "Σύνολο πόντων")}${bar("margin", "Διαφορά")}${bar("pts", "Πόντοι παίκτη (≥15′)")}
+    <div class="muted" style="font-size:12px">${legend}</div></section>`;
+}
+
 /** Ποιες πηγές δεδομένων βοηθούν: ίδιοι αγώνες, ίδια seeds, walk-forward. */
 function srcCard(L) {
   const best = (k, lo = true) => (lo ? Math.min : Math.max)(...L.map((c) => c[k]));
@@ -427,6 +449,7 @@ Views.sims = () => {
       ${Object.entries(C.coverage || {}).map(([k, c]) => `<tr><td>${COVL[k] || k}</td><td class="n">${c.n}</td><td class="n" style="color:var(--${Math.abs(c.box - 0.5) <= 0.07 ? "good" : "bad"})">${pct(c.box)}</td>
         <td class="n" style="color:var(--${Math.abs(c.whisk - 0.9) <= 0.05 ? "good" : "bad"})">${pct(c.whisk)}</td><td class="n">${pct(c.below_median)}</td></tr>`).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">Πράσινο: κοντά στον στόχο. Αν το «κουτί» πιάνει πολύ περισσότερο από 50%, η προσομοίωση είναι πιο αβέβαιη απ' όσο χρειάζεται (πολύ φαρδιά)· αν πιάνει λιγότερο, είναι πολύ σίγουρη.</p></section>` : ""}
+  ${SIMS?.re_fit ? reCard(SIMS.re_fit, SIMS.re) : ""}
   ${SIMS?.check_sources ? srcCard(SIMS.check_sources) : ""}
   ${SIMS?.beta_fit ? betaCard(SIMS.beta_fit) : ""}
   ${simDiagram()}
@@ -455,6 +478,7 @@ const SC_F = [["min", "Λεπτά", 0, 40, 1, (v) => v.toFixed(0), "role"], ["pt
 const SC_G = [["role", "Χρόνος & ρόλος"], ["shot", "Ευστοχία & λάθη"], ["reb", "Ριμπάουντ & ασίστ"], ["def", "Άμυνα"]];
 /** Έτοιμες αλλαγές για έναν παίκτη (σχετικά με τους τωρινούς μέσους όρους του στο σενάριο). */
 const SC_PP = [
+  ["Αμφίβολος: 50% να παίξει", (sc, pid) => { sc.play[pid] = 0.5; }],
   ["Παίζει περισσότερο (+6′)", (sc, pid, v) => scSet(sc, pid, "min", Math.min(40, v.min + 6))],
   ["Παίζει λιγότερο (−8′)", (sc, pid, v) => scSet(sc, pid, "min", Math.max(0, v.min - 8))],
   ["Σε φόρμα: +4% σε 2π και 3π", (sc, pid, v) => { scSet(sc, pid, "fg2p", Math.min(0.8, v.fg2p + 0.04)); scSet(sc, pid, "fg3p", Math.min(0.6, v.fg3p + 0.04)); }],
@@ -463,7 +487,7 @@ const SC_PP = [
   ["Καλύτερη άμυνα: −3% στο σουτ αντιπάλου, +30% κλεψ./τάπες", (sc, pid, v) => { scSet(sc, pid, "dshot", Math.min(8, v.dshot + 3)); scSet(sc, pid, "stl", v.stl * 1.3); scSet(sc, pid, "blk", v.blk * 1.3); }],
   ["Κυριαρχεί στη ρακέτα: +2 ριμπάουντ, +4% στο 2π", (sc, pid, v) => { scSet(sc, pid, "reb", Math.min(15, v.reb + 2)); scSet(sc, pid, "fg2p", Math.min(0.8, v.fg2p + 0.04)); }],
 ];
-const scNew = () => ({ out: [], avg: {}, paceAdj: 0, tags: [], sources: [], extW: 0.5 });
+const scNew = () => ({ out: [], avg: {}, play: {}, paceAdj: 0, tags: [], sources: [], extW: 0.5, re: true });
 /** Οι μέσοι όροι ενός παίκτη όπως είναι στο σενάριο (για τα sliders). */
 function scVals(pid, sc) {
   const p = DB.players[pid], a = SIM.adjAvg(p.avg, sc.avg[pid]), lg = DB.lg || {};
@@ -472,7 +496,8 @@ function scVals(pid, sc) {
     tov: a.tov, reb: a.oreb + a.dreb, ast: a.ast, pts: 2 * a.fg2m + 3 * a.fg3m + a.ftm, stl: a.stl, blk: a.blk, pf: a.pf, dshot: sc.avg[pid]?.dshot ?? 0 };
 }
 const scSet = (sc, pid, f, v) => { (sc.avg[pid] ||= {})[f] = v; };
-const scCount = (sc) => sc.out.length + Object.values(sc.avg).filter((o) => Object.keys(o).length).length + (sc.paceAdj ? 1 : 0) + (sc.sources.length ? 1 : 0);
+const playTag = (sc, pid) => (sc.play[pid] != null && sc.play[pid] < 1 ? ` <span class="sc-tag">${pct(sc.play[pid])} να παίξει</span>` : "");
+const scCount = (sc) => sc.out.length + Object.values(sc.avg).filter((o) => Object.keys(o).length).length + Object.keys(sc.play).length + (sc.paceAdj ? 1 : 0) + (sc.sources.length ? 1 : 0) + (sc.re ? 0 : 1);
 const extGames = (pid, sc) => sc.sources.reduce((n, k) => n + (DB.players[pid]?.ext?.[k]?.length || 0), 0);
 /** Έτοιμα σενάρια ανά ομάδα, από τους παίκτες της (πρώτος σκόρερ, πλέι-μέικερ, ριμπάουντερ, σουτέρ). */
 function scPresets(base) {
@@ -506,18 +531,20 @@ function scTree(g, base, sc) {
   let cur = null; try { cur = SIM.prepare(DB, base.T[0].code, base.T[1].code, { beta: SIMS?.beta, out: sc.out, avg: sc.avg }); } catch (e) { /* */ }
   const minOf = (c, pid) => { for (const T of c?.T || []) { const q = T.pl.find((x) => x.pid === pid); if (q) return q.minShare * 200; } return 0; };
   const player = (q) => { const pid = q.pid, o = sc.avg[pid] || {}, out = sc.out.includes(pid), v = scVals(pid, sc), k = Object.keys(o).length;
-    const eg = extGames(pid, sc), m0 = minOf(base, pid), m1 = minOf(cur, pid), dm = m1 - m0;
+    const eg = extGames(pid, sc), m0 = minOf(base, pid), m1 = minOf(cur, pid) * (sc.play[pid] ?? 1), dm = m1 - m0;
     const mins = out ? "" : `<span class="muted num" style="font-size:11px">${Math.round(m1)}′${Math.abs(dm) >= 0.5 ? ` <span style="color:var(--${dm > 0 ? "good" : "bad"})">${dm > 0 ? "+" : "−"}${Math.abs(dm).toFixed(1)}</span>` : ""}</span>`;
     const group = ([g, lab]) => { const F = SC_F.filter((x) => x[6] === g), ch = F.filter((x) => o[x[0]] != null).length;
-      return `<details class="tree-node" data-k="g:${pid}:${g}"><summary>${lab}${ch ? ` <span class="sc-tag">${ch}</span>` : ""}</summary><div class="tree-in">
+      const pp = sc.play[pid] ?? 1;
+      return `<details class="tree-node" data-k="g:${pid}:${g}"><summary>${lab}${ch + (g === "role" && pp < 1) ? ` <span class="sc-tag">${ch + (g === "role" && pp < 1)}</span>` : ""}</summary><div class="tree-in">
+        ${g === "role" ? `<label class="sc-row${pp < 1 ? " on" : ""}"><span>Πιθανότητα να παίξει</span><input type="range" min="0.05" max="1" step="0.05" value="${pp}" data-play="${pid}"><output>${pct(pp)}</output></label>` : ""}
         ${F.map((x) => slider(pid, x, +(+v[x[0]]).toFixed(3), o[x[0]] != null)).join("")}
         ${g === "def" ? `<div class="muted" style="font-size:11px">«Σουτ αντιπάλου»: πόσο αλλάζει το ποσοστό του αντιπάλου όταν αμύνεται αυτός (− = καλύτερη άμυνα).</div>` : ""}</div></details>`; };
-    return `<details class="tree-node" data-k="p:${pid}"><summary>${esc(DB.players[pid].name)} ${mins}${eg ? ` <span class="muted" style="font-size:11px">+${eg} αγ. εκτός ${esc(DB.short)}</span>` : ""}${out ? ` <span class="sc-tag bad">εκτός</span>` : k ? ` <span class="sc-tag">${k} αλλαγ${k > 1 ? "ές" : "ή"}</span>` : ""}</summary>
+    return `<details class="tree-node" data-k="p:${pid}"><summary>${esc(DB.players[pid].name)} ${mins}${eg ? ` <span class="muted" style="font-size:11px">+${eg} αγ. εκτός ${esc(DB.short)}</span>` : ""}${out ? ` <span class="sc-tag bad">εκτός</span>` : k ? ` <span class="sc-tag">${k} αλλαγ${k > 1 ? "ές" : "ή"}</span>` : ""}${out ? "" : playTag(sc, pid)}</summary>
       <div class="tree-in"><label class="sc-row"><span>Παίζει</span><input type="checkbox" data-out="${pid}" ${out ? "" : "checked"}><output></output></label>
       ${out ? "" : `<details class="tree-node" data-k="pp:${pid}"><summary>Έτοιμες αλλαγές</summary><div class="tree-in"><ul class="tree-list">
         ${SC_PP.map(([l], i) => `<li><button class="plink" data-ppreset="${pid}:${i}">${esc(l)}</button></li>`).join("")}</ul></div></details>
         ${SC_G.map(group).join("")}`}
-      ${k || out ? `<button class="plink" data-screset="${pid}" style="font-size:12px">↺ πίσω στους πραγματικούς μέσους όρους</button>` : ""}</div></details>`; };
+      ${k || out || sc.play[pid] != null ? `<button class="plink" data-screset="${pid}" style="font-size:12px">↺ πίσω στους πραγματικούς μέσους όρους</button>` : ""}</div></details>`; };
   const teamNode = (ti) => { const T = base.T[ti], ch = T.pl.filter((q) => sc.out.includes(q.pid) || Object.keys(sc.avg[q.pid] || {}).length).length;
     const outN = T.pl.filter((q) => sc.out.includes(q.pid)).length, fixedMin = T.pl.reduce((x, q) => x + (sc.avg[q.pid]?.min ?? 0), 0);
     return `<details class="tree-node" data-k="t:${ti}"><summary>${badge(T.code, 18)} ${esc(team(T.code).name)}${ch ? ` <span class="sc-tag">${ch}</span>` : ""}</summary>
@@ -530,9 +557,11 @@ function scTree(g, base, sc) {
         ${[0, 1].map((ti) => `<details class="tree-node" data-k="pre:${ti}"><summary>${badge(base.T[ti].code, 18)} ${esc(team(base.T[ti].code).name)}</summary><div class="tree-in">${plist(PR.side[ti], ti)}</div></details>`).join("")}
         <details class="tree-node" data-k="pre:g"><summary>Αγώνας</summary><div class="tree-in">${plist(PR.game, "g")}</div></details>
         <div class="muted" style="font-size:12px">Τα έτοιμα σενάρια προστίθενται το ένα πάνω στο άλλο.</div></div></details>
-      <details class="tree-node" data-k="game"><summary>Αγώνας${sc.paceAdj ? ` <span class="sc-tag">ρυθμός ${sc.paceAdj > 0 ? "+" : ""}${sc.paceAdj}</span>` : ""}</summary><div class="tree-in">
+      <details class="tree-node" data-k="game"><summary>Αγώνας${sc.paceAdj ? ` <span class="sc-tag">ρυθμός ${sc.paceAdj > 0 ? "+" : ""}${sc.paceAdj}</span>` : ""}${sc.re ? "" : ` <span class="sc-tag">μόνο ζάρια</span>`}</summary><div class="tree-in">
         <label class="sc-row${sc.paceAdj ? " on" : ""}"><span>Ρυθμός (± κατοχές)</span><input type="range" min="-12" max="12" step="1" value="${sc.paceAdj}" data-pace><output>${sc.paceAdj > 0 ? "+" : ""}${sc.paceAdj}</output></label>
-        <div class="muted" style="font-size:12px">Μέσος ρυθμός των δύο ομάδων: ${base.pace.toFixed(1)} κατοχές.</div></div></details>
+        <div class="muted" style="font-size:12px">Μέσος ρυθμός των δύο ομάδων: ${base.pace.toFixed(1)} κατοχές.</div>
+        <label class="sc-row${sc.re ? "" : " on"}"><span>Λεπτά & «μέρα» αγώνα</span><input type="checkbox" data-reon ${sc.re ? "checked" : ""}><output style="font-size:11px">${sc.re ? "ναι" : "όχι"}</output></label>
+        <div class="muted" style="font-size:12px">Με «ναι» κάθε προσομοιωμένος αγώνας κληρώνει πόσα λεπτά θα παίξει ο καθένας και αν ο αγώνας θα είναι «υψηλού» ή «χαμηλού» σκορ (τιμές από τα δεδομένα, σελίδα <a href="#/sims">Προσομοιώσεις</a>). Με «όχι» μόνο τα ζάρια κάθε φάσης.</div></div></details>
       ${srcNode(base, sc)}
       ${teamNode(0)}${teamNode(1)}
       ${n ? `<button class="plink" data-screset="*" style="font-size:13px">↺ Καθάρισμα όλων</button>` : ""}
@@ -573,10 +602,10 @@ const Live = {
     if (!g || !window.SIM) { el.remove(); return; }
     const H = team(g.home), A = team(g.away);
     let ctx, base;
-    try { ctx = base = SIM.prepare(DB, g.home, g.away, { beta: SIMS?.beta }); } catch (e) { el.innerHTML = `<div class="muted">Δεν γίνεται προσομοίωση: ${esc(e.message)}</div>`; return; }
+    try { ctx = base = SIM.prepare(DB, g.home, g.away, { beta: SIMS?.beta, re: SIMS?.re }); } catch (e) { el.innerHTML = `<div class="muted">Δεν γίνεται προσομοίωση: ${esc(e.message)}</div>`; return; }
     if (ctx.T[0].pl.length < 5 || ctx.T[1].pl.length < 5) { el.innerHTML = `<div class="muted">Δεν υπάρχουν αρκετοί παίκτες για προσομοίωση.</div>`; return; }
     const sc = (SCEN[g.code] ||= scNew());
-    const scOpts = () => ({ beta: SIMS?.beta, out: sc.out, avg: sc.avg, paceAdj: sc.paceAdj, sources: sc.sources, extW: sc.extW });
+    const scOpts = () => ({ beta: SIMS?.beta, out: sc.out, avg: sc.avg, play: sc.play, paceAdj: sc.paceAdj, sources: sc.sources, extW: sc.extW, re: sc.re ? SIMS?.re : SIM.RE0 });
     let baseMC = SIMS?.games?.[g.code] && !SIMS.games[g.code].played ? SIMS.games[g.code] : null;
     const SPEEDS = [["×10", 10], ["×60", 60], ["×240", 240], ["άμεσα", 1e9]];
     let speed = 60, log = [], idx = 0, clock = 0, raf = 0, last = 0, running = false, box = {};
@@ -670,6 +699,7 @@ const Live = {
       const t = e.target, o = t.parentElement.querySelector("output");
       if (t.dataset.pace != null) { sc.paceAdj = +t.value; o.textContent = (sc.paceAdj > 0 ? "+" : "") + sc.paceAdj; changed(); return; }
       if (t.dataset.extw != null) { sc.extW = +t.value; o.textContent = sc.extW.toFixed(2); changed(); return; }
+      if (t.dataset.play) { const v = +t.value; if (v >= 1) delete sc.play[t.dataset.play]; else sc.play[t.dataset.play] = v; o.textContent = pct(v); changed(); return; }
       if (!t.dataset.f) return;
       const pid = t.dataset.pid, F = SC_F.find((x) => x[0] === t.dataset.f);
       scSet(sc, pid, F[0], +t.value); o.textContent = F[5](+t.value); t.parentElement.classList.add("on");
@@ -682,7 +712,8 @@ const Live = {
     tree.addEventListener("change", (e) => { const t = e.target;
       if (t.dataset.src) { const k = t.dataset.src; sc.sources = t.checked ? [...sc.sources, k] : sc.sources.filter((x) => x !== k); redraw(); changed(); }
       else if (t.dataset.out) { const pid = t.dataset.out; sc.out = t.checked ? sc.out.filter((x) => x !== pid) : [...sc.out, pid]; redraw(); changed(); }
-      else if (t.dataset.f || t.dataset.pace != null) redraw(); });
+      else if (t.dataset.reon != null) { sc.re = t.checked; redraw(); changed(); }
+      else if (t.dataset.f || t.dataset.pace != null || t.dataset.play) redraw(); });
     tree.addEventListener("click", (e) => {
       const pr = e.target.closest("[data-preset]"), rs = e.target.closest("[data-screset]"), pp = e.target.closest("[data-ppreset]");
       if (pp) { const [pid, i] = pp.dataset.ppreset.split(":"), P = SC_PP[+i]; P[1](sc, pid, scVals(pid, sc));
@@ -690,7 +721,7 @@ const Live = {
       if (pr) { const [k, i] = pr.dataset.preset.split(":"), PR = scPresets(base), P = k === "g" ? PR.game[+i] : PR.side[+k][+i];
         P[1](sc); sc.out = [...new Set(sc.out)]; if (!sc.tags.includes(P[0])) sc.tags.push(P[0]); redraw(); changed(); }
       if (rs) { const pid = rs.dataset.screset;
-        if (pid === "*") SCEN[g.code] = Object.assign(sc, scNew()); else { delete sc.avg[pid]; sc.out = sc.out.filter((x) => x !== pid); }
+        if (pid === "*") SCEN[g.code] = Object.assign(sc, scNew()); else { delete sc.avg[pid]; delete sc.play[pid]; sc.out = sc.out.filter((x) => x !== pid); }
         redraw(); changed(); }
     });
 
