@@ -151,10 +151,18 @@ def ext_sources(target, season, P, uid_gbl):
     return out
 
 
+ACRO = {"PAOK", "LDLC", "CSKA", "UCAM", "BAXI", "MHP", "ASVEL"}
+KEEP_LOWER = {"BET", "ARI", "REAL", "ROMA", "ARIS", "CLUB", "CITY", "RIGA", "MANS", "ULM", "SAN", "DEL", "LA", "LE", "DE", "THE", "BASKET", "TEL"}
+
+
 def title(n: str) -> str:
-    """«PANATHINAIKOS AKTOR ATHENS» -> «Panathinaikos Aktor Athens» (μόνο λατινικά· τα ελληνικά της GBL μένουν όπως είναι)."""
-    return " ".join(w if any("Α" <= ch <= "ω" for ch in w) or len(w) <= 3 and w.isupper() and w not in ("THE",) and False else w[:1] + w[1:].lower()
-                    for w in str(n).split())
+    """«PANATHINAIKOS AKTOR ATHENS» -> «Panathinaikos Aktor Athens»· τα σύντομα ακρωνύμια (PAOK, FC, LDLC, AEK) μένουν κεφαλαία."""
+    def w1(w):
+        core = w.strip(".&-")
+        if core.isalpha() and core.isupper() and (len(core) <= 3 and core not in KEEP_LOWER or core in ACRO):
+            return w
+        return "-".join(x[:1].upper() + x[1:].lower() for x in w.split("-"))
+    return " ".join(w1(w) for w in str(n).split())
 
 
 def fill_rounds(games, upcoming):
