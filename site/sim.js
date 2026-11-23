@@ -47,8 +47,10 @@
   function pick(R, w, total) { let r = R() * total; for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return w.length - 1; }
 
   // ---------------------------------------------------------------- προετοιμασία: ρόστερ και πιθανότητες
-  /** Σενάριο: νέοι μέσοι όροι ενός παίκτη. o = { min, fga, fg2p, fg3p, ftp, tov, reb, ast } (όσα δόθηκαν).
-   *  Πρώτα τα λεπτά (όλα τα ανά αγώνα κλιμακώνονται ανάλογα), μετά όσα δόθηκαν ρητά. */
+  /** Σενάριο: νέοι μέσοι όροι ενός παίκτη. o = { min, fga, fg2p, fg3p, ftp, pts, tov, reb, ast, stl, blk, pf, dshot } (όσα δόθηκαν).
+   *  Πρώτα τα λεπτά (όλα τα ανά αγώνα κλιμακώνονται ανάλογα), μετά όσα δόθηκαν ρητά.
+   *  pts: ο όγκος των σουτ (2π, 3π, βολές) κλιμακώνεται ώστε να βγαίνουν τόσοι πόντοι με τα ποσοστά του.
+   *  dshot: επιρροή όταν αμύνεται, σε ποσοστιαίες μονάδες στο σουτ του αντιπάλου (+ = καλύτερη άμυνα). */
   const AVGK = ["pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "pir", "fg2m", "fg2a", "fg3m", "fg3a", "ftm", "fta"];
   SIM.adjAvg = function (avg, o) {
     if (!o) return avg;
@@ -58,6 +60,8 @@
     if (o.fg2p != null) a.fg2m = a.fg2a * o.fg2p;
     if (o.fg3p != null) a.fg3m = a.fg3a * o.fg3p;
     if (o.ftp != null) a.ftm = a.fta * o.ftp;
+    if (o.pts != null) { const cur = 2 * a.fg2m + 3 * a.fg3m + a.ftm; if (cur > 0) sc(["fg2a", "fg2m", "fg3a", "fg3m", "fta", "ftm"], o.pts / cur); }
+    for (const k of ["stl", "blk", "pf"]) if (o[k] != null) a[k] = o[k];
     if (o.tov != null) a.tov = o.tov;
     if (o.reb != null) { const r = a.oreb + a.dreb; if (r > 0) sc(["oreb", "dreb"], o.reb / r); else { a.oreb = o.reb * 0.25; a.dreb = o.reb * 0.75; } }
     if (o.ast != null) a.ast = o.ast;
@@ -109,24 +113,43 @@
       const per = (p, x) => x * (avail(p) ? 1 : 0.15);
       const AV = (p) => SIM.adjAvg(p.avg, OV[p.pid]);
       const ros = P.filter((p) => p.team === code && p.gp > 0 && !out.has(p.pid) && AV(p).min > 0).sort((a, b) => per(b, AV(b).min) - per(a, AV(a).min)).slice(0, MAX_ROSTER);
-      const totMin = ros.reduce((s, p) => s + per(p, AV(p).min), 0) || 1;
-      const pl = ros.map((p) => { const a = AV(p), g = p.gp, fga = a.fg2a + a.fg3a, plays = fga + 0.44 * a.fta + a.tov;
+      // λεπτά: όσα όρισε ο χρήστης μένουν σταθερά· τα υπόλοιπα από τα 200 μοιράζονται στους άλλους αναλογικά
+      const fixed = (p) => OV[p.pid]?.min != null;
+      const fixedMin = ros.filter(fixed).reduce((s, p) => s + AV(p).min, 0);
+      const restMin = ros.filter((p) => !fixed(p)).reduce((s, p) => s + per(p, AV(p).min), 0);
+      const sc = restMin > 0 ? Math.max(0, 200 - fixedMin) / restMin : 1;
+      const pl = ros.map((p) => { const a = AV(p), g = p.gp, fga = a.fg2a + a.fg3a, plays = fga + 0.44 * a.fta + a.tov, o = OV[p.pid] || {};
+        const W = (x) => (fixed(p) ? x : per(p, x) * sc);              // ανά αγώνα, στα λεπτά που θα παίξει
         const T = (x) => x * g;                                         // σύνολα σεζόν
         const E = SIM.extTot(p, DB, opts.sources, opts.asOf, opts.extW ?? 0.5);   // + άλλες λίγκες (κλίμακα GBL)
         return { pid: p.pid, name: p.name, num: p.number,
-          minShare: per(p, a.min) / totMin,                             // κλάσμα των λεπτών της ομάδας
-          wOff: Math.max(0.02, per(p, plays)), wDef: Math.max(0.2, per(p, a.min)),
-          wOreb: Math.max(0.01, per(p, a.oreb)), wDreb: Math.max(0.02, per(p, a.dreb)), wAst: Math.max(0.01, per(p, a.ast)),
+          minShare: W(a.min) / 200,                                     // κλάσμα των λεπτών της ομάδας
+          wOff: Math.max(0.02, W(plays)), wDef: Math.max(0.2, W(a.min)),
+          wOreb: Math.max(0.01, W(a.oreb)), wDreb: Math.max(0.02, W(a.dreb)), wAst: Math.max(0.01, W(a.ast)),
           tov: shrink(T(a.tov) + E.tov, T(plays) + E.plays, lg.tovPlay, 25),
           ftrip: shrink(T(0.44 * a.fta) + 0.44 * E.fta, T(plays) + E.plays, lg.ftripPlay, 25),
           three: shrink(T(a.fg3a) + E.fg3a, T(fga) + E.fg2a + E.fg3a, lg.three, 15),
           fg2: shrink(T(a.fg2m) + E.fg2m, T(a.fg2a) + E.fg2a, lg.fg2, 30), fg3: shrink(T(a.fg3m) + E.fg3m, T(a.fg3a) + E.fg3a, lg.fg3, 50),
           ft: shrink(T(a.ftm) + E.ftm, T(a.fta) + E.fta, lg.ft, 25), extGames: E.games,
-          // αμυντικοί συντελεστές (1 = μέσος όρος), μισοί προς τον μέσο όρο
-          stlF: 0.5 + 0.5 * (shrink(T(a.stl), T(a.min), lg.stlMin, 150) / lg.stlMin),
-          blkF: 0.5 + 0.5 * (shrink(T(a.blk), T(a.min), lg.blkMin, 150) / lg.blkMin),
-          pfF: 0.5 + 0.5 * (shrink(T(a.pf), T(a.min), lg.pfMin, 150) / lg.pfMin) };
+          // αμυντικοί συντελεστές (1 = μέσος όρος), μισοί προς τον μέσο όρο· ό,τι όρισε ο χρήστης μετρά ακριβώς
+          stlF: o.stl != null && a.min > 0 ? a.stl / a.min / lg.stlMin : 0.5 + 0.5 * (shrink(T(a.stl), T(a.min), lg.stlMin, 150) / lg.stlMin),
+          blkF: o.blk != null && a.min > 0 ? a.blk / a.min / lg.blkMin : 0.5 + 0.5 * (shrink(T(a.blk), T(a.min), lg.blkMin, 150) / lg.blkMin),
+          pfF: o.pf != null && a.min > 0 ? a.pf / a.min / lg.pfMin : 0.5 + 0.5 * (shrink(T(a.pf), T(a.min), lg.pfMin, 150) / lg.pfMin),
+          // επιρροή στο σουτ του αντιπάλου όταν αμύνεται (log-odds· 1 ποσοστιαία μονάδα ≈ 0.04)
+          dAdj: -(o.dshot || 0) / 25,
+          // φάσεις ανά αγώνα χωρίς την αλλαγή όγκου (για να λυθεί το μερίδιο παρακάτω)
+          _p0: (() => { if (o.pts == null && o.fga == null) return null; const b = SIM.adjAvg(p.avg, { ...o, pts: null, fga: null });
+            return W(b.fg2a + b.fg3a + 0.44 * b.fta + b.tov); })() };
       });
+      // όγκος (πόντοι/σουτ): οι κατοχές είναι σταθερές, οπότε βρίσκουμε τα βάρη ώστε όποιος άλλαξε να παίρνει ακριβώς
+      // τις φάσεις που ζητήθηκαν και οι υπόλοιποι να μοιράζονται τις υπόλοιπες αναλογικά
+      const vol = pl.filter((q) => q._p0 != null);
+      if (vol.length) {
+        const TP = pl.reduce((x, q) => x + (q._p0 ?? q.wOff), 0), R = pl.filter((q) => q._p0 == null).reduce((x, q) => x + q.wOff, 0);
+        const want = vol.reduce((x, q) => x + q.wOff, 0), room = Math.max(TP * 0.1, TP - Math.min(want, TP * 0.9));
+        if (R > 0) for (const q of vol) q.wOff = Math.max(0.02, (q.wOff * R) / room);
+      }
+      for (const q of pl) delete q._p0;
       const ts = DB.teamstats[code] || {};
       // η επίθεση της ομάδας: μέσος των παικτών, σταθμισμένος με τις προσπάθειες του καθενός
       const wavg = (f, w) => { const W = pl.reduce((x, p) => x + w(p), 0) || 1; return pl.reduce((x, p) => x + w(p) * f(p), 0) / W; };
@@ -206,7 +229,7 @@
           } else {
             // ευστοχία ανά προσπάθεια (όπως στο box score), μετά «όταν δεν κόβεται», μετά έδρα
             const raw = three ? comb(p.fg3, Dx.fg3, lg.fg3, B.fg3, O.off.fg3) : comb(p.fg2, Dx.fg2, lg.fg2, B.fg2, O.off.fg2);
-            const mk = inv(logit(clamp(raw / (1 - (three ? 0.012 : lg.blk_fg2a)), 0.02, 0.97)) + adj);
+            const mk = inv(logit(clamp(raw / (1 - (three ? 0.012 : lg.blk_fg2a)), 0.02, 0.97)) + adj + d.dAdj);
             if (R() < mk) {
               const pts = three ? 3 : 2;
               s[o] += pts; bo[i][0] += pts; if (three) bo[i][4]++; else bo[i][2]++;

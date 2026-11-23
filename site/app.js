@@ -440,15 +440,30 @@ Views.sims.bind = () => {};
 // ----------------------------------------------------------------------------- σενάρια (αλλαγές στους μέσους όρους)
 // Ένα σενάριο ανά αγώνα: { out: [pid], avg: { pid: { min, fga, … } }, paceAdj, tags: [ετικέτες έτοιμων σεναρίων] }
 const SCEN = {};
-const SC_F = [["min", "Λεπτά", 0, 40, 1, (v) => v.toFixed(0)], ["fga", "Σουτ (2π+3π)", 0, 25, 0.5, f1], ["fg2p", "2π %", 0.2, 0.8, 0.01, pct],
-  ["fg3p", "3π %", 0.1, 0.6, 0.01, pct], ["ftp", "Βολές %", 0.3, 1, 0.01, pct], ["tov", "Λάθη", 0, 6, 0.1, f1], ["reb", "Ριμπάουντ", 0, 15, 0.1, f1], ["ast", "Ασίστ", 0, 12, 0.1, f1]];
+// [πεδίο, ετικέτα, ελάχιστο, μέγιστο, βήμα, μορφή, ομάδα]
+const SC_F = [["min", "Λεπτά", 0, 40, 1, (v) => v.toFixed(0), "role"], ["pts", "Πόντοι", 0, 40, 0.5, f1, "role"], ["fga", "Σουτ (2π+3π)", 0, 25, 0.5, f1, "role"],
+  ["fg2p", "2π %", 0.2, 0.8, 0.01, pct, "shot"], ["fg3p", "3π %", 0.1, 0.6, 0.01, pct, "shot"], ["ftp", "Βολές %", 0.3, 1, 0.01, pct, "shot"], ["tov", "Λάθη", 0, 6, 0.1, f1, "shot"],
+  ["reb", "Ριμπάουντ", 0, 15, 0.1, f1, "reb"], ["ast", "Ασίστ", 0, 12, 0.1, f1, "reb"],
+  ["dshot", "Σουτ αντιπάλου", -8, 8, 0.5, (v) => (v > 0 ? "−" : v < 0 ? "+" : "±") + Math.abs(v).toFixed(1) + "%", "def"],
+  ["stl", "Κλεψίματα", 0, 4, 0.1, f1, "def"], ["blk", "Τάπες", 0, 4, 0.1, f1, "def"], ["pf", "Φάουλ", 0, 5, 0.1, f1, "def"]];
+const SC_G = [["role", "Χρόνος & ρόλος"], ["shot", "Ευστοχία & λάθη"], ["reb", "Ριμπάουντ & ασίστ"], ["def", "Άμυνα"]];
+/** Έτοιμες αλλαγές για έναν παίκτη (σχετικά με τους τωρινούς μέσους όρους του στο σενάριο). */
+const SC_PP = [
+  ["Παίζει περισσότερο (+6′)", (sc, pid, v) => scSet(sc, pid, "min", Math.min(40, v.min + 6))],
+  ["Παίζει λιγότερο (−8′)", (sc, pid, v) => scSet(sc, pid, "min", Math.max(0, v.min - 8))],
+  ["Σε φόρμα: +4% σε 2π και 3π", (sc, pid, v) => { scSet(sc, pid, "fg2p", Math.min(0.8, v.fg2p + 0.04)); scSet(sc, pid, "fg3p", Math.min(0.6, v.fg3p + 0.04)); }],
+  ["Μεγαλύτερος ρόλος: +25% σουτ", (sc, pid, v) => scSet(sc, pid, "fga", Math.min(25, v.fga * 1.25))],
+  ["Ντεφορμέ: −5% στα σουτ, +0.5 λάθη", (sc, pid, v) => { scSet(sc, pid, "fg2p", Math.max(0.2, v.fg2p - 0.05)); scSet(sc, pid, "fg3p", Math.max(0.1, v.fg3p - 0.05)); scSet(sc, pid, "tov", v.tov + 0.5); }],
+  ["Καλύτερη άμυνα: −3% στο σουτ αντιπάλου, +30% κλεψ./τάπες", (sc, pid, v) => { scSet(sc, pid, "dshot", Math.min(8, v.dshot + 3)); scSet(sc, pid, "stl", v.stl * 1.3); scSet(sc, pid, "blk", v.blk * 1.3); }],
+  ["Κυριαρχεί στη ρακέτα: +2 ριμπάουντ, +4% στο 2π", (sc, pid, v) => { scSet(sc, pid, "reb", Math.min(15, v.reb + 2)); scSet(sc, pid, "fg2p", Math.min(0.8, v.fg2p + 0.04)); }],
+];
 const scNew = () => ({ out: [], avg: {}, paceAdj: 0, tags: [], sources: [], extW: 0.5 });
 /** Οι μέσοι όροι ενός παίκτη όπως είναι στο σενάριο (για τα sliders). */
 function scVals(pid, sc) {
   const p = DB.players[pid], a = SIM.adjAvg(p.avg, sc.avg[pid]), lg = DB.lg || {};
   const r = (m, n, d) => (n > 0 ? m / n : d);
   return { min: a.min, fga: a.fg2a + a.fg3a, fg2p: r(a.fg2m, a.fg2a, lg.fg2 || 0.5), fg3p: r(a.fg3m, a.fg3a, lg.fg3 || 0.33), ftp: r(a.ftm, a.fta, lg.ft || 0.72),
-    tov: a.tov, reb: a.oreb + a.dreb, ast: a.ast };
+    tov: a.tov, reb: a.oreb + a.dreb, ast: a.ast, pts: 2 * a.fg2m + 3 * a.fg3m + a.ftm, stl: a.stl, blk: a.blk, pf: a.pf, dshot: sc.avg[pid]?.dshot ?? 0 };
 }
 const scSet = (sc, pid, f, v) => { (sc.avg[pid] ||= {})[f] = v; };
 const scCount = (sc) => sc.out.length + Object.values(sc.avg).filter((o) => Object.keys(o).length).length + (sc.paceAdj ? 1 : 0) + (sc.sources.length ? 1 : 0);
@@ -481,15 +496,28 @@ function scTree(g, base, sc) {
   const plist = (list, pre) => `<ul class="tree-list">${list.map(([l], i) => `<li><button class="plink" data-preset="${pre}:${i}">${esc(l)}</button></li>`).join("")}</ul>`;
   const slider = (pid, [f, lab, lo, hi, st, fmt], v, touched) => `<label class="sc-row${touched ? " on" : ""}"><span>${lab}</span>
     <input type="range" min="${lo}" max="${hi}" step="${st}" value="${v}" data-pid="${pid}" data-f="${f}"><output>${fmt(v)}</output></label>`;
+  // λεπτά που θα παίξει ο καθένας στο σενάριο (μετά την ανακατανομή) απέναντι στα βασικά
+  let cur = null; try { cur = SIM.prepare(DB, base.T[0].code, base.T[1].code, { beta: SIMS?.beta, out: sc.out, avg: sc.avg }); } catch (e) { /* */ }
+  const minOf = (c, pid) => { for (const T of c?.T || []) { const q = T.pl.find((x) => x.pid === pid); if (q) return q.minShare * 200; } return 0; };
   const player = (q) => { const pid = q.pid, o = sc.avg[pid] || {}, out = sc.out.includes(pid), v = scVals(pid, sc), k = Object.keys(o).length;
-    const eg = extGames(pid, sc);
-    return `<details class="tree-node" data-k="p:${pid}"><summary>${esc(DB.players[pid].name)}${eg ? ` <span class="muted" style="font-size:11px">+${eg} αγ. εκτός GBL</span>` : ""}${out ? ` <span class="sc-tag bad">εκτός</span>` : k ? ` <span class="sc-tag">${k} αλλαγ${k > 1 ? "ές" : "ή"}</span>` : ""}</summary>
+    const eg = extGames(pid, sc), m0 = minOf(base, pid), m1 = minOf(cur, pid), dm = m1 - m0;
+    const mins = out ? "" : `<span class="muted num" style="font-size:11px">${Math.round(m1)}′${Math.abs(dm) >= 0.5 ? ` <span style="color:var(--${dm > 0 ? "good" : "bad"})">${dm > 0 ? "+" : "−"}${Math.abs(dm).toFixed(1)}</span>` : ""}</span>`;
+    const group = ([g, lab]) => { const F = SC_F.filter((x) => x[6] === g), ch = F.filter((x) => o[x[0]] != null).length;
+      return `<details class="tree-node" data-k="g:${pid}:${g}"><summary>${lab}${ch ? ` <span class="sc-tag">${ch}</span>` : ""}</summary><div class="tree-in">
+        ${F.map((x) => slider(pid, x, +(+v[x[0]]).toFixed(3), o[x[0]] != null)).join("")}
+        ${g === "def" ? `<div class="muted" style="font-size:11px">«Σουτ αντιπάλου»: πόσο αλλάζει το ποσοστό του αντιπάλου όταν αμύνεται αυτός (− = καλύτερη άμυνα).</div>` : ""}</div></details>`; };
+    return `<details class="tree-node" data-k="p:${pid}"><summary>${esc(DB.players[pid].name)} ${mins}${eg ? ` <span class="muted" style="font-size:11px">+${eg} αγ. εκτός GBL</span>` : ""}${out ? ` <span class="sc-tag bad">εκτός</span>` : k ? ` <span class="sc-tag">${k} αλλαγ${k > 1 ? "ές" : "ή"}</span>` : ""}</summary>
       <div class="tree-in"><label class="sc-row"><span>Παίζει</span><input type="checkbox" data-out="${pid}" ${out ? "" : "checked"}><output></output></label>
-      ${out ? "" : SC_F.map((F) => slider(pid, F, +(+v[F[0]]).toFixed(3), o[F[0]] != null)).join("")}
+      ${out ? "" : `<details class="tree-node" data-k="pp:${pid}"><summary>Έτοιμες αλλαγές</summary><div class="tree-in"><ul class="tree-list">
+        ${SC_PP.map(([l], i) => `<li><button class="plink" data-ppreset="${pid}:${i}">${esc(l)}</button></li>`).join("")}</ul></div></details>
+        ${SC_G.map(group).join("")}`}
       ${k || out ? `<button class="plink" data-screset="${pid}" style="font-size:12px">↺ πίσω στους πραγματικούς μέσους όρους</button>` : ""}</div></details>`; };
   const teamNode = (ti) => { const T = base.T[ti], ch = T.pl.filter((q) => sc.out.includes(q.pid) || Object.keys(sc.avg[q.pid] || {}).length).length;
+    const outN = T.pl.filter((q) => sc.out.includes(q.pid)).length, fixedMin = T.pl.reduce((x, q) => x + (sc.avg[q.pid]?.min ?? 0), 0);
     return `<details class="tree-node" data-k="t:${ti}"><summary>${badge(T.code, 18)} ${esc(team(T.code).name)}${ch ? ` <span class="sc-tag">${ch}</span>` : ""}</summary>
-      <div class="tree-in">${T.pl.map(player).join("")}</div></details>`; };
+      <div class="tree-in"><div class="muted" style="font-size:12px">Δίπλα σε κάθε παίκτη: τα λεπτά του στο σενάριο (σύνολο 200) και η αλλαγή από το βασικό. Τα sliders είναι μέσοι όροι ανά αγώνα. ${outN ? "Ο χρόνος όσων λείπουν μοιράζεται στους υπόλοιπους αναλογικά με τα λεπτά τους." : "Όσα λεπτά ορίσεις μένουν σταθερά· τα υπόλοιπα μοιράζονται στους άλλους."}</div>
+      ${fixedMin > 200 ? `<div style="font-size:12px;color:var(--bad)">Τα λεπτά που όρισες ξεπερνούν τα 200 (${Math.round(fixedMin)}′).</div>` : ""}
+      ${T.pl.map(player).join("")}</div></details>`; };
   return `<details class="tree" data-k="root"><summary><b>Σενάριο:</b> ${n ? `${n} αλλαγ${n > 1 ? "ές" : "ή"}` : "πραγματικοί μέσοι όροι"}${sc.tags.length ? ` <span class="muted" style="font-size:12px">· ${sc.tags.map(esc).join(" · ")}</span>` : ""}</summary>
     <div class="tree-in">
       <details class="tree-node" data-k="pre"><summary>Έτοιμα σενάρια</summary><div class="tree-in">
@@ -547,7 +575,7 @@ const Live = {
     const SPEEDS = [["×10", 10], ["×60", 60], ["×240", 240], ["άμεσα", 1e9]];
     let speed = 60, log = [], idx = 0, clock = 0, raf = 0, last = 0, running = false, box = {};
     el.innerHTML = `<div class="section-head"><h2 style="margin:0">Ζωντανή προσομοίωση</h2>
-        <div style="display:flex;gap:6px;flex-wrap:wrap" id="lv-ctl"><button class="btn primary" id="lv-go">▶ Start</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="lv-ctl">${Object.keys(DB.sources || {}).length ? `<button class="btn" id="sc-src" aria-pressed="false"></button>` : ""}<button class="btn primary" id="lv-go">▶ Start</button>
           ${SPEEDS.map(([l, v]) => `<button class="btn" data-sp="${v}" style="${v === speed ? "border-color:var(--accent)" : ""}">${l}</button>`).join("")}</div></div>
       <div class="muted" style="font-size:12px;margin:4px 0 10px">Ένας τυχαίος αγώνας με την ίδια μηχανή που τρέχει τις ${SIMS ? SIMS.n.toLocaleString("el-GR") : ""} προσομοιώσεις. Κάθε φορά βγαίνει διαφορετικός. Άλλαξε ό,τι θέλεις στο σενάριο και πάτα Start: παίζεται ένας αγώνας ζωντανά και τρέχουν 5.000 προσομοιώσεις για σύγκριση με το βασικό.</div>
       <div id="sc-tree">${scTree(g, base, sc)}</div><div id="sc-res"></div>
@@ -623,7 +651,12 @@ const Live = {
     // ---- δέντρο σεναρίου
     const tree = $("#sc-tree", el);
     let dirty = false;
-    const redraw = () => { const open = [...tree.querySelectorAll("details[open]")].map((d) => d.dataset.k);
+    // ένα κουμπί: μόνο τα δεδομένα της λίγκας ή και όλες οι άλλες λίγκες (λεπτομέρειες στο δέντρο, κόμβος «Δεδομένα»)
+    const srcBtn = $("#sc-src", el), ALLSRC = Object.keys(DB.sources || {});
+    const srcLabel = () => { if (!srcBtn) return; const on = sc.sources.length > 0; srcBtn.setAttribute("aria-pressed", on);
+      srcBtn.style.borderColor = on ? "var(--accent)" : ""; srcBtn.innerHTML = on ? `Δεδομένα: <b>+ άλλες λίγκες</b>${sc.sources.length < ALLSRC.length ? ` (${sc.sources.length})` : ""}` : `Δεδομένα: <b>μόνο ${esc(DB.league.replace("Stoiximan ", ""))}</b>`; };
+    srcBtn?.addEventListener("click", () => { sc.sources = sc.sources.length ? [] : [...ALLSRC]; redraw(); changed(); });
+    const redraw = () => { srcLabel(); const open = [...tree.querySelectorAll("details[open]")].map((d) => d.dataset.k);
       tree.innerHTML = scTree(g, base, sc); tree.querySelectorAll("details").forEach((d) => { if (open.includes(d.dataset.k)) d.open = true; });
       if (!running) $("#lv-go", el).textContent = "▶ Start"; };
     const changed = () => { dirty = true; if (running) return; log = []; idx = 0; $("#lv-go", el).textContent = "▶ Start"; };
@@ -636,7 +669,7 @@ const Live = {
       scSet(sc, pid, F[0], +t.value); o.textContent = F[5](+t.value); t.parentElement.classList.add("on");
       // τα υπόλοιπα sliders του παίκτη ακολουθούν (π.χ. λιγότερα λεπτά -> λιγότερα σουτ)
       const v = scVals(pid, sc);
-      t.closest(".tree-in").querySelectorAll("input[data-f]").forEach((x) => { if (x === t) return; const G = SC_F.find((y) => y[0] === x.dataset.f);
+      t.closest("details[data-k^='p:']").querySelectorAll("input[data-f]").forEach((x) => { if (x === t) return; const G = SC_F.find((y) => y[0] === x.dataset.f);
         x.value = v[G[0]]; x.parentElement.querySelector("output").textContent = G[5](v[G[0]]); });
       changed();
     });
@@ -645,7 +678,9 @@ const Live = {
       else if (t.dataset.out) { const pid = t.dataset.out; sc.out = t.checked ? sc.out.filter((x) => x !== pid) : [...sc.out, pid]; redraw(); changed(); }
       else if (t.dataset.f || t.dataset.pace != null) redraw(); });
     tree.addEventListener("click", (e) => {
-      const pr = e.target.closest("[data-preset]"), rs = e.target.closest("[data-screset]");
+      const pr = e.target.closest("[data-preset]"), rs = e.target.closest("[data-screset]"), pp = e.target.closest("[data-ppreset]");
+      if (pp) { const [pid, i] = pp.dataset.ppreset.split(":"), P = SC_PP[+i]; P[1](sc, pid, scVals(pid, sc));
+        const tag = `${DB.players[pid].name.split(" ").at(-1)}: ${P[0].split(":")[0].split(" (")[0]}`; if (!sc.tags.includes(tag)) sc.tags.push(tag); redraw(); changed(); return; }
       if (pr) { const [k, i] = pr.dataset.preset.split(":"), PR = scPresets(base), P = k === "g" ? PR.game[+i] : PR.side[+k][+i];
         P[1](sc); sc.out = [...new Set(sc.out)]; if (!sc.tags.includes(P[0])) sc.tags.push(P[0]); redraw(); changed(); }
       if (rs) { const pid = rs.dataset.screset;
@@ -655,7 +690,7 @@ const Live = {
 
     $("#lv-ctl", el).addEventListener("click", (e) => { const b = e.target.closest("[data-sp]"); if (!b) return; speed = +b.dataset.sp;
       $("#lv-ctl", el).querySelectorAll("[data-sp]").forEach((x) => (x.style.borderColor = x === b ? "var(--accent)" : "")); });
-    drawMargin(); drawBox();
+    drawMargin(); drawBox(); srcLabel();
     Live.stop = () => { running = false; cancelAnimationFrame(raf); Live.stop = null; };
   },
 };
