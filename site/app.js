@@ -282,7 +282,7 @@ Views.game = (code) => {
     <div class="matchup">${side(g.home)}<div><div class="score">${g.played ? `${g.hs} – ${g.as}` : "vs"}</div><div class="muted">${g.played ? "Τελικό" : "Επερχόμενος"}</div></div>${side(g.away)}</div>
     ${!g.played && g.model ? `<div style="margin-top:14px"><div class="bar2"><i style="width:${100 * g.model.p_home}%;background:${team(g.home).c1}"></i><i style="width:${100 * (1 - g.model.p_home)}%;background:${team(g.away).c1}"></i></div>
       <div class="muted" style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px"><span>${pct(g.model.p_home)}</span><span>μοντέλο · αναμενόμενη διαφορά ${f1(Math.abs(g.model.line))} · σύνολο ${Math.round(g.model.total)}</span><span>${pct(1 - g.model.p_home)}</span></div></div>` : ""}
-    </section><section class="card" id="live" data-game="${g.code}"></section>${simSection(g.code)}`;
+    </section>${!g.played && SIMS?.games?.[g.code]?.margin?.hist ? `<section class="card"><h2>Έχει αξία; <span class="muted" style="font:13px var(--font-body)">βάλε την απόδοση του bookmaker · <a href="#/value">πώς υπολογίζεται</a></span></h2><div id="val-form" data-fixed="${g.code}">${valForm(String(g.code))}</div></section>` : ""}<section class="card" id="live" data-game="${g.code}"></section>${simSection(g.code)}`;
   if (g.played) {
     const box = (c) => { const R = g.box?.[c] || []; const tot = R.reduce((s, r) => ({ pts: s.pts + r.pts, reb: s.reb + r.reb, ast: s.ast + r.ast }), { pts: 0, reb: 0, ast: 0 });
       return `<div><h3>${tlink(c, 20)}</h3>${R.length ? `<div class="tbl"><table><thead><tr><th>Παίκτης</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">2π</th><th class="n">3π</th><th class="n">Βολ</th><th class="n">PIR</th></tr></thead><tbody>
@@ -523,7 +523,9 @@ function simDiagram() {
 
 // ----------------------------------------------------------------------------- Αξία: μοντέλο απέναντι στις αποδόσεις
 const MKT = { ml: "Νίκη", spread: "Χάντικαπ", total: "Σύνολο" };
-const VAL = { code: "", mkt: "ml_home", line: "", odds: "", bank: 100 };
+const VAL = { code: "", mkt: "ml_home", line: "", odds: "", bank: LS.get("val_bank") || 100, frac: LS.get("val_frac") || "0.25" };
+const VAL_MKTS = [["ml_home", "Νίκη γηπεδούχου"], ["ml_away", "Νίκη φιλοξενούμενου"], ["sp_home", "Χάντικαπ γηπεδούχου"], ["sp_away", "Χάντικαπ φιλοξενούμενου"], ["over", "Over (σύνολο)"], ["under", "Under (σύνολο)"]];
+const VAL_FRAC = [["0.25", "¼ Kelly (προτείνεται)"], ["0.5", "½ Kelly"], ["1", "ολόκληρο Kelly"]];
 const sgnL = (v) => (v > 0 ? "+" : "") + v;
 /** Πιθανότητα του μοντέλου για μια αγορά ενός επόμενου αγώνα: { win, push } */
 function valProb(S, mkt, line) {
@@ -535,18 +537,45 @@ function valProb(S, mkt, line) {
   if (mkt === "under") return SIM.lineProb(S.total, -line, -1);
   return null;
 }
+/** Ο υπολογισμός, με όλα τα βήματα και τους αριθμούς. */
 function valCalc() {
   const S = SIMS?.games?.[VAL.code]; if (!S) return `<div class="muted">Διάλεξε αγώνα.</div>`;
-  const needLine = !VAL.mkt.startsWith("ml"), line = +VAL.line, odds = +String(VAL.odds).replace(",", "."), bank = +VAL.bank || 0;
-  if (needLine && !Number.isFinite(line)) return `<div class="muted">Βάλε γραμμή.</div>`;
+  const num = (x) => +String(x).replace(",", ".").replace("−", "-");
+  const needLine = !VAL.mkt.startsWith("ml"), line = num(VAL.line), odds = num(VAL.odds), bank = num(VAL.bank) || 0, frac = +VAL.frac || 0.25, CAP = 0.03;
+  if (needLine && (VAL.line === "" || !Number.isFinite(line))) return `<div class="muted">Βάλε τη γραμμή, όπως τη γράφει ο bookmaker (π.χ. ${VAL.mkt.startsWith("sp") ? "−4.5" : Math.round(S.total.p50) + 0.5}).</div>`;
   const P = valProb(S, VAL.mkt, line); if (!P) return `<div class="muted">Δεν υπάρχει κατανομή για αυτόν τον αγώνα.</div>`;
-  const fair = P.win > 0 ? (1 - P.push) / P.win : null;
-  if (!(odds > 1)) return `<div class="tiles">${tile(pct(P.win), "πιθανότητα (μοντέλο)")}${P.push ? tile(pct(P.push), "επιστροφή (push)") : ""}${tile(fair ? fair.toFixed(2) : "–", "δίκαιη απόδοση")}</div><div class="muted" style="font-size:12px;margin-top:6px">Βάλε την απόδοση του bookmaker για να δεις αν έχει αξία.</div>`;
-  const ev = P.win * odds + P.push - 1, b = odds - 1, f = Math.max(0, (P.win * b - (1 - P.win - P.push)) / b), st = Math.min(0.03, 0.25 * f);
-  const verdict = ev >= 0.05 ? ["good", "Έχει αξία"] : ev > 0 ? ["muted", "Οριακή αξία (κάτω από 5%): καλύτερα όχι"] : ["bad", "Χωρίς αξία"];
-  return `<div class="tiles">${tile(pct(P.win), "πιθανότητα (μοντέλο)")}${P.push ? tile(pct(P.push), "επιστροφή (push)") : ""}${tile(fair ? fair.toFixed(2) : "–", "δίκαιη απόδοση")}
-    ${tile(`<span style="color:var(--${ev > 0 ? "good" : "bad"})">${sgnL(+(100 * ev).toFixed(1))}%</span>`, "αναμενόμενη απόδοση")}${tile(ev >= 0.05 ? `${(bank * st).toFixed(2)}` : "0", `ποσό (¼ Kelly, ταμείο ${bank})`)}</div>
-    <div style="margin-top:8px;font-weight:700;color:var(--${verdict[0]})">${verdict[1]}</div>`;
+  const p = P.win, push = P.push, q = 1 - p - push, fair = p > 0 ? (1 - push) / p : null, n = SIMS.n;
+  const head = `<div class="tiles">${tile(pct(p), "πιθανότητα να κερδίσει")}${push ? tile(pct(push), "επιστροφή (push)") : ""}${tile(fair ? fair.toFixed(2) : "–", "δίκαιη απόδοση")}`;
+  if (!(odds > 1)) return head + `</div><div class="muted" style="font-size:13px;margin-top:6px">Βάλε την απόδοση του bookmaker. Αξία έχει μόνο αν είναι μεγαλύτερη από τη δίκαιη (${fair ? fair.toFixed(2) : "–"}).</div>`;
+  const b = odds - 1, ev = p * odds + push - 1, fStar = Math.max(0, (b * p - q) / b), f = Math.min(CAP, frac * fStar), stake = bank * f;
+  const has = ev >= 0.05 && fStar > 0;
+  const verdict = has ? ["good", `Έχει αξία: παίξε ${stake.toFixed(2)} (${(100 * f).toFixed(1)}% του κεφαλαίου)`] : ev > 0 ? ["muted", "Οριακή αξία (κάτω από 5%): μην το παίξεις, είναι μέσα στο λάθος του μοντέλου"] : ["bad", "Χωρίς αξία: μην το παίξεις"];
+  const r2 = (x) => x.toFixed(2), r3 = (x) => x.toFixed(3);
+  return head + `${tile(`<span style="color:var(--${ev > 0 ? "good" : "bad"})">${sgnL(+(100 * ev).toFixed(1))}%</span>`, "αναμενόμενη απόδοση")}${tile(has ? stake.toFixed(2) : "0", `ποσό (κεφάλαιο ${bank})`)}</div>
+    <div style="margin:10px 0 6px;font-weight:700;font-size:16px;color:var(--${verdict[0]})">${verdict[1]}</div>
+    <details class="tree"><summary>Πώς βγήκαν αυτοί οι αριθμοί</summary><ol style="margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.6">
+      <li><b>Πιθανότητα</b> p = ${r3(p)}: στις ${n.toLocaleString("el-GR")} προσομοιώσεις του αγώνα, το στοίχημα κερδίζει στο ${pct(p)}${push ? `, επιστροφή στο ${pct(push)}` : ""}, χάνει στο ${pct(q)} (q = ${r3(q)}).</li>
+      <li><b>Δίκαιη απόδοση</b> = (1 − push) / p = ${fair ? r2(fair) : "–"}: η απόδοση στην οποία ούτε κερδίζεις ούτε χάνεις μακροπρόθεσμα.</li>
+      <li><b>Αναμενόμενη απόδοση</b> (EV) = p × απόδοση + push − 1 = ${r3(p)} × ${r2(odds)}${push ? ` + ${r3(push)}` : ""} − 1 = <b>${sgnL(+(100 * ev).toFixed(1))}%</b> ανά ευρώ. Θετική = κερδίζεις μακροπρόθεσμα· κάτω από 5% δεν το παίζουμε, γιατί το μοντέλο έχει κι αυτό λάθη.</li>
+      <li><b>Kelly</b>: f* = (b × p − q) / b, με b = απόδοση − 1 = ${r2(b)} → f* = (${r2(b)} × ${r3(p)} − ${r3(q)}) / ${r2(b)} = <b>${(100 * fStar).toFixed(1)}%</b> του κεφαλαίου. Είναι το ποσοστό που μεγαλώνει το κεφάλαιο όσο πιο γρήγορα γίνεται, <i>αν</i> το p είναι ακριβώς σωστό.</li>
+      <li><b>Κλάσμα</b>: επειδή το p είναι εκτίμηση, παίζουμε ${frac === 1 ? "ολόκληρο" : frac === 0.5 ? "το ½" : "το ¼"} του Kelly και το πολύ ${Math.round(100 * CAP)}% του κεφαλαίου: ${frac} × ${(100 * fStar).toFixed(1)}% = ${(100 * frac * fStar).toFixed(1)}%${frac * fStar > CAP ? ` → όριο ${Math.round(100 * CAP)}%` : ""} → <b>${bank} × ${(100 * f).toFixed(1)}% = ${stake.toFixed(2)}</b>.</li>
+    </ol></details>`;
+}
+/** Το πλαίσιο: fixed = κωδικός αγώνα (στη σελίδα του αγώνα), αλλιώς επιλογή αγώνα. */
+function valForm(fixed) {
+  const up = SIMS ? Object.entries(SIMS.games).filter(([, S]) => !S.played && S.margin?.hist).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
+  if (fixed) VAL.code = fixed; else if (!SIMS?.games?.[VAL.code] || SIMS.games[VAL.code].played) VAL.code = up[0]?.[0] || "";
+  const S = SIMS?.games?.[VAL.code]; if (!S) return "";
+  const H = team(S.home).name, A = team(S.away).name;
+  const lab = { ml_home: `Νίκη ${H}`, ml_away: `Νίκη ${A}`, sp_home: `Χάντικαπ ${H}`, sp_away: `Χάντικαπ ${A}` };
+  return `<div class="filters">${fixed ? "" : `<label style="max-width:100%;min-width:0">Αγώνας<select data-val="code" style="max-width:100%">${up.map(([c, x]) => `<option value="${c}" ${c === VAL.code ? "selected" : ""}>${dateGR(x.date, true)} · ${esc(team(x.home).name)} – ${esc(team(x.away).name)}</option>`).join("")}</select></label>`}
+      <label style="max-width:100%;min-width:0">Στοίχημα<select data-val="mkt" style="max-width:100%">${VAL_MKTS.map(([k, l]) => `<option value="${k}" ${k === VAL.mkt ? "selected" : ""}>${esc(lab[k] || l)}</option>`).join("")}</select></label>
+      <label>Γραμμή<input data-val="line" inputmode="decimal" placeholder="${VAL.mkt.startsWith("ml") ? "—" : VAL.mkt.startsWith("sp") ? "π.χ. −4.5" : "π.χ. " + (Math.round(S.total.p50) + 0.5)}" value="${esc(VAL.line)}" style="width:100px" ${VAL.mkt.startsWith("ml") ? "disabled" : ""}></label>
+      <label>Απόδοση<input data-val="odds" inputmode="decimal" placeholder="π.χ. 1.90" value="${esc(VAL.odds)}" style="width:90px"></label>
+      <label>Κεφάλαιο<input data-val="bank" inputmode="decimal" value="${esc(VAL.bank)}" style="width:90px"></label>
+      <label>Kelly<select data-val="frac">${VAL_FRAC.map(([k, l]) => `<option value="${k}" ${k === String(VAL.frac) ? "selected" : ""}>${l}</option>`).join("")}</select></label></div>
+    <div id="val-out" style="margin-top:10px">${valCalc()}</div>
+    <p class="muted" style="font-size:12px;margin-bottom:0">Δεκαδικές αποδόσεις (όπως στους ελληνικούς bookmakers). Χάντικαπ: η γραμμή από τη μεριά της ομάδας που διαλέγεις (−4.5 = πρέπει να κερδίσει με 5+). Στις ακέραιες γραμμές μετράει και η επιστροφή.</p>`;
 }
 Views.value = () => {
   const V = SIMS?.value, up = SIMS ? Object.entries(SIMS.games).filter(([, S]) => !S.played && S.margin?.hist).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
@@ -560,23 +589,17 @@ Views.value = () => {
   const sideLab = (m, g) => m.market === "ml" ? `${m.side === "home" ? esc(team(g.home).abbr) : esc(team(g.away).abbr)} νίκη` : m.market === "spread" ? `${m.side === "home" ? esc(team(g.home).abbr) : esc(team(g.away).abbr)} ${sgnL(m.line)}` : `${m.side === "over" ? "Over" : "Under"} ${m.line}`;
   const Lg = V?.ledger;
   return `<section class="card"><h2>Αξία</h2>
-    <p style="margin:0 0 8px;max-width:80ch">Ένα στοίχημα έχει <b>αξία</b> όταν η πιθανότητα του μοντέλου επί την απόδοση ξεπερνά καθαρά το 1. Κανόνες: μόνο όταν η αναμενόμενη απόδοση είναι ≥ ${Math.round(100 * (V?.rules?.min_ev ?? 0.05))}% (περιθώριο για τα λάθη του μοντέλου), όχι όταν το μοντέλο διαφωνεί πολύ με την αγορά ή η απόδοση είναι πάνω από ${V?.rules?.max_odds ?? 5}, <b>μονά</b> στοιχήματα (όχι παρολί: πολλαπλασιάζουν και το περιθώριο του bookmaker και τα λάθη), ποσό με ¼ Kelly και το πολύ 3% του ταμείου.</p>
+    <p style="margin:0 0 8px;max-width:80ch">Ένα στοίχημα έχει <b>αξία</b> όταν η πιθανότητα του μοντέλου επί την απόδοση ξεπερνά καθαρά το 1. Βάζεις την απόδοση που βλέπεις στον bookmaker σου και ο υπολογιστής λέει αν έχει αξία και πόσο να παίξεις. Κανόνες: μόνο όταν η αναμενόμενη απόδοση είναι ≥ 5% (περιθώριο για τα λάθη του μοντέλου), <b>μονά</b> στοιχήματα (όχι παρολί: πολλαπλασιάζουν και το περιθώριο του bookmaker και τα λάθη), ποσό με ¼ Kelly και το πολύ 3% του ταμείου.</p>
     ${V?.has_odds ? (() => { const ck = (V.upcoming || []).flatMap((g) => g.markets.filter((m) => m.check && m.ev >= V.rules.min_ev).map((m) => ({ ...m, g })));
-      return ck.length ? `<p class="muted" style="font-size:13px;margin:0">Δεν προτείνονται ${ck.length} επιλογές με «αξία» όπου το μοντέλο διαφωνεί με την αγορά πάνω από ${Math.round(100 * V.rules.max_gap)} μονάδες ή η απόδοση είναι πάνω από ${V.rules.max_odds}: εκεί η αγορά συνήθως ξέρει κάτι (απουσία, τραυματισμός). ${ck.slice(0, 4).map((m) => `${esc(team(m.g.home).abbr)}–${esc(team(m.g.away).abbr)} ${m.market === "total" ? (m.side === "over" ? "Over " : "Under ") + m.line : m.side === "home" ? esc(team(m.g.home).abbr) : esc(team(m.g.away).abbr)} (${pct(m.p)} έναντι ${pct(m.market_p)})`).join(" · ")}</p>` : ""; })() : `<div class="empty" style="text-align:left">Δεν υπάρχουν ακόμα αποδόσεις της αγοράς για ${esc(DB.league)}: χρειάζεται δωρεάν κλειδί του The Odds API ως GitHub secret <span class="num">ODDS_API_KEY</span>. Μέχρι τότε: οι δίκαιες αποδόσεις του μοντέλου και ο υπολογιστής πιο κάτω, με την απόδοση που βλέπεις στον bookmaker σου.</div>`}</section>
+      return ck.length ? `<p class="muted" style="font-size:13px;margin:0">Δεν προτείνονται ${ck.length} επιλογές με «αξία» όπου το μοντέλο διαφωνεί με την αγορά πάνω από ${Math.round(100 * V.rules.max_gap)} μονάδες ή η απόδοση είναι πάνω από ${V.rules.max_odds}: εκεί η αγορά συνήθως ξέρει κάτι (απουσία, τραυματισμός). ${ck.slice(0, 4).map((m) => `${esc(team(m.g.home).abbr)}–${esc(team(m.g.away).abbr)} ${m.market === "total" ? (m.side === "over" ? "Over " : "Under ") + m.line : m.side === "home" ? esc(team(m.g.home).abbr) : esc(team(m.g.away).abbr)} (${pct(m.p)} έναντι ${pct(m.market_p)})`).join(" · ")}</p>` : ""; })() : ""}</section>
   ${V?.has_odds ? `<section><h2>Στοιχήματα με αξία τώρα</h2>${vb.length ? `<div class="tbl"><table><thead><tr><th>Αγώνας</th><th>Επιλογή</th><th class="n">απόδοση</th><th class="n">μοντέλο</th><th class="n">αγορά</th><th class="n">αναμ. απόδοση</th><th class="n">ποσό (% ταμείου)</th></tr></thead><tbody>
     ${vb.sort((a, b) => b.ev - a.ev).map((m) => `<tr><td><a href="#/game/${m.g.code}">${dateGR(m.g.date, true)} ${esc(team(m.g.home).abbr)}–${esc(team(m.g.away).abbr)}</a></td><td><b>${sideLab(m, m.g)}</b> <span class="muted" style="font-size:11px">${MKT[m.market]}</span></td>
       <td class="n">${m.odds.toFixed(2)}</td><td class="n">${pct(m.p)}</td><td class="n">${m.market_p != null ? pct(m.market_p) : "–"}</td><td class="n" style="color:var(--good)">+${(100 * m.ev).toFixed(1)}%</td><td class="n"><b>${(100 * m.stake).toFixed(1)}%</b></td></tr>`).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">«αγορά»: η πιθανότητα που δίνουν οι bookmakers χωρίς το περιθώριό τους (μέσος όρος).</p>` : `<div class="empty">Κανένα στοίχημα με αξία ≥ ${Math.round(100 * V.rules.min_ev)}% αυτή τη στιγμή.</div>`}</section>` : ""}
   <section><h2>Δίκαιες αποδόσεις του μοντέλου</h2>${up.length ? `<div class="tbl"><table><thead><tr><th>Ημ/νία</th><th>Αγώνας</th><th class="n">P(γηπ.)</th><th class="n">1</th><th class="n">2</th><th class="n">χάντικαπ γηπ.</th><th class="n">σύνολο</th><th class="n">P(over)</th></tr></thead><tbody>${up.map(fairRow).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">1/2: δίκαιες αποδόσεις νίκης (χωρίς περιθώριο). Χάντικαπ: η διάμεσος της διαφοράς από τη μεριά του γηπεδούχου. Σύνολο: διάμεσος· P(over) για τη μισή γραμμή πάνω από τη διάμεσο. Από ${SIMS.n.toLocaleString("el-GR")} προσομοιώσεις ανά αγώνα (με ratings και αβεβαιότητα).</p>` : `<div class="empty">Δεν υπάρχουν επόμενοι αγώνες με προσομοίωση.</div>`}</section>
-  <section class="card" id="val-calc"><h2>Υπολογιστής</h2>
-    <div class="filters"><label style="max-width:100%;min-width:0">Αγώνας<select data-val="code" style="max-width:100%">${up.map(([c, S]) => `<option value="${c}" ${c === VAL.code ? "selected" : ""}>${dateGR(S.date, true)} · ${esc(team(S.home).name)} – ${esc(team(S.away).name)}</option>`).join("")}</select></label>
-      <label>Αγορά<select data-val="mkt">${[["ml_home", "Νίκη γηπεδούχου"], ["ml_away", "Νίκη φιλοξενούμενου"], ["sp_home", "Χάντικαπ γηπεδούχου"], ["sp_away", "Χάντικαπ φιλοξενούμενου"], ["over", "Over"], ["under", "Under"]].map(([k, l]) => `<option value="${k}" ${k === VAL.mkt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-      <label>Γραμμή<input data-val="line" inputmode="decimal" placeholder="π.χ. −4.5 / 160.5" value="${esc(VAL.line)}" style="width:120px"></label>
-      <label>Απόδοση<input data-val="odds" inputmode="decimal" placeholder="π.χ. 1.90" value="${esc(VAL.odds)}" style="width:90px"></label>
-      <label>Ταμείο<input data-val="bank" inputmode="decimal" value="${esc(VAL.bank)}" style="width:80px"></label></div>
-    <div id="val-out" style="margin-top:10px">${valCalc()}</div>
-    <p class="muted" style="font-size:12px">Χάντικαπ: η γραμμή από τη μεριά της ομάδας που διαλέγεις (π.χ. −4.5 = πρέπει να κερδίσει με 5+). Στις ακέραιες γραμμές μετράει και η επιστροφή (push).</p></section>
+  <section class="card" id="val-calc"><h2>Έχει αξία;</h2><div id="val-form">${valForm()}</div></section>
+  ${valHelp()}
   ${Lg && (Lg.n || Lg.open) ? `<section class="card"><h2>Ημερολόγιο (εικονικά στοιχήματα)</h2>
     <div class="tiles">${tile(Lg.n, "τακτοποιημένα")}${tile(Lg.open, "ανοιχτά")}${tile(Lg.n ? pct(Lg.wins / Lg.n) : "–", "κερδισμένα")}${tile(Lg.roi != null ? `<span style="color:var(--${Lg.roi >= 0 ? "good" : "bad"})">${sgnL(+(100 * Lg.roi).toFixed(1))}%</span>` : "–", "απόδοση (ROI)")}
       ${Lg.vs_market ? tile(`${Lg.vs_market.brier_model.toFixed(3)} / ${Lg.vs_market.brier_market.toFixed(3)}`, `Brier μοντέλο / αγορά (${Lg.vs_market.n} αγ.)`) : ""}</div>
@@ -586,6 +609,16 @@ Views.value = () => {
     <p class="muted" style="font-size:12px">Κάθε στοίχημα με αξία καταγράφεται με την τελευταία απόδοση πριν από τον αγώνα και τακτοποιείται αυτόματα. Το κριτήριο που μετράει: αν σε βάθος χρόνου το ROI μένει θετικό και αν το Brier του μοντέλου πλησιάζει ή κερδίζει της αγοράς. Με λίγες δεκάδες στοιχήματα, το αποτέλεσμα είναι κυρίως τύχη.</p></section>` : ""}`;
 };
 Views.value.bind = () => {};
+/** Εξήγηση: από πού έρχεται η πιθανότητα, τι είναι αξία, τι είναι Kelly. */
+function valHelp() {
+  return `<section class="card"><h2>Πώς υπολογίζεται</h2><div style="max-width:80ch;font-size:14px;line-height:1.65">
+    <p style="margin-top:0"><b>1. Η πιθανότητα (p).</b> Κάθε επόμενος αγώνας παίζεται ${SIMS ? SIMS.n.toLocaleString("el-GR") : "50.000"} φορές στην προσομοίωση, φάση-φάση, από τα στατιστικά των παικτών, διορθωμένη με τα ratings των ομάδων και με την αβεβαιότητα (λεπτά, μέρα αγώνα). Για ένα στοίχημα μετράμε σε πόσες από αυτές κερδίζει: αν ο Άρης κερδίζει με 5+ σε 27.500 από τις 50.000, τότε για το «Άρης −4.5» p = 55%. Στις ακέραιες γραμμές (π.χ. −5) μετράμε χωριστά και τις ισοπαλίες της γραμμής (επιστροφή).</p>
+    <p><b>2. Η δίκαιη απόδοση</b> = 1 / p (π.χ. p = 55% → 1.82). Αν ο bookmaker δίνει περισσότερο από αυτό, το στοίχημα έχει θετική αναμενόμενη απόδοση· αν δίνει λιγότερο, χάνεις μακροπρόθεσμα όσο καλή κι αν μοιάζει η επιλογή.</p>
+    <p><b>3. Η αναμενόμενη απόδοση (EV)</b> = p × απόδοση − 1. Με p = 55% και απόδοση 1.95: 0.55 × 1.95 − 1 = +7.3%: κατά μέσο όρο κερδίζεις 7.3 λεπτά ανά ευρώ. Παίζουμε μόνο όταν είναι ≥ 5%, γιατί και το μοντέλο κάνει λάθη (στη βαθμονόμηση βγαίνει σωστό στο ~60–75% των νικητών, ανάλογα με τη λίγκα).</p>
+    <p><b>4. Πόσο να παίξεις: το κριτήριο Kelly.</b> f* = (b × p − q) / b, όπου b = απόδοση − 1 (το καθαρό κέρδος ανά ευρώ) και q = 1 − p η πιθανότητα να χάσεις. Με p = 0.55, απόδοση 1.95: b = 0.95, f* = (0.95 × 0.55 − 0.45) / 0.95 = 7.6% του κεφαλαίου. Είναι το ποσοστό που μεγαλώνει το κεφάλαιο όσο πιο γρήγορα γίνεται μακροπρόθεσμα — αλλά μόνο αν το p είναι ακριβώς σωστό. Αν το μοντέλο υπερεκτιμά έστω και λίγο, το ολόκληρο Kelly οδηγεί σε μεγάλες απώλειες.</p>
+    <p><b>5. Γι' αυτό ¼ Kelly και όριο 3%.</b> Παίζουμε το ένα τέταρτο: 7.6% / 4 = 1.9% του κεφαλαίου (με κεφάλαιο 100: 1.90). Κρατά το μεγαλύτερο μέρος της ανάπτυξης με πολύ μικρότερο ρίσκο, και κανένα στοίχημα δεν ξεπερνά το 3%. Το κεφάλαιο ενημερώνεται μετά από κάθε στοίχημα (το ποσό είναι πάντα ποσοστό του τωρινού).</p>
+    <p style="margin-bottom:0"><b>Μονά, όχι παρολί.</b> Σε ένα παρολί πολλαπλασιάζονται οι αποδόσεις αλλά και το περιθώριο του bookmaker (≈5% ανά επιλογή) και τα λάθη του μοντέλου· ένα 10× παρολί σχεδόν πάντα έχει αρνητική αναμενόμενη απόδοση, ακόμη κι όταν κάθε επιλογή μοιάζει καλή.</p></div></section>`;
+}
 
 Views.sims = () => {
   const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
@@ -934,7 +967,9 @@ function render() {
 }
 document.addEventListener("input", (e) => {
   const k = e.target.dataset?.val; if (!k) return;
-  VAL[k] = e.target.value; const o = $("#val-out"); if (o) o.innerHTML = valCalc();
+  VAL[k] = e.target.value; if (k === "bank") LS.set("val_bank", VAL.bank); if (k === "frac") LS.set("val_frac", VAL.frac);
+  if (k === "mkt" || k === "code") { if (k === "mkt" && VAL.mkt.startsWith("ml")) VAL.line = ""; const f = $("#val-form"); if (f) { f.innerHTML = valForm(f.dataset.fixed || ""); return; } }
+  const o = $("#val-out"); if (o) o.innerHTML = valCalc();
 });
 document.addEventListener("change", (e) => {
   if (e.target.id === "rd-cmp") { RD_CMP.pid = e.target.value; const sec = $("#radar"); if (sec) sec.outerHTML = radarSection(e.target.dataset.pid); }
