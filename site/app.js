@@ -125,7 +125,10 @@ Views.team = (c) => {
       <div style="opacity:.85">${esc(DB.league)} · ${r.pos}η θέση · ${r.w} νίκες, ${r.l} ήττες</div></div>
       <span style="margin-left:auto">${form(r.form)}</span></section>
     <section class="tiles">${tile(`${r.w}-${r.l}`, "ρεκόρ")}${tile(`${r.hw}-${r.hl}`, "στην έδρα")}${tile(`${r.aw}-${r.al}`, "εκτός")}
-      ${tile(f1(ppg), "πόντοι/αγ.")}${tile(f1(oppg), "δέχεται/αγ.")}${tile(sgn(r.pf - r.pa), "διαφορά")}</section>
+      ${tile(f1(ppg), "πόντοι/αγ.")}${tile(f1(oppg), "δέχεται/αγ.")}${tile(sgn(r.pf - r.pa), "διαφορά")}
+      ${SIMS?.ratings?.teams?.[c] ? (() => { const x = SIMS.ratings.teams[c], sg = (v) => (v > 0 ? "+" : "") + v.toFixed(1);
+        return tile(sg(x.o), "rating επίθεσης") + tile(sg(x.d), "rating άμυνας") + tile(`<a href="#/sims">${sg(x.o + x.d)}</a>`, "rating (ανά 100 κατ.)"); })() : ""}</section>
+    ${teamRadars(c)}
     <section><h2>Ρόστερ</h2>${table("ro" + c, [
       { key: "number", label: "#", n: true, sv: (p) => +p.number || 99, html: (p) => esc(p.number ?? "") },
       { key: "name", label: "Παίκτης", html: (p) => `${pbtn(p.pid)} <a href="#/player/${p.pid}" class="muted" title="Σελίδα παίκτη" style="font-size:12px">↗</a>`, sv: (p) => p.name },
@@ -167,6 +170,7 @@ Views.player = (pid) => {
       <h1>${esc(p.name)}</h1><div class="facts">${facts.map(([k, v]) => `<span>${k}: <b>${v}</b></span>`).join("")}</div></div></section>
     <section><h2>Μέσοι όροι (${p.gp} αγ.)</h2><div class="tiles">${tile(f1(a.min), "λεπτά")}${tile(f1(a.pts), "πόντοι")}${tile(f1(a.reb), "ριμπάουντ")}
       ${tile(f1(a.ast), "ασίστ")}${tile(f1(a.stl), "κλεψίματα")}${tile(f1(a.blk), "κοψίματα")}${tile(f1(a.tov), "λάθη")}${tile(`<b>${f1(a.pir)}</b>`, "PIR")}</div></section>
+    ${radarSection(pid)}
     <section class="grid">
       <div class="card"><h3>Σουτ</h3><div class="tiles">${tile(pct(p.pct.fg2), `2π (${f1(a.fg2m)}/${f1(a.fg2a)})`)}${tile(pct(p.pct.fg3), `3π (${f1(a.fg3m)}/${f1(a.fg3a)})`)}${tile(pct(p.pct.ft), `βολές (${f1(a.ftm)}/${f1(a.fta)})`)}</div></div>
       <div class="card"><h3>Πόντοι ανά αγώνα</h3>${spark(p.log)}</div></section>
@@ -178,6 +182,73 @@ Views.player = (pid) => {
         <td class="n">${g.fg2m}/${g.fg2a}</td><td class="n">${g.fg3m}/${g.fg3a}</td><td class="n">${g.ftm}/${g.fta}</td><td class="n"><b>${g.pir}</b></td>` : `<td colspan="11" class="muted">δεν αγωνίστηκε</td>`}</tr>`).join("")}
       </tbody></table></div>` : `<div class="empty">Χωρίς αγώνες.</div>`}</section>`;
 };
+
+// ----------------------------------------------------------------------------- αξιολόγηση παικτών (radar)
+// 7 άξονες, εκατοστημόρια μέσα στη λίγκα (παίκτες με ≥3 αγώνες και ≥10′): ανά 36′ για τον όγκο, ποσοστά για την ευστοχία.
+const RADAR = [
+  ["pts36", "Σκοράρισμα", "πόντοι/36′", (v) => f1(v)], ["ts", "Ευστοχία", "TS%", (v) => pct(v)], ["fg3", "Τρίποντο", "3π% (σταθμ.)", (v) => pct(v)],
+  ["ast36", "Δημιουργία", "ασίστ/36′", (v) => f1(v)], ["reb36", "Ριμπάουντ", "ριμπ./36′", (v) => f1(v)], ["def36", "Άμυνα", "κλεψ.+τάπες/36′", (v) => f1(v)],
+  ["care", "Προσοχή", "λάθη/100 φάσεις (λιγότερα = καλύτερα)", (v) => f1(-v)]];
+let EVAL = null;
+function evalPool() {
+  if (EVAL && EVAL.db === DB) return EVAL;
+  const lg3 = DB.lg?.fg3 || 0.33, raw = {};
+  for (const p of Object.values(DB.players)) {
+    const a = p.avg, g = p.gp || 0; if (g < 1 || !(a.min > 0)) continue;
+    const per36 = (x) => (36 * x) / a.min, fga = a.fg2a + a.fg3a, plays = fga + 0.44 * a.fta + a.tov;
+    raw[p.pid] = { pool: g >= 3 && a.min >= 10, pts36: per36(a.pts), ts: fga + 0.44 * a.fta > 0 ? a.pts / (2 * (fga + 0.44 * a.fta)) : 0,
+      fg3: (a.fg3m * g + 30 * lg3) / (a.fg3a * g + 30), ast36: per36(a.ast), reb36: per36(a.reb), def36: per36(a.stl + a.blk), care: plays > 0 ? (-100 * a.tov) / plays : 0 };
+  }
+  const pool = Object.values(raw).filter((r) => r.pool), sorted = {};
+  for (const [k] of RADAR) sorted[k] = pool.map((r) => r[k]).sort((x, y) => x - y);
+  const pctl = (k, v) => { const A = sorted[k]; if (!A.length) return 0.5; let lo = 0, hi = A.length; while (lo < hi) { const m = (lo + hi) >> 1; if (A[m] < v) lo = m + 1; else hi = m; } return lo / A.length; };
+  const med = Object.fromEntries(RADAR.map(([k]) => [k, sorted[k][Math.floor(sorted[k].length / 2)] ?? 0]));
+  return (EVAL = { db: DB, raw, pctl, med, n: pool.length });
+}
+/** Τιμές και εκατοστημόρια ενός παίκτη (null αν δεν έχει παίξει). */
+function playerEval(pid) { const E = evalPool(), r = E.raw[pid]; if (!r) return null;
+  return { pool: r.pool, vals: RADAR.map(([k]) => r[k]), pcts: RADAR.map(([k]) => E.pctl(k, r[k])) }; }
+/** series: [{ pcts: [0..1], color, label, dash }] */
+function radarSVG(series, { size = 360, labels = true } = {}) {
+  const n = RADAR.length, cx = size / 2, cy = size / 2 + (labels ? 4 : 0), R = size / 2 - (labels ? 62 : 10);
+  const pt = (i, r) => { const a = -Math.PI / 2 + (2 * Math.PI * i) / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+  let g = "";
+  for (const q of [0.25, 0.5, 0.75, 1]) g += `<polygon points="${RADAR.map((_, i) => pt(i, R * q).join(",")).join(" ")}" fill="none" stroke="var(--line)" ${q === 0.5 ? 'stroke-dasharray="3 3"' : ""}/>`;
+  RADAR.forEach((_, i) => { const [x, y] = pt(i, R); g += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)"/>`; });
+  for (const S of series) g += `<polygon points="${S.pcts.map((v, i) => pt(i, R * Math.max(0.03, v)).join(",")).join(" ")}" fill="${S.color}" fill-opacity="${S.dash ? 0.06 : 0.22}" stroke="${S.color}" stroke-width="2" ${S.dash ? 'stroke-dasharray="5 4"' : ""}><title>${esc(S.label)}</title></polygon>`;
+  if (series[0]) series[0].pcts.forEach((v, i) => { const [x, y] = pt(i, R * Math.max(0.03, v)); g += `<circle cx="${x}" cy="${y}" r="3" fill="${series[0].color}"/>`; });
+  if (labels) RADAR.forEach(([, lab], i) => { const [x, y] = pt(i, R + 16), anc = Math.abs(x - cx) < 8 ? "middle" : x > cx ? "start" : "end";
+    const v = series[0] ? Math.round(100 * series[0].pcts[i]) : null;
+    g += `<text x="${x}" y="${y}" text-anchor="${anc}" style="font:600 12px var(--font-body);fill:var(--fg)">${lab}</text>${v != null ? `<text x="${x}" y="${y + 14}" text-anchor="${anc}" style="font:11px var(--font-num);fill:var(--muted)">${v}ο εκ.</text>` : ""}`; });
+  const pad = labels ? 34 : 0;
+  return `<svg viewBox="${-pad} 0 ${size + 2 * pad} ${size + (labels ? 8 : 0)}" style="width:100%;max-width:${size + 2 * pad}px;height:auto;display:block;margin:auto" role="img" aria-label="Radar αξιολόγησης">${g}</svg>`;
+}
+const RD_CMP = { pid: "" };
+/** Πλέγμα με μικρά radar για τους 8 παίκτες της ομάδας με τα περισσότερα λεπτά. */
+function teamRadars(c) {
+  const t = DB.teams[c]; if (!t) return "";
+  const col = t.c1 || "var(--accent)", L = (t.roster || []).map((pid) => [pid, playerEval(pid)]).filter(([, e]) => e?.pool).slice(0, 8);
+  if (!L.length) return "";
+  return `<section><h2>Αξιολόγηση ρόστερ</h2><div class="rd-grid">${L.map(([pid, e]) => { const best = RADAR.map(([, lab], i) => [lab, e.pcts[i]]).sort((x, y) => y[1] - x[1]).slice(0, 2);
+    return `<button class="card rd-card" data-pop="${esc(pid)}">${radarSVG([{ pcts: e.pcts, color: col, label: DB.players[pid].name }, { pcts: RADAR.map(() => 0.5), color: "#d9a227", label: "μέσος όρος", dash: true }], { size: 130, labels: false })}
+      <b style="font-size:13px">${esc(DB.players[pid].name)}</b><span class="muted" style="font-size:11px">${best.map(([l, v]) => `${l} ${Math.round(100 * v)}`).join(" · ")}</span></button>`; }).join("")}</div>
+    <p class="muted" style="font-size:12px">Άξονες (δεξιόστροφα από πάνω): ${RADAR.map(([, l]) => l).join(", ")}. Κίτρινος διακεκομμένος: ο μέσος όρος της λίγκας. Πάτα έναν παίκτη για λεπτομέρειες.</p></section>`;
+}
+function radarSection(pid) {
+  const me = playerEval(pid); if (!me) return "";
+  const p = DB.players[pid], col = team(p.team).c1 || "var(--accent)", E = evalPool();
+  const other = RD_CMP.pid && RD_CMP.pid !== pid ? playerEval(RD_CMP.pid) : null, oname = other ? DB.players[RD_CMP.pid].name : "Μέσος όρος λίγκας";
+  const cmpCol = "#d9a227", cmpP = other ? other.pcts : RADAR.map(() => 0.5), cmpV = other ? other.vals : RADAR.map(([k]) => E.med[k]);
+  const opts = DB.demo.map((t) => `<optgroup label="${esc(team(t).name)}">${(DB.teams[t]?.roster || []).filter((x) => x !== pid && E.raw[x]?.pool).map((x) => `<option value="${esc(x)}" ${x === RD_CMP.pid ? "selected" : ""}>${esc(DB.players[x].name)}</option>`).join("")}</optgroup>`).join("");
+  return `<section class="card" id="radar"><div class="section-head"><h2>Αξιολόγηση</h2>
+      <label class="muted" style="font-size:13px">σύγκριση με <select id="rd-cmp" data-pid="${esc(pid)}"><option value="">Μέσος όρος λίγκας</option>${opts}</select></label></div>
+    <div class="grid" style="align-items:center"><div>${radarSVG([{ pcts: me.pcts, color: col, label: p.name }, { pcts: cmpP, color: cmpCol, label: oname, dash: true }])}
+      <div class="muted" style="font-size:12px;text-align:center"><span style="color:${col}">━</span> ${esc(p.name)} &nbsp; <span style="color:${cmpCol}">╍</span> ${esc(oname)}</div></div>
+    <div class="tbl"><table><thead><tr><th>Άξονας</th><th class="n">${esc(p.name.split(" ").at(-1))}</th><th class="n">εκατ.</th><th class="n">${other ? esc(oname.split(" ").at(-1)) : "διάμεσος"}</th></tr></thead><tbody>
+      ${RADAR.map(([, lab, unit, fmt], i) => `<tr><td>${lab}<div class="muted" style="font-size:11px">${unit}</div></td><td class="n"><b>${fmt(me.vals[i])}</b></td>
+        <td class="n" style="color:var(--${me.pcts[i] >= 0.67 ? "good" : me.pcts[i] <= 0.33 ? "bad" : "fg"})">${Math.round(100 * me.pcts[i])}</td><td class="n">${fmt(cmpV[i])}</td></tr>`).join("")}</tbody></table>
+      <p class="muted" style="font-size:12px">Εκατοστημόριο: πόσοι από τους ${E.n} παίκτες της λίγκας (≥3 αγώνες, ≥10′) έχουν χαμηλότερη τιμή. 50 = μέση τιμή (διακεκομμένος κύκλος).${me.pool ? "" : " Ο παίκτης έχει λίγους αγώνες ή λεπτά: δες το ως ένδειξη."} Τρίποντο: σταθμισμένο προς τον μέσο όρο όταν έχει λίγες προσπάθειες.</p></div></div></section>`;
+}
 
 // μικρό διάγραμμα: πόντοι ανά αγώνα
 function spark(log) {
@@ -337,6 +408,24 @@ function simSection(code) {
     <p class="muted" style="font-size:12px">Δείχνονται μόνο οι κατανομές με τυπική απόκλιση έως ${Math.round(100 * (SIMS.show_cv ?? 0.8))}% του μέσου (CV ≤ ${SIMS.show_cv ?? 0.8}) και μέσο ≥ ${SIMS.show_min ?? 1}: οι υπόλοιπες είναι κυρίως θόρυβος.${act ? " Δεξιά: πραγματικό / διάμεσος της προσομοίωσης." : " Δεξιά: το μεσαίο 50%."}</p></section>`;
 }
 
+/** Ratings ομάδων (επίθεση/άμυνα) και πόσο βοηθούν την προσομοίωση. */
+function ratingsCard(Rt) {
+  const sg = (v) => (v > 0 ? "+" : "") + v.toFixed(1), rows = Object.entries(Rt.teams).map(([t, x]) => ({ t, ...x, net: x.o + x.d })).sort((a, b) => b.net - a.net);
+  const E = Rt.eval || {}, P = E.players, B = E.blend, O = E.ratings;
+  const cell = (v, f, best) => `<td class="n" style="${best ? "color:var(--good);font-weight:700" : ""}">${v == null ? "–" : f(v)}</td>`;
+  const evalRow = (lab, x, all) => x ? `<tr><td>${lab}</td>${["brier", "acc", "margin", "total"].map((k) => { const vals = all.filter(Boolean).map((y) => y[k]), best = k === "acc" ? Math.max(...vals) : Math.min(...vals);
+    return cell(x[k], k === "acc" ? pct : (v) => v.toFixed(k === "brier" ? 3 : 2), x[k] === best); }).join("")}</tr>` : "";
+  return `<section class="card"><h2>Ratings ομάδων</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Δύο νούμερα ανά ομάδα, σε πόντους ανά 100 κατοχές απέναντι σε μέσο αντίπαλο: <b>επίθεση</b> (πόσους βάζει πάνω από τον μέσο όρο) και <b>άμυνα</b> (πόσους λιγότερους δέχεται).
+    Βγαίνουν από όλους τους αγώνες της σεζόν, προσαρμοσμένους στον αντίπαλο και την έδρα, με αρχική τιμή την περσινή σεζόν (ένα «Elo» με δύο νούμερα). Έδρα: ${sg(Rt.h)} ανά 100 κατοχές.
+    Στις προσομοιώσεις ο μέσος όρος κάθε ομάδας μετακινείται κατά <b>${Math.round(100 * Rt.w)}%</b> προς ό,τι λένε τα ratings (όλοι οι παίκτες της μαζί), ενώ οι απουσίες και οι αλλαγές στους παίκτες συνεχίζουν να μετράνε.</p>
+    <div class="grid"><div class="tbl" style="max-height:420px"><table><thead><tr><th>#</th><th>Ομάδα</th><th class="n">επίθεση</th><th class="n">άμυνα</th><th class="n">σύνολο</th></tr></thead><tbody>
+      ${rows.map((x, i) => `<tr><td class="n">${i + 1}</td><td>${tlink(x.t, 18)}</td><td class="n">${sg(x.o)}</td><td class="n">${sg(x.d)}</td><td class="n"><b>${sg(x.net)}</b></td></tr>`).join("")}</tbody></table></div>
+      <div><div class="tbl"><table><thead><tr><th>Όλες οι λίγκες (walk-forward)</th><th class="n">Brier</th><th class="n">νικητής</th><th class="n">CRPS διαφ.</th><th class="n">CRPS συν.</th></tr></thead><tbody>
+        ${evalRow("Μόνο παίκτες", P, [P, B, O])}${evalRow(`Παίκτες + ratings (${Math.round(100 * Rt.w)}%)`, B, [P, B, O])}${evalRow("Μόνο ratings", O, [P, B, O])}</tbody></table></div>
+        <p class="muted" style="font-size:12px">${Rt.games} παιγμένοι αγώνες GBL, EuroLeague και EuroCup, κάθε ένας μόνο με τους προηγούμενους. Πράσινο: το καλύτερο. Τυπική απόκλιση πρόβλεψης (πόντοι ανά 100 κατοχές): ${Rt.rmse?.toFixed(1)} με ratings, ${Rt.rmse_flat?.toFixed(1)} χωρίς.</p></div></div></section>`;
+}
+
 /** Αβεβαιότητα πέρα από τα ζάρια: τι προσαρμόστηκε, πριν/μετά, και από πού έρχεται η διασπορά. */
 function reCard(F, re) {
   const B = F.before?.ALL, A = F.after?.ALL; if (!B || !A) return "";
@@ -432,6 +521,72 @@ function simDiagram() {
       ${svg}</svg></div></section>`;
 }
 
+// ----------------------------------------------------------------------------- Αξία: μοντέλο απέναντι στις αποδόσεις
+const MKT = { ml: "Νίκη", spread: "Χάντικαπ", total: "Σύνολο" };
+const VAL = { code: "", mkt: "ml_home", line: "", odds: "", bank: 100 };
+const sgnL = (v) => (v > 0 ? "+" : "") + v;
+/** Πιθανότητα του μοντέλου για μια αγορά ενός επόμενου αγώνα: { win, push } */
+function valProb(S, mkt, line) {
+  if (mkt === "ml_home") return { win: S.p_home, push: 0 };
+  if (mkt === "ml_away") return { win: 1 - S.p_home, push: 0 };
+  if (mkt === "sp_home") return SIM.lineProb(S.margin, line, 1);
+  if (mkt === "sp_away") return SIM.lineProb(S.margin, -line, -1);
+  if (mkt === "over") return SIM.lineProb(S.total, -line, 1);
+  if (mkt === "under") return SIM.lineProb(S.total, -line, -1);
+  return null;
+}
+function valCalc() {
+  const S = SIMS?.games?.[VAL.code]; if (!S) return `<div class="muted">Διάλεξε αγώνα.</div>`;
+  const needLine = !VAL.mkt.startsWith("ml"), line = +VAL.line, odds = +String(VAL.odds).replace(",", "."), bank = +VAL.bank || 0;
+  if (needLine && !Number.isFinite(line)) return `<div class="muted">Βάλε γραμμή.</div>`;
+  const P = valProb(S, VAL.mkt, line); if (!P) return `<div class="muted">Δεν υπάρχει κατανομή για αυτόν τον αγώνα.</div>`;
+  const fair = P.win > 0 ? (1 - P.push) / P.win : null;
+  if (!(odds > 1)) return `<div class="tiles">${tile(pct(P.win), "πιθανότητα (μοντέλο)")}${P.push ? tile(pct(P.push), "επιστροφή (push)") : ""}${tile(fair ? fair.toFixed(2) : "–", "δίκαιη απόδοση")}</div><div class="muted" style="font-size:12px;margin-top:6px">Βάλε την απόδοση του bookmaker για να δεις αν έχει αξία.</div>`;
+  const ev = P.win * odds + P.push - 1, b = odds - 1, f = Math.max(0, (P.win * b - (1 - P.win - P.push)) / b), st = Math.min(0.03, 0.25 * f);
+  const verdict = ev >= 0.05 ? ["good", "Έχει αξία"] : ev > 0 ? ["muted", "Οριακή αξία (κάτω από 5%): καλύτερα όχι"] : ["bad", "Χωρίς αξία"];
+  return `<div class="tiles">${tile(pct(P.win), "πιθανότητα (μοντέλο)")}${P.push ? tile(pct(P.push), "επιστροφή (push)") : ""}${tile(fair ? fair.toFixed(2) : "–", "δίκαιη απόδοση")}
+    ${tile(`<span style="color:var(--${ev > 0 ? "good" : "bad"})">${sgnL(+(100 * ev).toFixed(1))}%</span>`, "αναμενόμενη απόδοση")}${tile(ev >= 0.05 ? `${(bank * st).toFixed(2)}` : "0", `ποσό (¼ Kelly, ταμείο ${bank})`)}</div>
+    <div style="margin-top:8px;font-weight:700;color:var(--${verdict[0]})">${verdict[1]}</div>`;
+}
+Views.value = () => {
+  const V = SIMS?.value, up = SIMS ? Object.entries(SIMS.games).filter(([, S]) => !S.played && S.margin?.hist).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
+  if (!VAL.code && up.length) VAL.code = up[0][0];
+  const fairRow = ([code, S]) => { const ph = S.p_home, ml = S.hcap?.fair ?? -S.margin.p50, tl = S.total.p50;
+    const ov = SIM.lineProb(S.total, -(Math.floor(tl) + 0.5), 1);
+    return `<tr><td><a href="#/game/${code}">${dateGR(S.date, true)}</a></td><td>${badge(S.home, 18)} ${esc(team(S.home).abbr)} – ${badge(S.away, 18)} ${esc(team(S.away).abbr)}</td>
+      <td class="n">${pct(ph)}</td><td class="n"><b>${(1 / ph).toFixed(2)}</b></td><td class="n"><b>${(1 / (1 - ph)).toFixed(2)}</b></td>
+      <td class="n">${sgnL(+(-S.margin.p50).toFixed(1))}</td><td class="n">${tl}</td><td class="n">${ov ? pct(ov.win) : "–"}</td></tr>`; };
+  const vb = (V?.upcoming || []).flatMap((g) => g.markets.filter((m) => m.value).map((m) => ({ ...m, g })));
+  const sideLab = (m, g) => m.market === "ml" ? `${m.side === "home" ? esc(team(g.home).abbr) : esc(team(g.away).abbr)} νίκη` : m.market === "spread" ? `${m.side === "home" ? esc(team(g.home).abbr) : esc(team(g.away).abbr)} ${sgnL(m.line)}` : `${m.side === "over" ? "Over" : "Under"} ${m.line}`;
+  const Lg = V?.ledger;
+  return `<section class="card"><h2>Αξία</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Ένα στοίχημα έχει <b>αξία</b> όταν η πιθανότητα του μοντέλου επί την απόδοση ξεπερνά καθαρά το 1. Κανόνες: μόνο όταν η αναμενόμενη απόδοση είναι ≥ ${Math.round(100 * (V?.rules?.min_ev ?? 0.05))}% (περιθώριο για τα λάθη του μοντέλου), όχι όταν το μοντέλο διαφωνεί πολύ με την αγορά ή η απόδοση είναι πάνω από ${V?.rules?.max_odds ?? 5}, <b>μονά</b> στοιχήματα (όχι παρολί: πολλαπλασιάζουν και το περιθώριο του bookmaker και τα λάθη), ποσό με ¼ Kelly και το πολύ 3% του ταμείου.</p>
+    ${V?.has_odds ? (() => { const ck = (V.upcoming || []).flatMap((g) => g.markets.filter((m) => m.check && m.ev >= V.rules.min_ev).map((m) => ({ ...m, g })));
+      return ck.length ? `<p class="muted" style="font-size:13px;margin:0">Δεν προτείνονται ${ck.length} επιλογές με «αξία» όπου το μοντέλο διαφωνεί με την αγορά πάνω από ${Math.round(100 * V.rules.max_gap)} μονάδες ή η απόδοση είναι πάνω από ${V.rules.max_odds}: εκεί η αγορά συνήθως ξέρει κάτι (απουσία, τραυματισμός). ${ck.slice(0, 4).map((m) => `${esc(team(m.g.home).abbr)}–${esc(team(m.g.away).abbr)} ${m.market === "total" ? (m.side === "over" ? "Over " : "Under ") + m.line : m.side === "home" ? esc(team(m.g.home).abbr) : esc(team(m.g.away).abbr)} (${pct(m.p)} έναντι ${pct(m.market_p)})`).join(" · ")}</p>` : ""; })() : `<div class="empty" style="text-align:left">Δεν υπάρχουν ακόμα αποδόσεις της αγοράς για ${esc(DB.league)}: χρειάζεται δωρεάν κλειδί του The Odds API ως GitHub secret <span class="num">ODDS_API_KEY</span>. Μέχρι τότε: οι δίκαιες αποδόσεις του μοντέλου και ο υπολογιστής πιο κάτω, με την απόδοση που βλέπεις στον bookmaker σου.</div>`}</section>
+  ${V?.has_odds ? `<section><h2>Στοιχήματα με αξία τώρα</h2>${vb.length ? `<div class="tbl"><table><thead><tr><th>Αγώνας</th><th>Επιλογή</th><th class="n">απόδοση</th><th class="n">μοντέλο</th><th class="n">αγορά</th><th class="n">αναμ. απόδοση</th><th class="n">ποσό (% ταμείου)</th></tr></thead><tbody>
+    ${vb.sort((a, b) => b.ev - a.ev).map((m) => `<tr><td><a href="#/game/${m.g.code}">${dateGR(m.g.date, true)} ${esc(team(m.g.home).abbr)}–${esc(team(m.g.away).abbr)}</a></td><td><b>${sideLab(m, m.g)}</b> <span class="muted" style="font-size:11px">${MKT[m.market]}</span></td>
+      <td class="n">${m.odds.toFixed(2)}</td><td class="n">${pct(m.p)}</td><td class="n">${m.market_p != null ? pct(m.market_p) : "–"}</td><td class="n" style="color:var(--good)">+${(100 * m.ev).toFixed(1)}%</td><td class="n"><b>${(100 * m.stake).toFixed(1)}%</b></td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">«αγορά»: η πιθανότητα που δίνουν οι bookmakers χωρίς το περιθώριό τους (μέσος όρος).</p>` : `<div class="empty">Κανένα στοίχημα με αξία ≥ ${Math.round(100 * V.rules.min_ev)}% αυτή τη στιγμή.</div>`}</section>` : ""}
+  <section><h2>Δίκαιες αποδόσεις του μοντέλου</h2>${up.length ? `<div class="tbl"><table><thead><tr><th>Ημ/νία</th><th>Αγώνας</th><th class="n">P(γηπ.)</th><th class="n">1</th><th class="n">2</th><th class="n">χάντικαπ γηπ.</th><th class="n">σύνολο</th><th class="n">P(over)</th></tr></thead><tbody>${up.map(fairRow).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">1/2: δίκαιες αποδόσεις νίκης (χωρίς περιθώριο). Χάντικαπ: η διάμεσος της διαφοράς από τη μεριά του γηπεδούχου. Σύνολο: διάμεσος· P(over) για τη μισή γραμμή πάνω από τη διάμεσο. Από ${SIMS.n.toLocaleString("el-GR")} προσομοιώσεις ανά αγώνα (με ratings και αβεβαιότητα).</p>` : `<div class="empty">Δεν υπάρχουν επόμενοι αγώνες με προσομοίωση.</div>`}</section>
+  <section class="card" id="val-calc"><h2>Υπολογιστής</h2>
+    <div class="filters"><label style="max-width:100%;min-width:0">Αγώνας<select data-val="code" style="max-width:100%">${up.map(([c, S]) => `<option value="${c}" ${c === VAL.code ? "selected" : ""}>${dateGR(S.date, true)} · ${esc(team(S.home).name)} – ${esc(team(S.away).name)}</option>`).join("")}</select></label>
+      <label>Αγορά<select data-val="mkt">${[["ml_home", "Νίκη γηπεδούχου"], ["ml_away", "Νίκη φιλοξενούμενου"], ["sp_home", "Χάντικαπ γηπεδούχου"], ["sp_away", "Χάντικαπ φιλοξενούμενου"], ["over", "Over"], ["under", "Under"]].map(([k, l]) => `<option value="${k}" ${k === VAL.mkt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label>Γραμμή<input data-val="line" inputmode="decimal" placeholder="π.χ. −4.5 / 160.5" value="${esc(VAL.line)}" style="width:120px"></label>
+      <label>Απόδοση<input data-val="odds" inputmode="decimal" placeholder="π.χ. 1.90" value="${esc(VAL.odds)}" style="width:90px"></label>
+      <label>Ταμείο<input data-val="bank" inputmode="decimal" value="${esc(VAL.bank)}" style="width:80px"></label></div>
+    <div id="val-out" style="margin-top:10px">${valCalc()}</div>
+    <p class="muted" style="font-size:12px">Χάντικαπ: η γραμμή από τη μεριά της ομάδας που διαλέγεις (π.χ. −4.5 = πρέπει να κερδίσει με 5+). Στις ακέραιες γραμμές μετράει και η επιστροφή (push).</p></section>
+  ${Lg && (Lg.n || Lg.open) ? `<section class="card"><h2>Ημερολόγιο (εικονικά στοιχήματα)</h2>
+    <div class="tiles">${tile(Lg.n, "τακτοποιημένα")}${tile(Lg.open, "ανοιχτά")}${tile(Lg.n ? pct(Lg.wins / Lg.n) : "–", "κερδισμένα")}${tile(Lg.roi != null ? `<span style="color:var(--${Lg.roi >= 0 ? "good" : "bad"})">${sgnL(+(100 * Lg.roi).toFixed(1))}%</span>` : "–", "απόδοση (ROI)")}
+      ${Lg.vs_market ? tile(`${Lg.vs_market.brier_model.toFixed(3)} / ${Lg.vs_market.brier_market.toFixed(3)}`, `Brier μοντέλο / αγορά (${Lg.vs_market.n} αγ.)`) : ""}</div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>Αγώνας</th><th>Επιλογή</th><th class="n">απόδοση</th><th class="n">μοντέλο</th><th class="n">ποσό</th><th>αποτέλεσμα</th></tr></thead><tbody>
+      ${Lg.recent.map((b) => `<tr><td><a href="#/game/${b.code}">${dateGR(b.date, true)} ${esc(team(b.home).abbr)}–${esc(team(b.away).abbr)}</a></td><td>${sideLab(b, b)}</td><td class="n">${b.odds.toFixed(2)}</td><td class="n">${pct(b.p)}</td><td class="n">${(100 * b.stake).toFixed(1)}%</td>
+        <td style="color:var(--${b.result === "win" ? "good" : b.result === "loss" ? "bad" : "muted"})">${b.result === "win" ? "κέρδος" : b.result === "loss" ? "χάθηκε" : b.result === "push" ? "επιστροφή" : "ανοιχτό"}${b.profit ? ` (${sgnL(+(100 * b.profit).toFixed(2))}%)` : ""}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">Κάθε στοίχημα με αξία καταγράφεται με την τελευταία απόδοση πριν από τον αγώνα και τακτοποιείται αυτόματα. Το κριτήριο που μετράει: αν σε βάθος χρόνου το ROI μένει θετικό και αν το Brier του μοντέλου πλησιάζει ή κερδίζει της αγοράς. Με λίγες δεκάδες στοιχήματα, το αποτέλεσμα είναι κυρίως τύχη.</p></section>` : ""}`;
+};
+Views.value.bind = () => {};
+
 Views.sims = () => {
   const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
   const C = SIMS?.check, up = G.filter(([, S]) => !S.played), pl = G.filter(([, S]) => S.played).reverse();
@@ -450,6 +605,7 @@ Views.sims = () => {
       ${Object.entries(C.coverage || {}).map(([k, c]) => `<tr><td>${COVL[k] || k}</td><td class="n">${c.n}</td><td class="n" style="color:var(--${Math.abs(c.box - 0.5) <= 0.07 ? "good" : "bad"})">${pct(c.box)}</td>
         <td class="n" style="color:var(--${Math.abs(c.whisk - 0.9) <= 0.05 ? "good" : "bad"})">${pct(c.whisk)}</td><td class="n">${pct(c.below_median)}</td></tr>`).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">Πράσινο: κοντά στον στόχο. Αν το «κουτί» πιάνει πολύ περισσότερο από 50%, η προσομοίωση είναι πιο αβέβαιη απ' όσο χρειάζεται (πολύ φαρδιά)· αν πιάνει λιγότερο, είναι πολύ σίγουρη.</p></section>` : ""}
+  ${SIMS?.ratings ? ratingsCard(SIMS.ratings) : ""}
   ${SIMS?.re_fit ? reCard(SIMS.re_fit, SIMS.re) : ""}
   ${SIMS?.check_sources ? srcCard(SIMS.check_sources) : ""}
   ${SIMS?.beta_fit ? betaCard(SIMS.beta_fit) : ""}
@@ -608,6 +764,10 @@ const Live = {
     const sc = (SCEN[g.code] ||= scNew());
     const scOpts = () => ({ beta: SIMS?.beta, out: sc.out, avg: sc.avg, play: sc.play, paceAdj: sc.paceAdj, sources: sc.sources, extW: sc.extW, re: sc.re ? SIMS?.re : SIM.RE0 });
     let baseMC = SIMS?.games?.[g.code] && !SIMS.games[g.code].played ? SIMS.games[g.code] : null;
+    // διόρθωση ομάδας (ratings): από τις έτοιμες προσομοιώσεις, αλλιώς υπολογίζεται εδώ· μένει ίδια σε κάθε σενάριο
+    base.tAdj = SIMS?.games?.[g.code]?.tadj || (() => { const Rt = SIMS?.ratings; if (!Rt?.w || !Rt.teams[g.home] || !Rt.teams[g.away]) return null;
+      const T = Rt.teams, tgt = [Rt.mu + Rt.h + T[g.home].o - T[g.away].d, Rt.mu + T[g.away].o - T[g.home].d].map((x) => (x * base.pace) / 100);
+      try { return SIM.calibrate(base, tgt, Rt.w, 300).tAdj; } catch (e) { return null; } })();
     const SPEEDS = [["×10", 10], ["×60", 60], ["×240", 240], ["άμεσα", 1e9]];
     let speed = 60, log = [], idx = 0, clock = 0, raf = 0, last = 0, running = false, box = {};
     el.innerHTML = `<div class="section-head"><h2 style="margin:0">Ζωντανή προσομοίωση</h2>
@@ -669,7 +829,7 @@ const Live = {
         res.innerHTML = scCompare(baseMC, SIM.many(ctx, 5000, 12), ctx); }, 30);
     };
     const start = () => {
-      try { ctx = scCount(sc) ? SIM.prepare(DB, g.home, g.away, scOpts()) : base; } catch (e) { $("#sc-res", el).innerHTML = `<div class="muted">Σφάλμα σεναρίου: ${esc(e.message)}</div>`; return; }
+      try { ctx = scCount(sc) ? Object.assign(SIM.prepare(DB, g.home, g.away, scOpts()), { tAdj: base.tAdj }) : base; } catch (e) { $("#sc-res", el).innerHTML = `<div class="muted">Σφάλμα σεναρίου: ${esc(e.message)}</div>`; return; }
       if (ctx.T[0].pl.length < 5 || ctx.T[1].pl.length < 5) { $("#sc-res", el).innerHTML = `<div class="muted" style="margin-top:8px">Χρειάζονται τουλάχιστον 5 παίκτες ανά ομάδα.</div>`; return; }
       runMC();
       log = []; SIM.game(ctx, SIM.rng((Math.random() * 2 ** 31) | 0), log);
@@ -745,6 +905,9 @@ function popup(pid) {
       <button class="icon-btn x" data-close aria-label="Κλείσιμο">✕</button></div>
     <div class="tiles">${tile(f1(a.min), "λεπτά")}${tile(f1(a.pts), "πόντοι")}${tile(f1(a.reb), "ριμπ.")}${tile(f1(a.ast), "ασίστ")}${tile(pct(p.pct.fg3), "3π%")}${tile(`<b>${f1(a.pir)}</b>`, "PIR")}</div>
     <div class="muted" style="font-size:12px">${p.gp} αγώνες · μέσοι όροι ανά αγώνα</div>
+    ${(() => { const me = playerEval(pid); if (!me) return ""; const col = team(p.team).c1 || "var(--accent)";
+      return `<div style="display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center">${radarSVG([{ pcts: me.pcts, color: col, label: p.name }, { pcts: RADAR.map(() => 0.5), color: "#d9a227", label: "μέσος όρος", dash: true }], { size: 150, labels: false })}
+        <div style="font-size:12px;display:grid;grid-template-columns:auto auto;gap:2px 10px">${RADAR.map(([, lab], i) => `<span class="muted">${lab}</span><b class="num" style="color:var(--${me.pcts[i] >= 0.67 ? "good" : me.pcts[i] <= 0.33 ? "bad" : "fg"})">${Math.round(100 * me.pcts[i])}</b>`).join("")}</div></div>`; })()}
     ${last.length ? `<div class="tbl"><table><thead><tr><th>Τελευταίοι</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">PIR</th></tr></thead><tbody>
       ${last.map((g) => `<tr><td><a href="#/game/${g.g}" data-close>${dateGR(g.date)} ${g.home ? "vs" : "@"} ${esc(team(g.opp).abbr)}</a> <span style="color:var(--${g.res === "W" ? "good" : "bad"})">${g.res === "W" ? "Ν" : "Η"}</span></td><td class="n">${f1(g.min)}</td><td class="n">${g.pts}</td><td class="n">${g.reb}</td><td class="n">${g.ast}</td><td class="n"><b>${g.pir}</b></td></tr>`).join("")}</tbody></table></div>` : ""}
     ${nextDist(pid, true)}
@@ -758,7 +921,7 @@ function route() {
   const [, view = "", arg = ""] = (location.hash || "#/").split("/");
   return { view: view || "home", arg: decodeURIComponent(arg) };
 }
-const NAV = { sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
+const NAV = { value: "#/value", sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
 function render() {
   const { view, arg } = route(), V = Views[view] || Views.home, el = $("#view");
   if (Live.stop) Live.stop();
@@ -769,6 +932,13 @@ function render() {
   const titles = { team: () => DB.teams[arg]?.name, player: () => DB.players[arg]?.name, game: () => { const g = DB.games[arg]; return g && `${team(g.home).name} – ${team(g.away).name}`; } };
   document.title = [titles[view]?.(), "o-dimarxos"].filter(Boolean).join(" · ");
 }
+document.addEventListener("input", (e) => {
+  const k = e.target.dataset?.val; if (!k) return;
+  VAL[k] = e.target.value; const o = $("#val-out"); if (o) o.innerHTML = valCalc();
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id === "rd-cmp") { RD_CMP.pid = e.target.value; const sec = $("#radar"); if (sec) sec.outerHTML = radarSection(e.target.dataset.pid); }
+});
 document.addEventListener("click", (e) => {
   const p = e.target.closest("[data-pop]"); if (p) { e.preventDefault(); popup(p.dataset.pop); return; }
   const ss = e.target.closest("[data-simstat],[data-simmom]");

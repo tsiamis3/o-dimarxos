@@ -6,10 +6,11 @@
 const fs = require("fs");
 const path = require("path");
 const SIM = require(path.join(__dirname, "..", "site", "sim.js"));
+const RT = require(path.join(__dirname, "ratings.js"));
 const ROOT = path.join(__dirname, "..");
 const MIN_PRIOR = 2;
 
-function league(LEAGUE, { quiet = false } = {}) {
+function league(LEAGUE, { quiet = false, ratings = true } = {}) {
 const DB0 = JSON.parse(fs.readFileSync(path.join(ROOT, "site", "db", `${LEAGUE}.json`), "utf8"));
 const RE = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, "data", "sim_re.json"), "utf8")).re; } catch { return null; } })();
 if (RE) DB0.re = RE;
@@ -115,6 +116,20 @@ console.log("  β (όλοι οι αγώνες):"); for (const k of SIM.EVENTS) c
 function canRun(DB, g) { return (DB.teamstats[g.home]?.gp || 0) >= MIN_PRIOR && (DB.teamstats[g.away]?.gp || 0) >= MIN_PRIOR; }
 const actualBox = (code) => { const o = {}; for (const l of LOGS) if (l.g === code && l.min > 0) o[l.pid] = Object.fromEntries(["min", ...STATS].map((k) => [k, l[k]])); return o; };
 const stripHist = (r) => { for (const d of [r.score[0], r.score[1], r.total]) delete d.hist; for (const side of r.players) for (const p of side) for (const k of STATS) delete p[k].hist; return r; };
-return { DB0, LOGS, PLAYED, WF, dbAsOf, canRun, actualBox, stripHist, seedOf, STATS, FIT, BETA, oos, RIDGE, USE_BETA, RE };
+// ---------------------------------------------------------------- ratings ομάδων (data/ratings_fit.json): διόρθωση σε επίπεδο ομάδας
+const RF = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, "data", "ratings_fit.json"), "utf8")); } catch { return null; } })();
+const TROWS = RT.teamGames(LOGS), TEAMS = Object.keys(DB0.teams), PRIOR = DB0.prior_ratings || {};
+const ratingsAsOf = (date) => RT.fit(TROWS.filter((r) => !date || r.date < date), { asOf: date || TROWS.map((r) => r.date).sort().at(-1), teams: TEAMS, prior: PRIOR, ...(RF?.hyper || {}) });
+/** Διόρθωση ομάδας για ένα ctx: στόχος από τα ratings, μετακίνηση κατά w (0 = χωρίς). */
+function teamAdj(ctx, home, away, R, seed) {
+  const w = RF?.w || 0; if (!w || !R) return null;
+  const tgt = RT.predict(R, home, away).map((x) => (x * ctx.pace) / 100);
+  return SIM.calibrate(ctx, tgt, w, 400, seed).tAdj;
+}
+if (ratings && RF?.w) {
+  for (const w of WF.values()) { const c = { ...w.ctx, beta: w.beta }; w.tAdj = teamAdj(c, w.g.home, w.g.away, ratingsAsOf(w.g.date), seedOf(w.g.code) + 3); }
+  console.log(`  ratings: w=${RF.w}, διόρθωση ομάδας σε ${WF.size} παιγμένους αγώνες (walk-forward)`);
+}
+return { DB0, LOGS, PLAYED, WF, dbAsOf, canRun, actualBox, stripHist, seedOf, STATS, FIT, BETA, oos, RIDGE, USE_BETA, RE, RF, ratingsAsOf, teamAdj };
 }
 module.exports = { league, SIM, ROOT };

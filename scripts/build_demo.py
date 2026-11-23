@@ -309,11 +309,17 @@ def build(comp):
         if grp:
             r["group"] = grp.get(r["code"])
     TS, LG = team_stats(logs)
+    # αρχική τιμή των ratings: η περσινή σεζόν της ίδιας λίγκας (επίθεση/άμυνα σε πόντους ανά 100 κατοχές, ως προς τη λίγκα)
+    prior = {}
+    fp = SITE_DATA / f"{comp}{season - 1}.json"
+    if fp.exists():
+        TSp, LGp = team_stats(objs(json.loads(fp.read_text())["logs"]))
+        prior = {t: {"o": round(v["ortg"] - LGp["ortg"], 2), "d": round(LGp["ortg"] - v["drtg"], 2), "gp": v["gp"]} for t, v in TSp.items()}
     out = {"comp": comp, "league": C.get("name") or comp, "short": COMP_LABEL.get(comp, comp), "season": season,
            "leagues": [{"comp": c["code"], "name": c.get("name") or c["code"], "short": COMP_LABEL.get(c["code"], c["code"])}
                        for c in man["competitions"] if c["code"] in LEAGUES], "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
            "demo": DEMO, "sources": sources, "teams": T, "opponents": opp, "standings": standings, "players": P, "games": G,
-           "teamstats": TS, "lg": LG}
+           "teamstats": TS, "lg": LG, "prior_ratings": prior}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
     print(f"-> {OUT.relative_to(ROOT)}: {len(T)} ομάδες{f' σε {len(set(grp.values()))} ομίλους' if grp else ''}, {len(P)} παίκτες, {len(G)} αγώνες "
