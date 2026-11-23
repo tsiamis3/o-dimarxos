@@ -1,25 +1,31 @@
 """
-Βάση του νέου σάιτ (v2, demo): Stoiximan GBL, δύο ομάδες (Άρης, ΠΑΟΚ).
+Βάση του νέου σάιτ (v2): Stoiximan GBL, όλες οι ομάδες και όλοι οι αγώνες της τρέχουσας σεζόν (μόνο δεδομένα της λίγκας).
+Προαιρετικά για την προσομοίωση: οι αγώνες των ίδιων παικτών σε άλλες λίγκες/σεζόν (EuroLeague, EuroCup, GBL περσινή),
+με μετατροπή στην κλίμακα της GBL από τους κοινούς παίκτες (sources, player.ext).
 
 Διαβάζει ό,τι έχει ήδη φτιάξει το build_site.py (site/data/GBL{season}.json, teams_meta.json, edge_GBL.json)
 και γράφει ΕΝΑ αρχείο με όλα όσα χρειάζεται το σάιτ, ήδη συνδεδεμένα μεταξύ τους:
 
-  teams      ομάδα -> στοιχεία, ρεκόρ, φόρμα, ρόστερ, αγώνες        (μόνο οι ομάδες του demo)
+  teams      ομάδα -> στοιχεία, ρεκόρ, φόρμα, ρόστερ, αγώνες        (όλες οι ομάδες της λίγκας)
   opponents  ομάδα -> όνομα/σήμα                                     (οι αντίπαλοί τους)
   standings  βαθμολογία όλης της λίγκας (από όλους τους αγώνες)
   players    παίκτης -> βιογραφικά, μέσοι όροι, αγώνας-αγώνας        (όλη η λίγκα: χρειάζονται για την προσομοίωση)
   teamstats  ομάδα -> ρυθμός, ποσοστά επίθεσης/άμυνας                 (όλη η λίγκα, για την προσομοίωση)
   league     μέσοι όροι λίγκας
-  games      αγώνας -> σκορ, box score ή πρόγνωση                    (αγώνες των ομάδων του demo)
+  games      αγώνας -> σκορ, box score ή πρόγνωση                    (όλοι οι αγώνες της σεζόν)
+  sources    άλλες πηγές για την προσομοίωση -> ετικέτα, κοινοί παίκτες, μετατροπή κλίμακας (logit) ανά ποσοστό
+  player.ext πηγή -> [[ημερομηνία, λεπτά, 2πμ, 2πα, 3πμ, 3πα, βολ.μ, βολ.α, λάθη], …] (μόνο ποιότητα, όχι ρόλος)
 
     python scripts/build_demo.py         # -> site/db/demo.json
 """
 import json
+import math
 from datetime import datetime, timezone
 
 from config import ROOT, SITE_DATA
 
-DEMO = ["00000005", "0000000C"]            # Άρης, ΠΑΟΚ
+EXT_COLS = ["date", "min", "fg2m", "fg2a", "fg3m", "fg3a", "ftm", "fta", "tov"]
+COMP_LABEL = {"E": "EuroLeague", "U": "EuroCup", "GBL": "GBL"}
 OUT = ROOT / "site" / "db" / "demo.json"
 STATS = ["MIN", "PTS", "REB", "OREB", "DREB", "AST", "STL", "BLK", "TOV", "PF", "PIR", "FG2M", "FG2A", "FG3M", "FG3A", "FTM", "FTA"]
 
@@ -80,6 +86,70 @@ def team_stats(logs):
     return TS, LG
 
 
+def lgt(p):
+    p = min(max(p, 0.005), 0.995)
+    return math.log(p / (1 - p))
+
+
+def ext_sources(season, P, uid_gbl):
+    """Αγώνες των παικτών της GBL σε άλλες λίγκες/σεζόν και μετατροπή κλίμακας ανά ποσοστό.
+    Κλίμακα: για τους κοινούς παίκτες, logit(ποσοστό στη GBL τώρα) − logit(ποσοστό στην πηγή), από τα αθροίσματα,
+    «φρεναρισμένο» προς το 0 όταν οι προσπάθειες είναι λίγες."""
+    def rates(t):
+        fga, plays = t["fg2a"] + t["fg3a"], t["fg2a"] + t["fg3a"] + 0.44 * t["fta"] + t["tov"]
+        return {"fg2": (t["fg2m"], t["fg2a"]), "fg3": (t["fg3m"], t["fg3a"]), "ft": (t["ftm"], t["fta"]),
+                "tov": (t["tov"], plays), "ftrip": (0.44 * t["fta"], plays), "three": (t["fg3a"], fga)}
+    K0 = {"fg2": 150, "fg3": 150, "ft": 100, "tov": 300, "ftrip": 300, "three": 300}
+    out = {}
+    for comp, s in (("GBL", season - 1), ("E", season), ("U", season), ("E", season - 1), ("U", season - 1)):
+        f = SITE_DATA / f"{comp}{s}.json"
+        if not f.exists():
+            continue
+        D = json.loads(f.read_text())
+        gd = {g["gameCode"]: g["date"] for g in objs(D["games"])}
+        key = f"{comp}{s}"
+        # ποιος παίκτης της GBL είναι ποιος στην πηγή
+        mine = {}
+        for pid in P:
+            k = pid if comp == "GBL" else uid_gbl.get(pid)
+            if k and not str(k).startswith("GBL:"):
+                mine[str(k)] = pid
+        n_games = 0
+        for l in objs(D["logs"]):
+            pid = mine.get(str(l["pid"]))
+            if not pid or not (l.get("MIN") or 0) > 0:
+                continue
+            row = [gd.get(l["gameCode"]), round(float(l["MIN"]), 1)] + [int(l.get(c.upper()) or 0) for c in EXT_COLS[2:]]
+            P[pid].setdefault("ext", {}).setdefault(key, []).append(row)
+            n_games += 1
+        players = [pid for pid in P if key in P[pid].get("ext", {})]
+        if not players:
+            continue
+        sumT = lambda rows: {c: sum(r[i] for r in rows) for i, c in enumerate(EXT_COLS) if i >= 2}
+        A = {c: 0.0 for c in EXT_COLS[2:]}; B = {c: 0.0 for c in EXT_COLS[2:]}
+        for pid in players:
+            a = P[pid]["tot"]
+            if P[pid]["gp"] == 0:
+                continue
+            for c in A:
+                A[c] += a[c.upper()]
+            for c, v in sumT(P[pid]["ext"][key]).items():
+                B[c] += v
+        ra, rb = rates(A), rates(B)
+        shift = {}
+        for k in ra:
+            (ma, na), (mb, nb) = ra[k], rb[k]
+            if na > 0 and nb > 0:
+                n = min(na, nb)
+                shift[k] = round((lgt(ma / na) - lgt(mb / nb)) * n / (n + K0[k]), 4)
+            else:
+                shift[k] = 0.0
+        out[key] = {"label": f"{COMP_LABEL[comp]} {s}-{(s + 1) % 100:02d}", "comp": comp, "season": s,
+                    "players": len(players), "games": n_games, "shift": shift, "cols": EXT_COLS}
+        print(f"   πηγή {key}: {len(players)} κοινοί παίκτες, {n_games} εμφανίσεις, κλίμακα {shift}")
+    return out
+
+
 def main():
     man = json.loads((SITE_DATA / "manifest.json").read_text())
     season = max(next(c for c in man["competitions"] if c["code"] == "GBL")["seasons"])
@@ -108,14 +178,15 @@ def main():
     for i, r in enumerate(standings, 1):
         r["pos"], r["form"] = i, r["form"][-5:]
 
-    # ---- αγώνες των ομάδων του demo (παιγμένοι + επερχόμενοι)
+    DEMO = [r["code"] for r in standings] + sorted(c for c in S["teams"] if c not in {r["code"] for r in standings})
+    # ---- όλοι οι αγώνες (παιγμένοι + επερχόμενοι)
     G = {}
     for g in games:
-        if g["home"] in DEMO or g["away"] in DEMO:
+        if True:
             G[g["gameCode"]] = {"code": g["gameCode"], "round": g["round"], "date": g["date"], "time": None, "home": g["home"],
                                 "away": g["away"], "hs": g["hs"], "as": g["as"], "played": True, "box": {g["home"]: [], g["away"]: []}}
     for u in sorted(upcoming, key=lambda u: (u["date"], u.get("time") or "")):
-        if u["home"] in DEMO or u["away"] in DEMO:
+        if True:
             p = prob.get(u["gameCode"])
             G[u["gameCode"]] = {"code": u["gameCode"], "round": u["round"], "date": u["date"], "time": u.get("time"), "home": u["home"],
                                 "away": u["away"], "played": False,
@@ -146,6 +217,10 @@ def main():
                 p["tot"][k] += float(l.get(k) or 0)
         if l["gameCode"] in G and G[l["gameCode"]]["played"]:
             G[l["gameCode"]]["box"].setdefault(l["team"], []).append({"pid": l["pid"], **{k.lower(): row[k.lower()] for k in STATS}})
+    # ---- άλλες λίγκες/σεζόν των ίδιων παικτών (για την προσομοίωση, προαιρετικά)
+    car = SITE_DATA / "careers.json"
+    uid_gbl = json.loads(car.read_text()).get("uid", {}).get("GBL", {}) if car.exists() else {}
+    sources = ext_sources(season, P, uid_gbl)
     for p in P.values():
         n = max(p["gp"], 1)
         t = p.pop("tot")
@@ -167,7 +242,7 @@ def main():
 
     TS, LG = team_stats(logs)
     out = {"league": "Stoiximan GBL", "season": season, "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-           "demo": DEMO, "teams": T, "opponents": opp, "standings": standings, "players": P, "games": G,
+           "demo": DEMO, "sources": sources, "teams": T, "opponents": opp, "standings": standings, "players": P, "games": G,
            "teamstats": TS, "lg": LG}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))

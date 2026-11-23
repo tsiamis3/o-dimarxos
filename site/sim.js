@@ -64,9 +64,30 @@
     return a;
   };
 
+  /** Αγώνες ενός παίκτη σε άλλες λίγκες/σεζόν (player.ext), μετατρεμμένοι στην κλίμακα της GBL (DB.sources[k].shift),
+   *  με βάρος w ανά αγώνα, μόνο πριν από την ημερομηνία asOf. Μόνο «ποιότητα»: ποσοστά, λάθη, βολές, μερίδιο τριπόντων. */
+  SIM.extTot = function (p, DB, sources, asOf, w = 0.5) {
+    const E = { fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0, tov: 0, plays: 0, games: 0 };
+    if (!p.ext || !sources?.length || !(w > 0)) return E;
+    for (const k of sources) {
+      const rows = p.ext[k], S = DB.sources?.[k]; if (!rows || !S) continue;
+      const t = [0, 0, 0, 0, 0, 0, 0]; let n = 0;
+      for (const r of rows) { if (asOf && !(r[0] < asOf)) continue; n++; for (let i = 0; i < 7; i++) t[i] += r[i + 2]; }
+      if (!n) continue;
+      const [m2, a2, m3, a3, fm, fa, to] = t, sh = S.shift, fga = a2 + a3, plays = fga + 0.44 * fa + to;
+      const adj = (m, a, k2) => (a > 0 ? inv(lc(m / a) + (sh[k2] || 0)) : 0);
+      const p2 = adj(m2, a2, "fg2"), p3 = adj(m3, a3, "fg3"), pf = adj(fm, fa, "ft");
+      const A3 = fga > 0 ? fga * adj(a3, fga, "three") : 0, A2 = fga - A3, FA = plays > 0 ? (plays * adj(0.44 * fa, plays, "ftrip")) / 0.44 : 0;
+      E.fg2a += w * A2; E.fg2m += w * A2 * p2; E.fg3a += w * A3; E.fg3m += w * A3 * p3; E.fta += w * FA; E.ftm += w * FA * pf;
+      E.tov += w * (plays > 0 ? plays * adj(to, plays, "tov") : 0); E.plays += w * plays; E.games += n;
+    }
+    return E;
+  };
+
   /** DB: η βάση του σάιτ (db/demo.json).
    *  opts: { out: [pid…] εκτός, pace: κατοχές ανά ομάδα (σταθερές), paceAdj: ± κατοχές στον μέσο ρυθμό, beta,
-   *          avg: { pid: { min, fga, fg2p, fg3p, ftp, tov, reb, ast } } σενάριο: νέοι μέσοι όροι }
+   *          avg: { pid: { min, fga, fg2p, fg3p, ftp, tov, reb, ast } } σενάριο: νέοι μέσοι όροι,
+   *          sources: [κλειδιά του DB.sources] αγώνες σε άλλες λίγκες/σεζόν, extW: βάρος ανά τέτοιο αγώνα, asOf: ημερομηνία (walk-forward) }
    *  Ό,τι αλλάζει στο σενάριο θεωρείται «η αλήθεια»: τα ποσοστά δεν συρρικνώνονται προς τη λίγκα και
    *  ο παίκτης τα πετυχαίνει απέναντι σε μέση άμυνα. */
   SIM.prepare = function (DB, home, away, opts = {}) {
@@ -91,14 +112,16 @@
       const totMin = ros.reduce((s, p) => s + per(p, AV(p).min), 0) || 1;
       const pl = ros.map((p) => { const a = AV(p), g = p.gp, fga = a.fg2a + a.fg3a, plays = fga + 0.44 * a.fta + a.tov;
         const T = (x) => x * g;                                         // σύνολα σεζόν
+        const E = SIM.extTot(p, DB, opts.sources, opts.asOf, opts.extW ?? 0.5);   // + άλλες λίγκες (κλίμακα GBL)
         return { pid: p.pid, name: p.name, num: p.number,
           minShare: per(p, a.min) / totMin,                             // κλάσμα των λεπτών της ομάδας
           wOff: Math.max(0.02, per(p, plays)), wDef: Math.max(0.2, per(p, a.min)),
           wOreb: Math.max(0.01, per(p, a.oreb)), wDreb: Math.max(0.02, per(p, a.dreb)), wAst: Math.max(0.01, per(p, a.ast)),
-          tov: shrink(T(a.tov), T(plays), lg.tovPlay, 25),
-          ftrip: shrink(T(0.44 * a.fta), T(plays), lg.ftripPlay, 25),
-          three: shrink(T(a.fg3a), T(fga), lg.three, 15),
-          fg2: shrink(T(a.fg2m), T(a.fg2a), lg.fg2, 30), fg3: shrink(T(a.fg3m), T(a.fg3a), lg.fg3, 50), ft: shrink(T(a.ftm), T(a.fta), lg.ft, 25),
+          tov: shrink(T(a.tov) + E.tov, T(plays) + E.plays, lg.tovPlay, 25),
+          ftrip: shrink(T(0.44 * a.fta) + 0.44 * E.fta, T(plays) + E.plays, lg.ftripPlay, 25),
+          three: shrink(T(a.fg3a) + E.fg3a, T(fga) + E.fg2a + E.fg3a, lg.three, 15),
+          fg2: shrink(T(a.fg2m) + E.fg2m, T(a.fg2a) + E.fg2a, lg.fg2, 30), fg3: shrink(T(a.fg3m) + E.fg3m, T(a.fg3a) + E.fg3a, lg.fg3, 50),
+          ft: shrink(T(a.ftm) + E.ftm, T(a.fta) + E.fta, lg.ft, 25), extGames: E.games,
           // αμυντικοί συντελεστές (1 = μέσος όρος), μισοί προς τον μέσο όρο
           stlF: 0.5 + 0.5 * (shrink(T(a.stl), T(a.min), lg.stlMin, 150) / lg.stlMin),
           blkF: 0.5 + 0.5 * (shrink(T(a.blk), T(a.min), lg.blkMin, 150) / lg.blkMin),
