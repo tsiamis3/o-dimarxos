@@ -241,7 +241,7 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401910027,5,2026-11-21,20:00,SA,San Antonio Spurs,NO,New Orleans Pelicans,114.0,91.0,True
 401910028,5,2026-11-21,22:00,SAC,Sacramento Kings,BOS,Boston Celtics,97.0,96.0,True
 401910029,5,2026-11-22,15:30,ATL,Atlanta Hawks,DET,Detroit Pistons,107.0,97.0,True
-401910030,5,2026-11-22,18:00,MIA,Miami Heat,OKC,Oklahoma City Thunder,,,False
+401910030,5,2026-11-22,18:00,MIA,Miami Heat,OKC,Oklahoma City Thunder,123.0,113.0,True
 401910031,5,2026-11-22,19:00,WSH,Washington Wizards,ORL,Orlando Magic,,,False
 401910032,5,2026-11-22,19:00,CHI,Chicago Bulls,DEN,Denver Nuggets,,,False
 401910033,5,2026-11-22,19:00,UTAH,Utah Jazz,DAL,Dallas Mavericks,,,False
