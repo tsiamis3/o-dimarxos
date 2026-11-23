@@ -354,7 +354,7 @@ function ratingsCard(Rt) {
       ${rows.map((x, i) => `<tr><td class="n">${i + 1}</td><td>${tlink(x.t, 18)}</td><td class="n">${sg(x.o)}</td><td class="n">${sg(x.d)}</td><td class="n"><b>${sg(x.net)}</b></td></tr>`).join("")}</tbody></table></div>
       <div><div class="tbl"><table><thead><tr><th>Όλες οι λίγκες (walk-forward)</th><th class="n">Brier</th><th class="n">νικητής</th><th class="n">CRPS διαφ.</th><th class="n">CRPS συν.</th></tr></thead><tbody>
         ${evalRow("Μόνο παίκτες", P, [P, B, O])}${evalRow(`Παίκτες + ratings (${Math.round(100 * Rt.w)}%)`, B, [P, B, O])}${evalRow("Μόνο ratings", O, [P, B, O])}</tbody></table></div>
-        <p class="muted" style="font-size:12px">${Rt.games} παιγμένοι αγώνες GBL, EuroLeague και EuroCup, κάθε ένας μόνο με τους προηγούμενους. Πράσινο: το καλύτερο. Σφάλμα πόντων ανά 100 κατοχές: ${Rt.rmse?.toFixed(1)} με ratings, ${Rt.rmse_flat?.toFixed(1)} χωρίς.</p></div></div></section>`;
+        <p class="muted" style="font-size:12px">${Rt.games} παιγμένοι αγώνες GBL, EuroLeague και EuroCup, κάθε ένας μόνο με τους προηγούμενους. Πράσινο: το καλύτερο. Τυπική απόκλιση πρόβλεψης (πόντοι ανά 100 κατοχές): ${Rt.rmse?.toFixed(1)} με ratings, ${Rt.rmse_flat?.toFixed(1)} χωρίς.</p></div></div></section>`;
 }
 
 /** Αβεβαιότητα πέρα από τα ζάρια: τι προσαρμόστηκε, πριν/μετά, και από πού έρχεται η διασπορά. */
