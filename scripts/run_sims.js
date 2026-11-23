@@ -15,7 +15,7 @@
  * Έλεγχος βαθμονόμησης: όλοι οι παιγμένοι αγώνες της λίγκας (walk-forward, SIM_CHECK ο καθένας):
  *   πόσο συχνά το πραγματικό πέφτει μέσα στο «κουτί» (25–75%, θέλουμε ~50%) και στις «κεραίες» (5–95%, ~90%).
  *
- *   node scripts/run_sims.js            # -> site/db/sims.json
+ *   node scripts/run_sims.js GBL        # -> site/db/sims_GBL.json   (ή E, U)
  */
 "use strict";
 const fs = require("fs");
@@ -24,7 +24,10 @@ const SIM = require(path.join(__dirname, "..", "site", "sim.js"));
 
 const N = +(process.env.SIM_N || 50000), N_CHECK = +(process.env.SIM_CHECK || 2000), NEXT = 2, MIN_PRIOR = 2, EXT_W = 0.5;
 const ROOT = path.join(__dirname, "..");
-const DB0 = JSON.parse(fs.readFileSync(path.join(ROOT, "site", "db", "demo.json"), "utf8"));
+const LEAGUE = process.argv[2] || "GBL";
+const DB0 = JSON.parse(fs.readFileSync(path.join(ROOT, "site", "db", `${LEAGUE}.json`), "utf8"));
+const OUTF = path.join(ROOT, "site", "db", `sims_${LEAGUE}.json`);
+console.log(`== ${DB0.league} ${DB0.season}`);
 const K = ["min", "pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "pir", "fg2m", "fg2a", "fg3m", "fg3a", "ftm", "fta"];
 const STATS = ["pts", "reb", "ast", "pir", "fg3m", "stl", "blk"];
 const seedOf = (code) => (Number(code) % 2147483647) || 1;
@@ -181,7 +184,8 @@ function evaluate(getR, simsEach) {
 out.check = evaluate((g) => RES[g.code], N);
 // ποιες πηγές βοηθούν: ίδιοι αγώνες, ίδια seeds, μόνο οι πηγές αλλάζουν (walk-forward και για τις άλλες λίγκες)
 const SRC = Object.keys(DB0.sources || {});
-const CFG = [["Μόνο GBL", []], ["+ GBL περσινή", SRC.filter((k) => k.startsWith("GBL"))], ["+ EuroLeague/EuroCup", SRC.filter((k) => !k.startsWith("GBL"))], ["Όλες", SRC]]
+const own = (k) => DB0.sources[k].comp === DB0.comp, short = DB0.short || LEAGUE;
+const CFG = [[`Μόνο ${short}`, []], [`+ ${short} περσινή`, SRC.filter(own)], ["+ άλλες λίγκες", SRC.filter((k) => !own(k))], ["Όλες", SRC]]
   .filter(([, s], i) => i === 0 || s.length);
 out.check_sources = CFG.map(([label, sources]) => {
   const t0 = Date.now();
@@ -191,6 +195,6 @@ out.check_sources = CFG.map(([label, sources]) => {
   delete c.per_game; return { label, sources, ...c };
 });
 console.log("  έλεγχος (walk-forward):", JSON.stringify(out.check));
-fs.writeFileSync(path.join(ROOT, "site", "db", "sims.json"), JSON.stringify(out));
-const sz = fs.statSync(path.join(ROOT, "site", "db", "sims.json")).size / 1024;
-console.log(`-> site/db/sims.json (${Object.keys(out.games).length} αγώνες × ${N}, ${sz.toFixed(0)} KB)`);
+fs.writeFileSync(OUTF, JSON.stringify(out));
+const sz = fs.statSync(OUTF).size / 1024;
+console.log(`-> site/db/sims_${LEAGUE}.json (${Object.keys(out.games).length} αγώνες × ${N}, ${sz.toFixed(0)} KB)`);

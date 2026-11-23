@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>o-dimarxos · Stoiximan GBL</title>
+<title>o-dimarxos</title>
 <script>
   // θέμα πριν από το πρώτο σχεδίασμα (light/dark· αλλιώς ακολουθεί τη συσκευή)
   (function () { try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* - */ } })();
@@ -15,8 +15,9 @@
 <header class="top">
   <div class="wrap">
     <div class="top-row">
-      <a class="brand" href="#/" style="color:inherit;text-decoration:none"><b>o-dimarxos</b><small id="sub">Stoiximan GBL</small></a>
+      <a class="brand" href="#/" style="color:inherit;text-decoration:none"><b>o-dimarxos</b><small id="sub"></small></a>
       <span class="sp"></span>
+      <nav class="leagues" id="leagues" aria-label="Λίγκα"></nav>
       <button class="icon-btn" id="theme" title="Φωτεινό / σκοτεινό θέμα" aria-label="Αλλαγή θέματος">◐</button>
     </div>
     <nav class="tabs" id="nav">

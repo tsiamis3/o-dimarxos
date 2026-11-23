@@ -140,3 +140,11 @@ details.tree { border: 1px solid var(--line); border-radius: var(--r); backgroun
 .sc-tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--fg); }
 .sc-tag.bad { background: var(--bad); color: #fff; }
 @media (max-width: 560px) { .sc-row { grid-template-columns: 88px 1fr 46px; gap: 4px; } }
+
+/* ---------- επιλογή λίγκας ---------- */
+.leagues { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; flex: none; }
+.leagues a { padding: 5px 11px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.leagues a + a { border-left: 1px solid var(--line); }
+.leagues a:hover { text-decoration: none; color: var(--fg); }
+.leagues a[aria-current="page"] { background: var(--accent); color: #fff; }
+@media (max-width: 560px) { .leagues a { padding: 5px 8px; font-size: 12px; } .brand small { display: none; } }
