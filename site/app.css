@@ -148,3 +148,8 @@ details.tree { border: 1px solid var(--line); border-radius: var(--r); backgroun
 .leagues a:hover { text-decoration: none; color: var(--fg); }
 .leagues a[aria-current="page"] { background: var(--accent); color: #fff; }
 @media (max-width: 560px) { .leagues a { padding: 5px 8px; font-size: 12px; } .brand small { display: none; } }
+
+/* ---------- αξιολόγηση: radar ---------- */
+.rd-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.rd-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; cursor: pointer; font: inherit; color: var(--fg); text-align: center; }
+.rd-card:hover { border-color: var(--accent); }

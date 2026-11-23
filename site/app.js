@@ -128,6 +128,7 @@ Views.team = (c) => {
       ${tile(f1(ppg), "πόντοι/αγ.")}${tile(f1(oppg), "δέχεται/αγ.")}${tile(sgn(r.pf - r.pa), "διαφορά")}
       ${SIMS?.ratings?.teams?.[c] ? (() => { const x = SIMS.ratings.teams[c], sg = (v) => (v > 0 ? "+" : "") + v.toFixed(1);
         return tile(sg(x.o), "rating επίθεσης") + tile(sg(x.d), "rating άμυνας") + tile(`<a href="#/sims">${sg(x.o + x.d)}</a>`, "rating (ανά 100 κατ.)"); })() : ""}</section>
+    ${teamRadars(c)}
     <section><h2>Ρόστερ</h2>${table("ro" + c, [
       { key: "number", label: "#", n: true, sv: (p) => +p.number || 99, html: (p) => esc(p.number ?? "") },
       { key: "name", label: "Παίκτης", html: (p) => `${pbtn(p.pid)} <a href="#/player/${p.pid}" class="muted" title="Σελίδα παίκτη" style="font-size:12px">↗</a>`, sv: (p) => p.name },
@@ -169,6 +170,7 @@ Views.player = (pid) => {
       <h1>${esc(p.name)}</h1><div class="facts">${facts.map(([k, v]) => `<span>${k}: <b>${v}</b></span>`).join("")}</div></div></section>
     <section><h2>Μέσοι όροι (${p.gp} αγ.)</h2><div class="tiles">${tile(f1(a.min), "λεπτά")}${tile(f1(a.pts), "πόντοι")}${tile(f1(a.reb), "ριμπάουντ")}
       ${tile(f1(a.ast), "ασίστ")}${tile(f1(a.stl), "κλεψίματα")}${tile(f1(a.blk), "κοψίματα")}${tile(f1(a.tov), "λάθη")}${tile(`<b>${f1(a.pir)}</b>`, "PIR")}</div></section>
+    ${radarSection(pid)}
     <section class="grid">
       <div class="card"><h3>Σουτ</h3><div class="tiles">${tile(pct(p.pct.fg2), `2π (${f1(a.fg2m)}/${f1(a.fg2a)})`)}${tile(pct(p.pct.fg3), `3π (${f1(a.fg3m)}/${f1(a.fg3a)})`)}${tile(pct(p.pct.ft), `βολές (${f1(a.ftm)}/${f1(a.fta)})`)}</div></div>
       <div class="card"><h3>Πόντοι ανά αγώνα</h3>${spark(p.log)}</div></section>
@@ -180,6 +182,73 @@ Views.player = (pid) => {
         <td class="n">${g.fg2m}/${g.fg2a}</td><td class="n">${g.fg3m}/${g.fg3a}</td><td class="n">${g.ftm}/${g.fta}</td><td class="n"><b>${g.pir}</b></td>` : `<td colspan="11" class="muted">δεν αγωνίστηκε</td>`}</tr>`).join("")}
       </tbody></table></div>` : `<div class="empty">Χωρίς αγώνες.</div>`}</section>`;
 };
+
+// ----------------------------------------------------------------------------- αξιολόγηση παικτών (radar)
+// 7 άξονες, εκατοστημόρια μέσα στη λίγκα (παίκτες με ≥3 αγώνες και ≥10′): ανά 36′ για τον όγκο, ποσοστά για την ευστοχία.
+const RADAR = [
+  ["pts36", "Σκοράρισμα", "πόντοι/36′", (v) => f1(v)], ["ts", "Ευστοχία", "TS%", (v) => pct(v)], ["fg3", "Τρίποντο", "3π% (σταθμ.)", (v) => pct(v)],
+  ["ast36", "Δημιουργία", "ασίστ/36′", (v) => f1(v)], ["reb36", "Ριμπάουντ", "ριμπ./36′", (v) => f1(v)], ["def36", "Άμυνα", "κλεψ.+τάπες/36′", (v) => f1(v)],
+  ["care", "Προσοχή", "λάθη/100 φάσεις (λιγότερα = καλύτερα)", (v) => f1(-v)]];
+let EVAL = null;
+function evalPool() {
+  if (EVAL && EVAL.db === DB) return EVAL;
+  const lg3 = DB.lg?.fg3 || 0.33, raw = {};
+  for (const p of Object.values(DB.players)) {
+    const a = p.avg, g = p.gp || 0; if (g < 1 || !(a.min > 0)) continue;
+    const per36 = (x) => (36 * x) / a.min, fga = a.fg2a + a.fg3a, plays = fga + 0.44 * a.fta + a.tov;
+    raw[p.pid] = { pool: g >= 3 && a.min >= 10, pts36: per36(a.pts), ts: fga + 0.44 * a.fta > 0 ? a.pts / (2 * (fga + 0.44 * a.fta)) : 0,
+      fg3: (a.fg3m * g + 30 * lg3) / (a.fg3a * g + 30), ast36: per36(a.ast), reb36: per36(a.reb), def36: per36(a.stl + a.blk), care: plays > 0 ? (-100 * a.tov) / plays : 0 };
+  }
+  const pool = Object.values(raw).filter((r) => r.pool), sorted = {};
+  for (const [k] of RADAR) sorted[k] = pool.map((r) => r[k]).sort((x, y) => x - y);
+  const pctl = (k, v) => { const A = sorted[k]; if (!A.length) return 0.5; let lo = 0, hi = A.length; while (lo < hi) { const m = (lo + hi) >> 1; if (A[m] < v) lo = m + 1; else hi = m; } return lo / A.length; };
+  const med = Object.fromEntries(RADAR.map(([k]) => [k, sorted[k][Math.floor(sorted[k].length / 2)] ?? 0]));
+  return (EVAL = { db: DB, raw, pctl, med, n: pool.length });
+}
+/** Τιμές και εκατοστημόρια ενός παίκτη (null αν δεν έχει παίξει). */
+function playerEval(pid) { const E = evalPool(), r = E.raw[pid]; if (!r) return null;
+  return { pool: r.pool, vals: RADAR.map(([k]) => r[k]), pcts: RADAR.map(([k]) => E.pctl(k, r[k])) }; }
+/** series: [{ pcts: [0..1], color, label, dash }] */
+function radarSVG(series, { size = 360, labels = true } = {}) {
+  const n = RADAR.length, cx = size / 2, cy = size / 2 + (labels ? 4 : 0), R = size / 2 - (labels ? 62 : 10);
+  const pt = (i, r) => { const a = -Math.PI / 2 + (2 * Math.PI * i) / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+  let g = "";
+  for (const q of [0.25, 0.5, 0.75, 1]) g += `<polygon points="${RADAR.map((_, i) => pt(i, R * q).join(",")).join(" ")}" fill="none" stroke="var(--line)" ${q === 0.5 ? 'stroke-dasharray="3 3"' : ""}/>`;
+  RADAR.forEach((_, i) => { const [x, y] = pt(i, R); g += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)"/>`; });
+  for (const S of series) g += `<polygon points="${S.pcts.map((v, i) => pt(i, R * Math.max(0.03, v)).join(",")).join(" ")}" fill="${S.color}" fill-opacity="${S.dash ? 0.06 : 0.22}" stroke="${S.color}" stroke-width="2" ${S.dash ? 'stroke-dasharray="5 4"' : ""}><title>${esc(S.label)}</title></polygon>`;
+  if (series[0]) series[0].pcts.forEach((v, i) => { const [x, y] = pt(i, R * Math.max(0.03, v)); g += `<circle cx="${x}" cy="${y}" r="3" fill="${series[0].color}"/>`; });
+  if (labels) RADAR.forEach(([, lab], i) => { const [x, y] = pt(i, R + 16), anc = Math.abs(x - cx) < 8 ? "middle" : x > cx ? "start" : "end";
+    const v = series[0] ? Math.round(100 * series[0].pcts[i]) : null;
+    g += `<text x="${x}" y="${y}" text-anchor="${anc}" style="font:600 12px var(--font-body);fill:var(--fg)">${lab}</text>${v != null ? `<text x="${x}" y="${y + 14}" text-anchor="${anc}" style="font:11px var(--font-num);fill:var(--muted)">${v}ο εκ.</text>` : ""}`; });
+  const pad = labels ? 34 : 0;
+  return `<svg viewBox="${-pad} 0 ${size + 2 * pad} ${size + (labels ? 8 : 0)}" style="width:100%;max-width:${size + 2 * pad}px;height:auto;display:block;margin:auto" role="img" aria-label="Radar αξιολόγησης">${g}</svg>`;
+}
+const RD_CMP = { pid: "" };
+/** Πλέγμα με μικρά radar για τους 8 παίκτες της ομάδας με τα περισσότερα λεπτά. */
+function teamRadars(c) {
+  const t = DB.teams[c]; if (!t) return "";
+  const col = t.c1 || "var(--accent)", L = (t.roster || []).map((pid) => [pid, playerEval(pid)]).filter(([, e]) => e?.pool).slice(0, 8);
+  if (!L.length) return "";
+  return `<section><h2>Αξιολόγηση ρόστερ</h2><div class="rd-grid">${L.map(([pid, e]) => { const best = RADAR.map(([, lab], i) => [lab, e.pcts[i]]).sort((x, y) => y[1] - x[1]).slice(0, 2);
+    return `<button class="card rd-card" data-pop="${esc(pid)}">${radarSVG([{ pcts: e.pcts, color: col, label: DB.players[pid].name }, { pcts: RADAR.map(() => 0.5), color: "#d9a227", label: "μέσος όρος", dash: true }], { size: 130, labels: false })}
+      <b style="font-size:13px">${esc(DB.players[pid].name)}</b><span class="muted" style="font-size:11px">${best.map(([l, v]) => `${l} ${Math.round(100 * v)}`).join(" · ")}</span></button>`; }).join("")}</div>
+    <p class="muted" style="font-size:12px">Άξονες (δεξιόστροφα από πάνω): ${RADAR.map(([, l]) => l).join(", ")}. Κίτρινος διακεκομμένος: ο μέσος όρος της λίγκας. Πάτα έναν παίκτη για λεπτομέρειες.</p></section>`;
+}
+function radarSection(pid) {
+  const me = playerEval(pid); if (!me) return "";
+  const p = DB.players[pid], col = team(p.team).c1 || "var(--accent)", E = evalPool();
+  const other = RD_CMP.pid && RD_CMP.pid !== pid ? playerEval(RD_CMP.pid) : null, oname = other ? DB.players[RD_CMP.pid].name : "Μέσος όρος λίγκας";
+  const cmpCol = "#d9a227", cmpP = other ? other.pcts : RADAR.map(() => 0.5), cmpV = other ? other.vals : RADAR.map(([k]) => E.med[k]);
+  const opts = DB.demo.map((t) => `<optgroup label="${esc(team(t).name)}">${(DB.teams[t]?.roster || []).filter((x) => x !== pid && E.raw[x]?.pool).map((x) => `<option value="${esc(x)}" ${x === RD_CMP.pid ? "selected" : ""}>${esc(DB.players[x].name)}</option>`).join("")}</optgroup>`).join("");
+  return `<section class="card" id="radar"><div class="section-head"><h2>Αξιολόγηση</h2>
+      <label class="muted" style="font-size:13px">σύγκριση με <select id="rd-cmp" data-pid="${esc(pid)}"><option value="">Μέσος όρος λίγκας</option>${opts}</select></label></div>
+    <div class="grid" style="align-items:center"><div>${radarSVG([{ pcts: me.pcts, color: col, label: p.name }, { pcts: cmpP, color: cmpCol, label: oname, dash: true }])}
+      <div class="muted" style="font-size:12px;text-align:center"><span style="color:${col}">━</span> ${esc(p.name)} &nbsp; <span style="color:${cmpCol}">╍</span> ${esc(oname)}</div></div>
+    <div class="tbl"><table><thead><tr><th>Άξονας</th><th class="n">${esc(p.name.split(" ").at(-1))}</th><th class="n">εκατ.</th><th class="n">${other ? esc(oname.split(" ").at(-1)) : "διάμεσος"}</th></tr></thead><tbody>
+      ${RADAR.map(([, lab, unit, fmt], i) => `<tr><td>${lab}<div class="muted" style="font-size:11px">${unit}</div></td><td class="n"><b>${fmt(me.vals[i])}</b></td>
+        <td class="n" style="color:var(--${me.pcts[i] >= 0.67 ? "good" : me.pcts[i] <= 0.33 ? "bad" : "fg"})">${Math.round(100 * me.pcts[i])}</td><td class="n">${fmt(cmpV[i])}</td></tr>`).join("")}</tbody></table>
+      <p class="muted" style="font-size:12px">Εκατοστημόριο: πόσοι από τους ${E.n} παίκτες της λίγκας (≥3 αγώνες, ≥10′) έχουν χαμηλότερη τιμή. 50 = μέση τιμή (διακεκομμένος κύκλος).${me.pool ? "" : " Ο παίκτης έχει λίγους αγώνες ή λεπτά: δες το ως ένδειξη."} Τρίποντο: σταθμισμένο προς τον μέσο όρο όταν έχει λίγες προσπάθειες.</p></div></div></section>`;
+}
 
 // μικρό διάγραμμα: πόντοι ανά αγώνα
 function spark(log) {
@@ -770,6 +839,9 @@ function popup(pid) {
       <button class="icon-btn x" data-close aria-label="Κλείσιμο">✕</button></div>
     <div class="tiles">${tile(f1(a.min), "λεπτά")}${tile(f1(a.pts), "πόντοι")}${tile(f1(a.reb), "ριμπ.")}${tile(f1(a.ast), "ασίστ")}${tile(pct(p.pct.fg3), "3π%")}${tile(`<b>${f1(a.pir)}</b>`, "PIR")}</div>
     <div class="muted" style="font-size:12px">${p.gp} αγώνες · μέσοι όροι ανά αγώνα</div>
+    ${(() => { const me = playerEval(pid); if (!me) return ""; const col = team(p.team).c1 || "var(--accent)";
+      return `<div style="display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center">${radarSVG([{ pcts: me.pcts, color: col, label: p.name }, { pcts: RADAR.map(() => 0.5), color: "#d9a227", label: "μέσος όρος", dash: true }], { size: 150, labels: false })}
+        <div style="font-size:12px;display:grid;grid-template-columns:auto auto;gap:2px 10px">${RADAR.map(([, lab], i) => `<span class="muted">${lab}</span><b class="num" style="color:var(--${me.pcts[i] >= 0.67 ? "good" : me.pcts[i] <= 0.33 ? "bad" : "fg"})">${Math.round(100 * me.pcts[i])}</b>`).join("")}</div></div>`; })()}
     ${last.length ? `<div class="tbl"><table><thead><tr><th>Τελευταίοι</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">PIR</th></tr></thead><tbody>
       ${last.map((g) => `<tr><td><a href="#/game/${g.g}" data-close>${dateGR(g.date)} ${g.home ? "vs" : "@"} ${esc(team(g.opp).abbr)}</a> <span style="color:var(--${g.res === "W" ? "good" : "bad"})">${g.res === "W" ? "Ν" : "Η"}</span></td><td class="n">${f1(g.min)}</td><td class="n">${g.pts}</td><td class="n">${g.reb}</td><td class="n">${g.ast}</td><td class="n"><b>${g.pir}</b></td></tr>`).join("")}</tbody></table></div>` : ""}
     ${nextDist(pid, true)}
@@ -794,6 +866,9 @@ function render() {
   const titles = { team: () => DB.teams[arg]?.name, player: () => DB.players[arg]?.name, game: () => { const g = DB.games[arg]; return g && `${team(g.home).name} – ${team(g.away).name}`; } };
   document.title = [titles[view]?.(), "o-dimarxos"].filter(Boolean).join(" · ");
 }
+document.addEventListener("change", (e) => {
+  if (e.target.id === "rd-cmp") { RD_CMP.pid = e.target.value; const sec = $("#radar"); if (sec) sec.outerHTML = radarSection(e.target.dataset.pid); }
+});
 document.addEventListener("click", (e) => {
   const p = e.target.closest("[data-pop]"); if (p) { e.preventDefault(); popup(p.dataset.pop); return; }
   const ss = e.target.closest("[data-simstat],[data-simmom]");
