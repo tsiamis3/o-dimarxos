@@ -47,9 +47,31 @@
   function pick(R, w, total) { let r = R() * total; for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return w.length - 1; }
 
   // ---------------------------------------------------------------- προετοιμασία: ρόστερ και πιθανότητες
-  /** DB: η βάση του σάιτ (db/demo.json). opts: { out: [pid…] εκτός, pace: κατοχές ανά ομάδα } */
+  /** Σενάριο: νέοι μέσοι όροι ενός παίκτη. o = { min, fga, fg2p, fg3p, ftp, tov, reb, ast } (όσα δόθηκαν).
+   *  Πρώτα τα λεπτά (όλα τα ανά αγώνα κλιμακώνονται ανάλογα), μετά όσα δόθηκαν ρητά. */
+  const AVGK = ["pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "pir", "fg2m", "fg2a", "fg3m", "fg3a", "ftm", "fta"];
+  SIM.adjAvg = function (avg, o) {
+    if (!o) return avg;
+    const a = { ...avg }, sc = (keys, r) => { if (Number.isFinite(r)) for (const k of keys) a[k] *= r; };
+    if (o.min != null) { if (a.min > 0) sc(AVGK, o.min / a.min); a.min = o.min; }
+    if (o.fga != null) { const f = a.fg2a + a.fg3a; if (f > 0) sc(["fg2a", "fg2m", "fg3a", "fg3m", "fta", "ftm"], o.fga / f); else { a.fg2a = o.fga * 0.6; a.fg3a = o.fga * 0.4; } }
+    if (o.fg2p != null) a.fg2m = a.fg2a * o.fg2p;
+    if (o.fg3p != null) a.fg3m = a.fg3a * o.fg3p;
+    if (o.ftp != null) a.ftm = a.fta * o.ftp;
+    if (o.tov != null) a.tov = o.tov;
+    if (o.reb != null) { const r = a.oreb + a.dreb; if (r > 0) sc(["oreb", "dreb"], o.reb / r); else { a.oreb = o.reb * 0.25; a.dreb = o.reb * 0.75; } }
+    if (o.ast != null) a.ast = o.ast;
+    return a;
+  };
+
+  /** DB: η βάση του σάιτ (db/demo.json).
+   *  opts: { out: [pid…] εκτός, pace: κατοχές ανά ομάδα (σταθερές), paceAdj: ± κατοχές στον μέσο ρυθμό, beta,
+   *          avg: { pid: { min, fga, fg2p, fg3p, ftp, tov, reb, ast } } σενάριο: νέοι μέσοι όροι }
+   *  Ό,τι αλλάζει στο σενάριο θεωρείται «η αλήθεια»: τα ποσοστά δεν συρρικνώνονται προς τη λίγκα και
+   *  ο παίκτης τα πετυχαίνει απέναντι σε μέση άμυνα. */
   SIM.prepare = function (DB, home, away, opts = {}) {
-    const out = new Set(opts.out || []);
+    const out = new Set(opts.out || []), OV = opts.avg || {};
+    const beta = { ...SIM.BETA0, ...(opts.beta || DB.beta || {}) };
     const P = Object.values(DB.players);
     // μέσοι όροι λίγκας ανά φάση / λεπτό (από όλους τους παίκτες)
     const L = { plays: 0, tov: 0, ftrip: 0, fga: 0, fg3a: 0, min: 0, stl: 0, blk: 0, pf: 0 };
@@ -62,11 +84,12 @@
       // (λεπτά/φάσεις όταν παίζει)· όποιος λείπει πρόσφατα, με το 15% αυτών. Μετά όλα κανονικοποιούνται στα 200 λεπτά.
       const dates = [...new Set(P.flatMap((p) => p.log.filter((l) => l.team === code && l.min > 0).map((l) => l.date)))].sort();
       const since = dates[Math.max(0, dates.length - 3)] || "";
-      const avail = (p) => p.log.some((l) => l.team === code && l.min > 0 && l.date >= since);
+      const avail = (p) => OV[p.pid]?.min != null || p.log.some((l) => l.team === code && l.min > 0 && l.date >= since);
       const per = (p, x) => x * (avail(p) ? 1 : 0.15);
-      const ros = P.filter((p) => p.team === code && p.gp > 0 && !out.has(p.pid)).sort((a, b) => per(b, b.avg.min) - per(a, a.avg.min)).slice(0, MAX_ROSTER);
-      const totMin = ros.reduce((s, p) => s + per(p, p.avg.min), 0) || 1;
-      const pl = ros.map((p) => { const a = p.avg, g = p.gp, fga = a.fg2a + a.fg3a, plays = fga + 0.44 * a.fta + a.tov;
+      const AV = (p) => SIM.adjAvg(p.avg, OV[p.pid]);
+      const ros = P.filter((p) => p.team === code && p.gp > 0 && !out.has(p.pid) && AV(p).min > 0).sort((a, b) => per(b, AV(b).min) - per(a, AV(a).min)).slice(0, MAX_ROSTER);
+      const totMin = ros.reduce((s, p) => s + per(p, AV(p).min), 0) || 1;
+      const pl = ros.map((p) => { const a = AV(p), g = p.gp, fga = a.fg2a + a.fg3a, plays = fga + 0.44 * a.fta + a.tov;
         const T = (x) => x * g;                                         // σύνολα σεζόν
         return { pid: p.pid, name: p.name, num: p.number,
           minShare: per(p, a.min) / totMin,                             // κλάσμα των λεπτών της ομάδας
@@ -86,12 +109,21 @@
       const wavg = (f, w) => { const W = pl.reduce((x, p) => x + w(p), 0) || 1; return pl.reduce((x, p) => x + w(p) * f(p), 0) / W; };
       const off = { tov: wavg((p) => p.tov, (p) => p.wOff), ftrip: wavg((p) => p.ftrip, (p) => p.wOff),
         fg2: wavg((p) => p.fg2, (p) => p.wOff * (1 - p.three)), fg3: wavg((p) => p.fg3, (p) => p.wOff * p.three) };
+      // σενάριο: ό,τι όρισε ο χρήστης είναι «η αλήθεια» απέναντι σε μέση άμυνα -> αντιστρέφουμε το log5 με βάρη
+      // ώστε comb(p, άμυνα = λίγκα) = στόχος (χωρίς συρρίκνωση, χωρίς το β1 < 1 που «φρενάρει» τον θόρυβο)
+      const target = (k, want, lgP) => { const b = beta[k], L = logit(lgP), T = lc(off[k]);
+        return inv(T + (lc(want) - L - b[0] - (b[3] ?? b[1]) * (T - L)) / b[1]); };
+      pl.forEach((q, i) => { const o = OV[q.pid]; if (!o) return; const a = AV(ros[i]), plays = a.fg2a + a.fg3a + 0.44 * a.fta + a.tov;
+        if (o.fg2p != null) q.fg2 = target("fg2", o.fg2p, lg.fg2);
+        if (o.fg3p != null) q.fg3 = target("fg3", o.fg3p, lg.fg3);
+        if (o.ftp != null) q.ft = clamp(o.ftp, 0, 1);
+        if (o.tov != null && plays > 0) q.tov = target("tov", clamp(o.tov / plays, 0.005, 0.6), lg.tovPlay); });
       return { code, name: DB.teams[code]?.name || DB.opponents[code]?.name || code, pl, ts, off,
         wOffT: pl.reduce((s, p) => s + p.wOff, 0), wDefT: pl.reduce((s, p) => s + p.wDef, 0),
         wOrebT: pl.reduce((s, p) => s + p.wOreb, 0), wDrebT: pl.reduce((s, p) => s + p.wDreb, 0) };
     };
     const H = team(home), A = team(away);
-    const pace = opts.pace || ((H.ts.pace || lg.pace) + (A.ts.pace || lg.pace)) / 2;
+    const pace = opts.pace || ((H.ts.pace || lg.pace) + (A.ts.pace || lg.pace)) / 2 + (opts.paceAdj || 0);
     // η «άμυνα» που βλέπει η επίθεση o (ομαδικά νούμερα του αντιπάλου, ως ποσοστά στην κλίμακα του παίκτη)
     const defOf = (O, D) => ({
       tov: clamp(lg.tovPlay * ((D.ts.opp_tov || lg.tov) / lg.tov), 0.05, 0.4),
@@ -99,7 +131,6 @@
       fg2: clamp(lg.fg2 * ((D.ts.opp_efg || lg.efg) / lg.efg), 0.15, 0.8),
       fg3: clamp(lg.fg3 * ((D.ts.opp_efg || lg.efg) / lg.efg), 0.15, 0.8),
       orbO: O.ts.orb || lg.orb, orbD: 1 - (D.ts.drb || 1 - lg.orb) });
-    const beta = { ...SIM.BETA0, ...(opts.beta || DB.beta || {}) };
     return { lg, T: [H, A], D: [defOf(H, A), defOf(A, H)], beta, pace, paceSd: opts.pace ? 0 : PACE_SD };
   };
 
