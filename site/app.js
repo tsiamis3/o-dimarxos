@@ -329,6 +329,20 @@ function simSection(code) {
     <p class="muted" style="font-size:12px">Δείχνονται μόνο οι κατανομές με τυπική απόκλιση έως ${Math.round(100 * (SIMS.show_cv ?? 0.8))}% του μέσου (CV ≤ ${SIMS.show_cv ?? 0.8}) και μέσο ≥ ${SIMS.show_min ?? 1}: οι υπόλοιπες είναι κυρίως θόρυβος.${act ? " Δεξιά: πραγματικό / διάμεσος της προσομοίωσης." : " Δεξιά: το μεσαίο 50%."}</p></section>`;
 }
 
+const BETAL = { tov: "Λάθη (ανά φάση)", ftrip: "Φάουλ → βολές (ανά φάση)", fg2: "Ευστοχία 2π", fg3: "Ευστοχία 3π", orb: "Επιθ. ριμπάουντ (ομάδα)" };
+function betaCard(F) {
+  const f = (v) => (v == null ? "–" : v.toFixed(2));
+  return `<section class="card"><h2>Βάρη του log5</h2>
+    <p style="margin:0 0 8px;max-width:80ch"><span class="num">logit p = logit(λίγκα) + β0 + β1·[επίθεση − λίγκα] + β2·[άμυνα − λίγκα]</span> (σε log-odds). Το κλασικό log5 είναι β1 = β2 = 1.
+    Τα β βγαίνουν με λογιστική παλινδρόμηση στα box scores (παίκτης × αγώνας), με στατιστικά μόνο από τους προηγούμενους αγώνες, και ήπια έλξη προς το 1.
+    β &lt; 1 σημαίνει ότι η απόκλιση από τον μέσο όρο της λίγκας «περνάει» μόνο εν μέρει στον αγώνα.</p>
+    <div class="tbl"><table><thead><tr><th>Φάση</th><th class="n">παρατηρήσεις</th><th class="n">β1 επίθεση</th><th class="n">β2 άμυνα</th><th class="n">β0</th><th class="n">κέρδος εκτός δείγματος</th></tr></thead><tbody>
+    ${SIM.EVENTS.filter((k) => F[k]).map((k) => { const x = F[k]; return `<tr><td>${BETAL[k]}</td><td class="n">${x.n}</td><td class="n">${f(x.b[1])}${x.se ? ` <span class="muted">±${f(x.se[1])}</span>` : ""}</td>
+      <td class="n">${f(x.b[2])}${x.se ? ` <span class="muted">±${f(x.se[2])}</span>` : ""}</td><td class="n">${f(x.b[0])}</td>
+      <td class="n" style="color:var(--${x.oos_dll > 0 ? "good" : x.oos_dll < 0 ? "bad" : "muted"})">${x.se ? (x.oos_dll >= 0 ? "+" : "") + (1000 * x.oos_dll).toFixed(2) + "‰" : "λίγα δεδομένα"}</td></tr>`; }).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">± = τυπικό σφάλμα. Κέρδος εκτός δείγματος: πόσο καλύτερα (log-likelihood ανά προσπάθεια) προβλέπει κάθε αγώνα με τα β των προηγούμενων αγώνων απ' ό,τι το κλασικό log5.</p></section>`;
+}
+
 Views.sims = () => {
   const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
   const C = SIMS?.check, up = G.filter(([, S]) => !S.played), pl = G.filter(([, S]) => S.played).reverse();
@@ -347,12 +361,13 @@ Views.sims = () => {
       ${Object.entries(C.coverage || {}).map(([k, c]) => `<tr><td>${COVL[k] || k}</td><td class="n">${c.n}</td><td class="n" style="color:var(--${Math.abs(c.box - 0.5) <= 0.07 ? "good" : "bad"})">${pct(c.box)}</td>
         <td class="n" style="color:var(--${Math.abs(c.whisk - 0.9) <= 0.05 ? "good" : "bad"})">${pct(c.whisk)}</td><td class="n">${pct(c.below_median)}</td></tr>`).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">Πράσινο: κοντά στον στόχο. Αν το «κουτί» πιάνει πολύ περισσότερο από 50%, η προσομοίωση είναι πιο αβέβαιη απ' όσο χρειάζεται (πολύ φαρδιά)· αν πιάνει λιγότερο, είναι πολύ σίγουρη.</p></section>` : ""}
+  ${SIMS?.beta_fit ? betaCard(SIMS.beta_fit) : ""}
   <section class="card"><h2>Πώς δουλεύει</h2>
     <p style="margin:0 0 8px;max-width:80ch">Μοντέλο κατοχής (αλυσίδα Markov) και Monte Carlo: κάθε αγώνας «παίζεται» φάση-φάση, με τα ζάρια να ρίχνονται από τα στατιστικά των παικτών, και επαναλαμβάνεται ${SIMS ? SIMS.n.toLocaleString("el-GR") : "50.000"} φορές. Από τις κατανομές κρατάμε τις ροπές (μέσος, διασπορά, ασυμμετρία, κύρτωση) και τα ποσοστημόρια.</p>
     <ol style="margin:0;max-width:80ch">
       <li><b>Κατοχές:</b> από τον μέσο ρυθμό των δύο ομάδων (± 3.5). <b>Τζάμπολ:</b> 50/50.</li>
       <li><b>Ποιος παίζει τη φάση:</b> επιθετικός ανάλογα με τις φάσεις που τελειώνει ανά αγώνα, αμυνόμενος ανάλογα με τα λεπτά. Όσοι δεν έπαιξαν στους 3 τελευταίους αγώνες μετρούν ελάχιστα.</li>
-      <li><b>Κοντράρισμα (log5):</b> επιθετικός ⊗ άμυνα αντιπάλου, ως προς τη λίγκα. Ο αμυνόμενος παίκτης: κλεψίματα, τάπες, φάουλ.</li>
+      <li><b>Κοντράρισμα (log5 με βάρη):</b> επιθετικός ⊗ άμυνα αντιπάλου, ως προς τη λίγκα, με βάρη β που μαθαίνονται από τα δεδομένα (πίνακας πιο πάνω). Ο αμυνόμενος παίκτης: κλεψίματα, τάπες, φάουλ.</li>
       <li><b>Φάση:</b> λάθος (ίσως κλέψιμο) · φάουλ → βολές · σουτ 2π/3π → τάπα / εύστοχο (ασίστ, and-one) / άστοχο → ριμπάουντ (επιθετικό: η κατοχή συνεχίζει).</li>
       <li><b>Παράταση</b> με τις κατοχές 5 λεπτών. <b>Έδρα:</b> μικρή ώθηση στις ευστοχίες.</li>
       <li><b>Παιγμένοι αγώνες:</b> walk-forward, με στατιστικά μόνο από τους αγώνες πριν από αυτόν (οι αγώνες των 2 πρώτων αγωνιστικών παραλείπονται).</li>
@@ -367,7 +382,7 @@ const Live = {
     if (!g || !window.SIM) { el.remove(); return; }
     const H = team(g.home), A = team(g.away);
     let ctx;
-    try { ctx = SIM.prepare(DB, g.home, g.away); } catch (e) { el.innerHTML = `<div class="muted">Δεν γίνεται προσομοίωση: ${esc(e.message)}</div>`; return; }
+    try { ctx = SIM.prepare(DB, g.home, g.away, { beta: SIMS?.beta }); } catch (e) { el.innerHTML = `<div class="muted">Δεν γίνεται προσομοίωση: ${esc(e.message)}</div>`; return; }
     if (ctx.T[0].pl.length < 5 || ctx.T[1].pl.length < 5) { el.innerHTML = `<div class="muted">Δεν υπάρχουν αρκετοί παίκτες για προσομοίωση.</div>`; return; }
     const SPEEDS = [["×10", 10], ["×60", 60], ["×240", 240], ["άμεσα", 1e9]];
     let speed = 60, log = [], idx = 0, clock = 0, raf = 0, last = 0, running = false, box = {};
