@@ -125,7 +125,9 @@ Views.team = (c) => {
       <div style="opacity:.85">${esc(DB.league)} · ${r.pos}η θέση · ${r.w} νίκες, ${r.l} ήττες</div></div>
       <span style="margin-left:auto">${form(r.form)}</span></section>
     <section class="tiles">${tile(`${r.w}-${r.l}`, "ρεκόρ")}${tile(`${r.hw}-${r.hl}`, "στην έδρα")}${tile(`${r.aw}-${r.al}`, "εκτός")}
-      ${tile(f1(ppg), "πόντοι/αγ.")}${tile(f1(oppg), "δέχεται/αγ.")}${tile(sgn(r.pf - r.pa), "διαφορά")}</section>
+      ${tile(f1(ppg), "πόντοι/αγ.")}${tile(f1(oppg), "δέχεται/αγ.")}${tile(sgn(r.pf - r.pa), "διαφορά")}
+      ${SIMS?.ratings?.teams?.[c] ? (() => { const x = SIMS.ratings.teams[c], sg = (v) => (v > 0 ? "+" : "") + v.toFixed(1);
+        return tile(sg(x.o), "rating επίθεσης") + tile(sg(x.d), "rating άμυνας") + tile(`<a href="#/sims">${sg(x.o + x.d)}</a>`, "rating (ανά 100 κατ.)"); })() : ""}</section>
     <section><h2>Ρόστερ</h2>${table("ro" + c, [
       { key: "number", label: "#", n: true, sv: (p) => +p.number || 99, html: (p) => esc(p.number ?? "") },
       { key: "name", label: "Παίκτης", html: (p) => `${pbtn(p.pid)} <a href="#/player/${p.pid}" class="muted" title="Σελίδα παίκτη" style="font-size:12px">↗</a>`, sv: (p) => p.name },
@@ -337,6 +339,24 @@ function simSection(code) {
     <p class="muted" style="font-size:12px">Δείχνονται μόνο οι κατανομές με τυπική απόκλιση έως ${Math.round(100 * (SIMS.show_cv ?? 0.8))}% του μέσου (CV ≤ ${SIMS.show_cv ?? 0.8}) και μέσο ≥ ${SIMS.show_min ?? 1}: οι υπόλοιπες είναι κυρίως θόρυβος.${act ? " Δεξιά: πραγματικό / διάμεσος της προσομοίωσης." : " Δεξιά: το μεσαίο 50%."}</p></section>`;
 }
 
+/** Ratings ομάδων (επίθεση/άμυνα) και πόσο βοηθούν την προσομοίωση. */
+function ratingsCard(Rt) {
+  const sg = (v) => (v > 0 ? "+" : "") + v.toFixed(1), rows = Object.entries(Rt.teams).map(([t, x]) => ({ t, ...x, net: x.o + x.d })).sort((a, b) => b.net - a.net);
+  const E = Rt.eval || {}, P = E.players, B = E.blend, O = E.ratings;
+  const cell = (v, f, best) => `<td class="n" style="${best ? "color:var(--good);font-weight:700" : ""}">${v == null ? "–" : f(v)}</td>`;
+  const evalRow = (lab, x, all) => x ? `<tr><td>${lab}</td>${["brier", "acc", "margin", "total"].map((k) => { const vals = all.filter(Boolean).map((y) => y[k]), best = k === "acc" ? Math.max(...vals) : Math.min(...vals);
+    return cell(x[k], k === "acc" ? pct : (v) => v.toFixed(k === "brier" ? 3 : 2), x[k] === best); }).join("")}</tr>` : "";
+  return `<section class="card"><h2>Ratings ομάδων</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Δύο νούμερα ανά ομάδα, σε πόντους ανά 100 κατοχές απέναντι σε μέσο αντίπαλο: <b>επίθεση</b> (πόσους βάζει πάνω από τον μέσο όρο) και <b>άμυνα</b> (πόσους λιγότερους δέχεται).
+    Βγαίνουν από όλους τους αγώνες της σεζόν, προσαρμοσμένους στον αντίπαλο και την έδρα, με αρχική τιμή την περσινή σεζόν (ένα «Elo» με δύο νούμερα). Έδρα: ${sg(Rt.h)} ανά 100 κατοχές.
+    Στις προσομοιώσεις ο μέσος όρος κάθε ομάδας μετακινείται κατά <b>${Math.round(100 * Rt.w)}%</b> προς ό,τι λένε τα ratings (όλοι οι παίκτες της μαζί), ενώ οι απουσίες και οι αλλαγές στους παίκτες συνεχίζουν να μετράνε.</p>
+    <div class="grid"><div class="tbl" style="max-height:420px"><table><thead><tr><th>#</th><th>Ομάδα</th><th class="n">επίθεση</th><th class="n">άμυνα</th><th class="n">σύνολο</th></tr></thead><tbody>
+      ${rows.map((x, i) => `<tr><td class="n">${i + 1}</td><td>${tlink(x.t, 18)}</td><td class="n">${sg(x.o)}</td><td class="n">${sg(x.d)}</td><td class="n"><b>${sg(x.net)}</b></td></tr>`).join("")}</tbody></table></div>
+      <div><div class="tbl"><table><thead><tr><th>Όλες οι λίγκες (walk-forward)</th><th class="n">Brier</th><th class="n">νικητής</th><th class="n">CRPS διαφ.</th><th class="n">CRPS συν.</th></tr></thead><tbody>
+        ${evalRow("Μόνο παίκτες", P, [P, B, O])}${evalRow(`Παίκτες + ratings (${Math.round(100 * Rt.w)}%)`, B, [P, B, O])}${evalRow("Μόνο ratings", O, [P, B, O])}</tbody></table></div>
+        <p class="muted" style="font-size:12px">${Rt.games} παιγμένοι αγώνες GBL, EuroLeague και EuroCup, κάθε ένας μόνο με τους προηγούμενους. Πράσινο: το καλύτερο. Σφάλμα πόντων ανά 100 κατοχές: ${Rt.rmse?.toFixed(1)} με ratings, ${Rt.rmse_flat?.toFixed(1)} χωρίς.</p></div></div></section>`;
+}
+
 /** Αβεβαιότητα πέρα από τα ζάρια: τι προσαρμόστηκε, πριν/μετά, και από πού έρχεται η διασπορά. */
 function reCard(F, re) {
   const B = F.before?.ALL, A = F.after?.ALL; if (!B || !A) return "";
@@ -450,6 +470,7 @@ Views.sims = () => {
       ${Object.entries(C.coverage || {}).map(([k, c]) => `<tr><td>${COVL[k] || k}</td><td class="n">${c.n}</td><td class="n" style="color:var(--${Math.abs(c.box - 0.5) <= 0.07 ? "good" : "bad"})">${pct(c.box)}</td>
         <td class="n" style="color:var(--${Math.abs(c.whisk - 0.9) <= 0.05 ? "good" : "bad"})">${pct(c.whisk)}</td><td class="n">${pct(c.below_median)}</td></tr>`).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">Πράσινο: κοντά στον στόχο. Αν το «κουτί» πιάνει πολύ περισσότερο από 50%, η προσομοίωση είναι πιο αβέβαιη απ' όσο χρειάζεται (πολύ φαρδιά)· αν πιάνει λιγότερο, είναι πολύ σίγουρη.</p></section>` : ""}
+  ${SIMS?.ratings ? ratingsCard(SIMS.ratings) : ""}
   ${SIMS?.re_fit ? reCard(SIMS.re_fit, SIMS.re) : ""}
   ${SIMS?.check_sources ? srcCard(SIMS.check_sources) : ""}
   ${SIMS?.beta_fit ? betaCard(SIMS.beta_fit) : ""}
@@ -608,6 +629,10 @@ const Live = {
     const sc = (SCEN[g.code] ||= scNew());
     const scOpts = () => ({ beta: SIMS?.beta, out: sc.out, avg: sc.avg, play: sc.play, paceAdj: sc.paceAdj, sources: sc.sources, extW: sc.extW, re: sc.re ? SIMS?.re : SIM.RE0 });
     let baseMC = SIMS?.games?.[g.code] && !SIMS.games[g.code].played ? SIMS.games[g.code] : null;
+    // διόρθωση ομάδας (ratings): από τις έτοιμες προσομοιώσεις, αλλιώς υπολογίζεται εδώ· μένει ίδια σε κάθε σενάριο
+    base.tAdj = SIMS?.games?.[g.code]?.tadj || (() => { const Rt = SIMS?.ratings; if (!Rt?.w || !Rt.teams[g.home] || !Rt.teams[g.away]) return null;
+      const T = Rt.teams, tgt = [Rt.mu + Rt.h + T[g.home].o - T[g.away].d, Rt.mu + T[g.away].o - T[g.home].d].map((x) => (x * base.pace) / 100);
+      try { return SIM.calibrate(base, tgt, Rt.w, 300).tAdj; } catch (e) { return null; } })();
     const SPEEDS = [["×10", 10], ["×60", 60], ["×240", 240], ["άμεσα", 1e9]];
     let speed = 60, log = [], idx = 0, clock = 0, raf = 0, last = 0, running = false, box = {};
     el.innerHTML = `<div class="section-head"><h2 style="margin:0">Ζωντανή προσομοίωση</h2>
@@ -669,7 +694,7 @@ const Live = {
         res.innerHTML = scCompare(baseMC, SIM.many(ctx, 5000, 12), ctx); }, 30);
     };
     const start = () => {
-      try { ctx = scCount(sc) ? SIM.prepare(DB, g.home, g.away, scOpts()) : base; } catch (e) { $("#sc-res", el).innerHTML = `<div class="muted">Σφάλμα σεναρίου: ${esc(e.message)}</div>`; return; }
+      try { ctx = scCount(sc) ? Object.assign(SIM.prepare(DB, g.home, g.away, scOpts()), { tAdj: base.tAdj }) : base; } catch (e) { $("#sc-res", el).innerHTML = `<div class="muted">Σφάλμα σεναρίου: ${esc(e.message)}</div>`; return; }
       if (ctx.T[0].pl.length < 5 || ctx.T[1].pl.length < 5) { $("#sc-res", el).innerHTML = `<div class="muted" style="margin-top:8px">Χρειάζονται τουλάχιστον 5 παίκτες ανά ομάδα.</div>`; return; }
       runMC();
       log = []; SIM.game(ctx, SIM.rng((Math.random() * 2 ** 31) | 0), log);

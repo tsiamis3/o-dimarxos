@@ -248,7 +248,7 @@
           } else {
             // ευστοχία ανά προσπάθεια (όπως στο box score), μετά «όταν δεν κόβεται», μετά έδρα
             const raw = three ? comb(p.fg3, Dx.fg3, lg.fg3, B.fg3, O.off.fg3) : comb(p.fg2, Dx.fg2, lg.fg2, B.fg2, O.off.fg2);
-            const mk = inv(logit(clamp(raw / (1 - (three ? 0.012 : lg.blk_fg2a)), 0.02, 0.97)) + adj + d.dAdj + gF + tF[o] + WO.pF[i]);
+            const mk = inv(logit(clamp(raw / (1 - (three ? 0.012 : lg.blk_fg2a)), 0.02, 0.97)) + adj + d.dAdj + gF + tF[o] + WO.pF[i] + (ctx.tAdj ? ctx.tAdj[o] : 0));
             if (R() < mk) {
               const pts = three ? 3 : 2;
               s[o] += pts; bo[i][0] += pts; if (three) bo[i][4]++; else bo[i][2]++;
@@ -363,6 +363,19 @@
         return o;
       })),
     };
+  };
+
+  /** Διόρθωση σε επίπεδο ομάδας από τα ratings (scripts/ratings.js): ο μέσος όρος πόντων κάθε ομάδας μετακινείται κατά w
+   *  προς τον στόχο target = [πόντοι γηπεδούχου, φιλοξενούμενου] (από τα ratings), με μετατόπιση στην ευστοχία της (log-odds).
+   *  Δύο γρήγορες προσομοιώσεις (χωρίς / με μικρή μετατόπιση) δίνουν πού βρίσκεται και πόσο αλλάζει. Τα box scores μένουν συνεπή:
+   *  όλοι οι παίκτες της ομάδας ανεβαίνουν/κατεβαίνουν μαζί. Επιστρέφει { tAdj, base: [μέσοι πόντοι], slope }. */
+  SIM.calibrate = function (ctx, target, w = 1, n = 500, seed = 99) {
+    const keep = ctx.tAdj, E = 0.2;
+    ctx.tAdj = [0, 0]; const r0 = SIM.many(ctx, n, seed);
+    ctx.tAdj = [E, E]; const r1 = SIM.many(ctx, n, seed);
+    ctx.tAdj = keep;
+    const m0 = [r0.score[0].mean, r0.score[1].mean], slope = [0, 1].map((i) => Math.max(5, ((i ? r1.score[1].mean : r1.score[0].mean) - m0[i]) / E));
+    return { tAdj: [0, 1].map((i) => clamp((w * (target[i] - m0[i])) / slope[i], -0.8, 0.8)), base: m0, slope };
   };
 
   SIM.rng = rng;
