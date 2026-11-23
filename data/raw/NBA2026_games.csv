@@ -242,11 +242,11 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401910028,5,2026-11-21,22:00,SAC,Sacramento Kings,BOS,Boston Celtics,97.0,96.0,True
 401910029,5,2026-11-22,15:30,ATL,Atlanta Hawks,DET,Detroit Pistons,107.0,97.0,True
 401910030,5,2026-11-22,18:00,MIA,Miami Heat,OKC,Oklahoma City Thunder,123.0,113.0,True
-401910031,5,2026-11-22,19:00,WSH,Washington Wizards,ORL,Orlando Magic,,,False
-401910032,5,2026-11-22,19:00,CHI,Chicago Bulls,DEN,Denver Nuggets,,,False
-401910033,5,2026-11-22,19:00,UTAH,Utah Jazz,DAL,Dallas Mavericks,,,False
-401910034,5,2026-11-22,20:00,NY,New York Knicks,IND,Indiana Pacers,,,False
-401910035,5,2026-11-22,20:30,GS,Golden State Warriors,BOS,Boston Celtics,,,False
+401910031,5,2026-11-22,19:00,WSH,Washington Wizards,ORL,Orlando Magic,116.0,96.0,True
+401910032,5,2026-11-22,19:00,CHI,Chicago Bulls,DEN,Denver Nuggets,145.0,151.0,True
+401910033,5,2026-11-22,19:00,UTAH,Utah Jazz,DAL,Dallas Mavericks,114.0,116.0,True
+401910034,5,2026-11-22,20:00,NY,New York Knicks,IND,Indiana Pacers,113.0,106.0,True
+401910035,5,2026-11-22,20:30,GS,Golden State Warriors,BOS,Boston Celtics,88.0,87.0,True
 401910036,5,2026-11-23,19:00,CHA,Charlotte Hornets,MEM,Memphis Grizzlies,,,False
 401910037,5,2026-11-23,19:00,PHI,Philadelphia 76ers,POR,Portland Trail Blazers,,,False
 401910038,5,2026-11-23,19:30,IND,Indiana Pacers,OKC,Oklahoma City Thunder,,,False
