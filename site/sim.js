@@ -23,6 +23,11 @@
   const SIM = { version: 2 };
   const HCA = 0.07;            // πλεονέκτημα έδρας: log-odds στις ευστοχίες (~ +3 πόντοι)
   const PACE_SD = 3.5;
+  /** Τυχαιότητα πέρα από τα ζάρια κάθε φάσης (κληρώνεται μία φορά ανά αγώνα):
+   *   pace: τυπ. απόκλιση των κατοχών · g: κοινός παράγοντας αγώνα στην ευστοχία (log-odds, και οι δύο ομάδες)
+   *   t: παράγοντας ομάδας · p: «βραδιά» παίκτη στο σουτ · m: λεπτά/ρόλος παίκτη (λογαριθμοκανονικός πολλαπλασιαστής)
+   *  RE0 = η παλιά μηχανή (μόνο ζάρια και ρυθμός). Τα προσαρμοσμένα έρχονται από το scripts/fit_re.js (data/sim_re.json). */
+  SIM.RE0 = { pace: PACE_SD, g: 0, t: 0, p: 0, m: 0 };
   const MAX_ROSTER = 12;
   SIM.SHOW_CV = 0.8;           // κατανομές με τυπική απόκλιση > 80% του μέσου δεν δείχνονται (πολύς θόρυβος)
   SIM.SHOW_MIN = 1;            // ούτε όσες έχουν μέσο < 1
@@ -137,6 +142,7 @@
           pfF: o.pf != null && a.min > 0 ? a.pf / a.min / lg.pfMin : 0.5 + 0.5 * (shrink(T(a.pf), T(a.min), lg.pfMin, 150) / lg.pfMin),
           // επιρροή στο σουτ του αντιπάλου όταν αμύνεται (log-odds· 1 ποσοστιαία μονάδα ≈ 0.04)
           dAdj: -(o.dshot || 0) / 25,
+          pPlay: opts.play?.[p.pid] ?? 1,                               // πιθανότητα να παίξει (αμφίβολος)
           // φάσεις ανά αγώνα χωρίς την αλλαγή όγκου (για να λυθεί το μερίδιο παρακάτω)
           _p0: (() => { if (o.pts == null && o.fga == null) return null; const b = SIM.adjAvg(p.avg, { ...o, pts: null, fga: null });
             return W(b.fg2a + b.fg3a + 0.44 * b.fta + b.tov); })() };
@@ -177,7 +183,8 @@
       fg2: clamp(lg.fg2 * ((D.ts.opp_efg || lg.efg) / lg.efg), 0.15, 0.8),
       fg3: clamp(lg.fg3 * ((D.ts.opp_efg || lg.efg) / lg.efg), 0.15, 0.8),
       orbO: O.ts.orb || lg.orb, orbD: 1 - (D.ts.drb || 1 - lg.orb) });
-    return { lg, T: [H, A], D: [defOf(H, A), defOf(A, H)], beta, pace, paceSd: opts.pace ? 0 : PACE_SD };
+    const re = { ...SIM.RE0, ...(opts.re ?? DB.re ?? {}) };
+    return { lg, T: [H, A], D: [defOf(H, A), defOf(A, H)], beta, pace, fixedPace: !!opts.pace, re };
   };
 
   // ---------------------------------------------------------------- ένας αγώνας
@@ -188,6 +195,17 @@
     const s = [0, 0];
     const ev = log ? (o) => log.push({ ...o, s: [s[0], s[1]] }) : null;
     const names = (ti, i) => T[ti].pl[i].name;
+    // ---- τυχαιότητα του αγώνα (μία κλήρωση): κοινός παράγοντας, ομάδες, παίκτες (σουτ, λεπτά), απουσίες
+    const re = ctx.re || SIM.RE0, z = (sd) => (sd ? gauss(R) * sd : 0);
+    const gF = z(re.g), tF = [z(re.t), z(re.t)];
+    const W = T.map((t) => { const pF = [], k = { off: [], def: [], oreb: [], dreb: [], ast: [] };
+      for (const q of t.pl) {
+        const plays = q.pPlay >= 1 || R() < q.pPlay;
+        const mf = !plays ? 0.001 : re.m ? Math.exp(gauss(R) * re.m - (re.m * re.m) / 2) : 1;
+        pF.push(z(re.p)); k.off.push(q.wOff * mf); k.def.push(q.wDef * mf); k.oreb.push(q.wOreb * mf); k.dreb.push(q.wDreb * mf); k.ast.push(q.wAst * mf);
+      }
+      const sum = (a) => a.reduce((x, y) => x + y, 0);
+      return { pF, ...k, offT: sum(k.off), defT: sum(k.def), orebT: sum(k.oreb), drebT: sum(k.dreb) }; });
 
     function possession(o, t, tEnd) {
       const O = T[o], D = T[1 - o], bo = box[o], bd = box[1 - o];
@@ -196,7 +214,8 @@
       while (guard++ < 6) {                                              // όσο υπάρχουν επιθετικά ριμπάουντ
         const tt = t + (tEnd - t) * 0.9 * (1 - 0.5 ** guard);           // χρόνος της φάσης (πάντα μπροστά μέσα στην κατοχή)
         const tr = tt + (tEnd - tt) * 0.25;                               // χρόνος του ριμπάουντ
-        const i = pick(R, O.pl.map((p) => p.wOff), O.wOffT), j = pick(R, D.pl.map((p) => p.wDef), D.wDefT);
+        const WO = W[o], WD = W[1 - o];
+        const i = pick(R, WO.off, WO.offT), j = pick(R, WD.def, WD.defT);
         const p = O.pl[i], d = D.pl[j];
         // 1. λάθος
         const pT = comb(p.tov, Dx.tov, lg.tovPlay, B.tov, O.off.tov);
@@ -229,13 +248,13 @@
           } else {
             // ευστοχία ανά προσπάθεια (όπως στο box score), μετά «όταν δεν κόβεται», μετά έδρα
             const raw = three ? comb(p.fg3, Dx.fg3, lg.fg3, B.fg3, O.off.fg3) : comb(p.fg2, Dx.fg2, lg.fg2, B.fg2, O.off.fg2);
-            const mk = inv(logit(clamp(raw / (1 - (three ? 0.012 : lg.blk_fg2a)), 0.02, 0.97)) + adj + d.dAdj);
+            const mk = inv(logit(clamp(raw / (1 - (three ? 0.012 : lg.blk_fg2a)), 0.02, 0.97)) + adj + d.dAdj + gF + tF[o] + WO.pF[i]);
             if (R() < mk) {
               const pts = three ? 3 : 2;
               s[o] += pts; bo[i][0] += pts; if (three) bo[i][4]++; else bo[i][2]++;
               let ast = null;
               if (O.pl.length > 1 && R() < lg.ast_fgm) {
-                const w = O.pl.map((q, k) => (k === i ? 0 : q.wAst)); const a = pick(R, w, w.reduce((x, y) => x + y, 0));
+                const w = WO.ast.map((x, k) => (k === i ? 0 : x)); const a = pick(R, w, w.reduce((x, y) => x + y, 0));
                 bo[a][9]++; ast = a;
               }
               let and1 = "", a1 = null;
@@ -250,18 +269,19 @@
         // 4. ριμπάουντ (μετά από άστοχο σουτ, τάπα ή άστοχη τελευταία βολή)
         const orb = comb(Dx.orbO, Dx.orbD, lg.orb, B.orb) * (missedLast ? 0.55 : 1);
         if (R() < orb) {
-          const r = pick(R, O.pl.map((q) => q.wOreb), O.wOrebT); bo[r][8]++;
+          const r = pick(R, WO.oreb, WO.orebT); bo[r][8]++;
           ev && ev({ t: tr, team: o, type: "oreb", pid: O.pl[r].pid, text: `Επιθετικό ριμπάουντ ${names(o, r)}` });
           continue;                                                       // η κατοχή συνεχίζει
         }
-        const r = pick(R, D.pl.map((q) => q.wDreb), D.wDrebT); bd[r][1]++;
+        const r = pick(R, WD.dreb, WD.drebT); bd[r][1]++;
         ev && ev({ t: tr, team: 1 - o, type: "dreb", pid: D.pl[r].pid, text: `Αμυντικό ριμπάουντ ${names(1 - o, r)}` });
         return;
       }
     }
 
     // Α) κατοχές, Β) τζάμπολ
-    const N = Math.max(50, Math.round(ctx.pace + (ctx.paceSd ? gauss(R) * ctx.paceSd : 0)));
+    const paceSd = ctx.fixedPace ? 0 : (ctx.re ? ctx.re.pace : ctx.paceSd ?? PACE_SD);
+    const N = Math.max(50, Math.round(ctx.pace + (paceSd ? gauss(R) * paceSd : 0)));
     const first = R() < 0.5 ? 0 : 1;
     ev && ev({ t: 0, team: first, type: "tip", text: `Τζάμπολ: την κατοχή παίρνει ${T[first].name}` });
     const run = (n, t0, len) => {                                          // n κατοχές ανά ομάδα στο διάστημα [t0, t0+len]
@@ -288,7 +308,7 @@
   };
 
   // ---------------------------------------------------------------- πολλοί αγώνες -> κατανομές
-  SIM.many = function (ctx, n, seed = 1) {
+  SIM.many = function (ctx, n, seed = 1, mopts = {}) {
     const R = rng(seed);
     const T = ctx.T, K = ["pts", "reb", "ast", "pir", "fg3m", "stl", "blk"];
     const store = T.map((t) => t.pl.map(() => K.map(() => new Int16Array(n))));
@@ -327,7 +347,9 @@
     const hcap = (mg) => { const med = Float64Array.from(mg).sort()[Math.floor(n / 2)], c = Math.round(-med);
       const lines = []; for (let L = c - 8; L <= c + 8; L += 2) lines.push(L - 0.5);
       return { fair: -med, lines: lines.map((L) => [L, +(mg.reduce((k, v) => k + (v + L > 0), 0) / n).toFixed(4)]) }; };
+    const rawOut = mopts.raw ? { s0: sc[0], s1: sc[1], pts: Object.fromEntries(T.flatMap((t, ti) => t.pl.map((p, i) => [p.pid, store[ti][i][0]]))) } : undefined;
     return {
+      ...(rawOut ? { raw: rawOut } : {}),
       n, pace: +ctx.pace.toFixed(1), p_home: +(wins / n).toFixed(4), p_ot: +(ots / n).toFixed(4),
       score: [dist(sc[0], 40, 140), dist(sc[1], 40, 140)], margin: dist(margin, -45, 45, { always: true }), total: dist(total, 110, 230),
       hcap: hcap(margin),

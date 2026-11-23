@@ -106,14 +106,19 @@ jobs:
       - name: Build site database
         run: python scripts/build_site.py
 
-      # Νέο σάιτ (v2): μία βάση για το demo (Άρης, ΠΑΟΚ), από τα αρχεία του build_site
-      - name: Demo database (v2)
+      # Νέο σάιτ (v2): μία βάση ανά λίγκα (GBL, EuroLeague, EuroCup), από τα αρχεία του build_site
+      - name: Site database (v2, ανά λίγκα)
         run: python scripts/build_demo.py
 
-      # Προσομοιώσεις: 50.000 αγώνες για τους επόμενους αγώνες του demo (ίδια μηχανή με τον browser: site/sim.js)
-      - name: Simulations (50k per game)
+      # Προσομοιώσεις: 50.000 ανά αγώνα, οι τρεις λίγκες παράλληλα (ίδια μηχανή με τον browser: site/sim.js)
+      - name: Simulations (50k per game, GBL / EuroLeague / EuroCup)
         continue-on-error: true
-        run: node scripts/run_sims.js
+        run: |
+          pids=""
+          for L in GBL E U; do node scripts/run_sims.js "$L" > "sims_$L.log" 2>&1 & pids="$pids $!"; done
+          rc=0; for p in $pids; do wait "$p" || rc=1; done
+          for L in GBL E U; do echo "::group::$L"; cat "sims_$L.log"; echo "::endgroup::"; done
+          exit $rc
 
       - name: Commit data and model
         run: |
