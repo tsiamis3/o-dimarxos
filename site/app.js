@@ -521,6 +521,72 @@ function simDiagram() {
       ${svg}</svg></div></section>`;
 }
 
+// ----------------------------------------------------------------------------- Αξία: μοντέλο απέναντι στις αποδόσεις
+const MKT = { ml: "Νίκη", spread: "Χάντικαπ", total: "Σύνολο" };
+const VAL = { code: "", mkt: "ml_home", line: "", odds: "", bank: 100 };
+const sgnL = (v) => (v > 0 ? "+" : "") + v;
+/** Πιθανότητα του μοντέλου για μια αγορά ενός επόμενου αγώνα: { win, push } */
+function valProb(S, mkt, line) {
+  if (mkt === "ml_home") return { win: S.p_home, push: 0 };
+  if (mkt === "ml_away") return { win: 1 - S.p_home, push: 0 };
+  if (mkt === "sp_home") return SIM.lineProb(S.margin, line, 1);
+  if (mkt === "sp_away") return SIM.lineProb(S.margin, -line, -1);
+  if (mkt === "over") return SIM.lineProb(S.total, -line, 1);
+  if (mkt === "under") return SIM.lineProb(S.total, -line, -1);
+  return null;
+}
+function valCalc() {
+  const S = SIMS?.games?.[VAL.code]; if (!S) return `<div class="muted">Διάλεξε αγώνα.</div>`;
+  const needLine = !VAL.mkt.startsWith("ml"), line = +VAL.line, odds = +String(VAL.odds).replace(",", "."), bank = +VAL.bank || 0;
+  if (needLine && !Number.isFinite(line)) return `<div class="muted">Βάλε γραμμή.</div>`;
+  const P = valProb(S, VAL.mkt, line); if (!P) return `<div class="muted">Δεν υπάρχει κατανομή για αυτόν τον αγώνα.</div>`;
+  const fair = P.win > 0 ? (1 - P.push) / P.win : null;
+  if (!(odds > 1)) return `<div class="tiles">${tile(pct(P.win), "πιθανότητα (μοντέλο)")}${P.push ? tile(pct(P.push), "επιστροφή (push)") : ""}${tile(fair ? fair.toFixed(2) : "–", "δίκαιη απόδοση")}</div><div class="muted" style="font-size:12px;margin-top:6px">Βάλε την απόδοση του bookmaker για να δεις αν έχει αξία.</div>`;
+  const ev = P.win * odds + P.push - 1, b = odds - 1, f = Math.max(0, (P.win * b - (1 - P.win - P.push)) / b), st = Math.min(0.03, 0.25 * f);
+  const verdict = ev >= 0.05 ? ["good", "Έχει αξία"] : ev > 0 ? ["muted", "Οριακή αξία (κάτω από 5%): καλύτερα όχι"] : ["bad", "Χωρίς αξία"];
+  return `<div class="tiles">${tile(pct(P.win), "πιθανότητα (μοντέλο)")}${P.push ? tile(pct(P.push), "επιστροφή (push)") : ""}${tile(fair ? fair.toFixed(2) : "–", "δίκαιη απόδοση")}
+    ${tile(`<span style="color:var(--${ev > 0 ? "good" : "bad"})">${sgnL(+(100 * ev).toFixed(1))}%</span>`, "αναμενόμενη απόδοση")}${tile(ev >= 0.05 ? `${(bank * st).toFixed(2)}` : "0", `ποσό (¼ Kelly, ταμείο ${bank})`)}</div>
+    <div style="margin-top:8px;font-weight:700;color:var(--${verdict[0]})">${verdict[1]}</div>`;
+}
+Views.value = () => {
+  const V = SIMS?.value, up = SIMS ? Object.entries(SIMS.games).filter(([, S]) => !S.played && S.margin?.hist).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
+  if (!VAL.code && up.length) VAL.code = up[0][0];
+  const fairRow = ([code, S]) => { const ph = S.p_home, ml = S.hcap?.fair ?? -S.margin.p50, tl = S.total.p50;
+    const ov = SIM.lineProb(S.total, -(Math.floor(tl) + 0.5), 1);
+    return `<tr><td><a href="#/game/${code}">${dateGR(S.date, true)}</a></td><td>${badge(S.home, 18)} ${esc(team(S.home).abbr)} – ${badge(S.away, 18)} ${esc(team(S.away).abbr)}</td>
+      <td class="n">${pct(ph)}</td><td class="n"><b>${(1 / ph).toFixed(2)}</b></td><td class="n"><b>${(1 / (1 - ph)).toFixed(2)}</b></td>
+      <td class="n">${sgnL(+(-S.margin.p50).toFixed(1))}</td><td class="n">${tl}</td><td class="n">${ov ? pct(ov.win) : "–"}</td></tr>`; };
+  const vb = (V?.upcoming || []).flatMap((g) => g.markets.filter((m) => m.value).map((m) => ({ ...m, g })));
+  const sideLab = (m, g) => m.market === "ml" ? `${m.side === "home" ? esc(team(g.home).abbr) : esc(team(g.away).abbr)} νίκη` : m.market === "spread" ? `${m.side === "home" ? esc(team(g.home).abbr) : esc(team(g.away).abbr)} ${sgnL(m.line)}` : `${m.side === "over" ? "Over" : "Under"} ${m.line}`;
+  const Lg = V?.ledger;
+  return `<section class="card"><h2>Αξία</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Ένα στοίχημα έχει <b>αξία</b> όταν η πιθανότητα του μοντέλου επί την απόδοση ξεπερνά καθαρά το 1. Κανόνες: μόνο όταν η αναμενόμενη απόδοση είναι ≥ ${Math.round(100 * (V?.rules?.min_ev ?? 0.05))}% (περιθώριο για τα λάθη του μοντέλου), όχι όταν το μοντέλο διαφωνεί πολύ με την αγορά ή η απόδοση είναι πάνω από ${V?.rules?.max_odds ?? 5}, <b>μονά</b> στοιχήματα (όχι παρολί: πολλαπλασιάζουν και το περιθώριο του bookmaker και τα λάθη), ποσό με ¼ Kelly και το πολύ 3% του ταμείου.</p>
+    ${V?.has_odds ? (() => { const ck = (V.upcoming || []).flatMap((g) => g.markets.filter((m) => m.check && m.ev >= V.rules.min_ev).map((m) => ({ ...m, g })));
+      return ck.length ? `<p class="muted" style="font-size:13px;margin:0">Δεν προτείνονται ${ck.length} επιλογές με «αξία» όπου το μοντέλο διαφωνεί με την αγορά πάνω από ${Math.round(100 * V.rules.max_gap)} μονάδες ή η απόδοση είναι πάνω από ${V.rules.max_odds}: εκεί η αγορά συνήθως ξέρει κάτι (απουσία, τραυματισμός). ${ck.slice(0, 4).map((m) => `${esc(team(m.g.home).abbr)}–${esc(team(m.g.away).abbr)} ${m.market === "total" ? (m.side === "over" ? "Over " : "Under ") + m.line : m.side === "home" ? esc(team(m.g.home).abbr) : esc(team(m.g.away).abbr)} (${pct(m.p)} έναντι ${pct(m.market_p)})`).join(" · ")}</p>` : ""; })() : `<div class="empty" style="text-align:left">Δεν υπάρχουν ακόμα αποδόσεις της αγοράς για ${esc(DB.league)}: χρειάζεται δωρεάν κλειδί του The Odds API ως GitHub secret <span class="num">ODDS_API_KEY</span>. Μέχρι τότε: οι δίκαιες αποδόσεις του μοντέλου και ο υπολογιστής πιο κάτω, με την απόδοση που βλέπεις στον bookmaker σου.</div>`}</section>
+  ${V?.has_odds ? `<section><h2>Στοιχήματα με αξία τώρα</h2>${vb.length ? `<div class="tbl"><table><thead><tr><th>Αγώνας</th><th>Επιλογή</th><th class="n">απόδοση</th><th class="n">μοντέλο</th><th class="n">αγορά</th><th class="n">αναμ. απόδοση</th><th class="n">ποσό (% ταμείου)</th></tr></thead><tbody>
+    ${vb.sort((a, b) => b.ev - a.ev).map((m) => `<tr><td><a href="#/game/${m.g.code}">${dateGR(m.g.date, true)} ${esc(team(m.g.home).abbr)}–${esc(team(m.g.away).abbr)}</a></td><td><b>${sideLab(m, m.g)}</b> <span class="muted" style="font-size:11px">${MKT[m.market]}</span></td>
+      <td class="n">${m.odds.toFixed(2)}</td><td class="n">${pct(m.p)}</td><td class="n">${m.market_p != null ? pct(m.market_p) : "–"}</td><td class="n" style="color:var(--good)">+${(100 * m.ev).toFixed(1)}%</td><td class="n"><b>${(100 * m.stake).toFixed(1)}%</b></td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">«αγορά»: η πιθανότητα που δίνουν οι bookmakers χωρίς το περιθώριό τους (μέσος όρος).</p>` : `<div class="empty">Κανένα στοίχημα με αξία ≥ ${Math.round(100 * V.rules.min_ev)}% αυτή τη στιγμή.</div>`}</section>` : ""}
+  <section><h2>Δίκαιες αποδόσεις του μοντέλου</h2>${up.length ? `<div class="tbl"><table><thead><tr><th>Ημ/νία</th><th>Αγώνας</th><th class="n">P(γηπ.)</th><th class="n">1</th><th class="n">2</th><th class="n">χάντικαπ γηπ.</th><th class="n">σύνολο</th><th class="n">P(over)</th></tr></thead><tbody>${up.map(fairRow).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">1/2: δίκαιες αποδόσεις νίκης (χωρίς περιθώριο). Χάντικαπ: η διάμεσος της διαφοράς από τη μεριά του γηπεδούχου. Σύνολο: διάμεσος· P(over) για τη μισή γραμμή πάνω από τη διάμεσο. Από ${SIMS.n.toLocaleString("el-GR")} προσομοιώσεις ανά αγώνα (με ratings και αβεβαιότητα).</p>` : `<div class="empty">Δεν υπάρχουν επόμενοι αγώνες με προσομοίωση.</div>`}</section>
+  <section class="card" id="val-calc"><h2>Υπολογιστής</h2>
+    <div class="filters"><label style="max-width:100%;min-width:0">Αγώνας<select data-val="code" style="max-width:100%">${up.map(([c, S]) => `<option value="${c}" ${c === VAL.code ? "selected" : ""}>${dateGR(S.date, true)} · ${esc(team(S.home).name)} – ${esc(team(S.away).name)}</option>`).join("")}</select></label>
+      <label>Αγορά<select data-val="mkt">${[["ml_home", "Νίκη γηπεδούχου"], ["ml_away", "Νίκη φιλοξενούμενου"], ["sp_home", "Χάντικαπ γηπεδούχου"], ["sp_away", "Χάντικαπ φιλοξενούμενου"], ["over", "Over"], ["under", "Under"]].map(([k, l]) => `<option value="${k}" ${k === VAL.mkt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label>Γραμμή<input data-val="line" inputmode="decimal" placeholder="π.χ. −4.5 / 160.5" value="${esc(VAL.line)}" style="width:120px"></label>
+      <label>Απόδοση<input data-val="odds" inputmode="decimal" placeholder="π.χ. 1.90" value="${esc(VAL.odds)}" style="width:90px"></label>
+      <label>Ταμείο<input data-val="bank" inputmode="decimal" value="${esc(VAL.bank)}" style="width:80px"></label></div>
+    <div id="val-out" style="margin-top:10px">${valCalc()}</div>
+    <p class="muted" style="font-size:12px">Χάντικαπ: η γραμμή από τη μεριά της ομάδας που διαλέγεις (π.χ. −4.5 = πρέπει να κερδίσει με 5+). Στις ακέραιες γραμμές μετράει και η επιστροφή (push).</p></section>
+  ${Lg && (Lg.n || Lg.open) ? `<section class="card"><h2>Ημερολόγιο (εικονικά στοιχήματα)</h2>
+    <div class="tiles">${tile(Lg.n, "τακτοποιημένα")}${tile(Lg.open, "ανοιχτά")}${tile(Lg.n ? pct(Lg.wins / Lg.n) : "–", "κερδισμένα")}${tile(Lg.roi != null ? `<span style="color:var(--${Lg.roi >= 0 ? "good" : "bad"})">${sgnL(+(100 * Lg.roi).toFixed(1))}%</span>` : "–", "απόδοση (ROI)")}
+      ${Lg.vs_market ? tile(`${Lg.vs_market.brier_model.toFixed(3)} / ${Lg.vs_market.brier_market.toFixed(3)}`, `Brier μοντέλο / αγορά (${Lg.vs_market.n} αγ.)`) : ""}</div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>Αγώνας</th><th>Επιλογή</th><th class="n">απόδοση</th><th class="n">μοντέλο</th><th class="n">ποσό</th><th>αποτέλεσμα</th></tr></thead><tbody>
+      ${Lg.recent.map((b) => `<tr><td><a href="#/game/${b.code}">${dateGR(b.date, true)} ${esc(team(b.home).abbr)}–${esc(team(b.away).abbr)}</a></td><td>${sideLab(b, b)}</td><td class="n">${b.odds.toFixed(2)}</td><td class="n">${pct(b.p)}</td><td class="n">${(100 * b.stake).toFixed(1)}%</td>
+        <td style="color:var(--${b.result === "win" ? "good" : b.result === "loss" ? "bad" : "muted"})">${b.result === "win" ? "κέρδος" : b.result === "loss" ? "χάθηκε" : b.result === "push" ? "επιστροφή" : "ανοιχτό"}${b.profit ? ` (${sgnL(+(100 * b.profit).toFixed(2))}%)` : ""}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">Κάθε στοίχημα με αξία καταγράφεται με την τελευταία απόδοση πριν από τον αγώνα και τακτοποιείται αυτόματα. Το κριτήριο που μετράει: αν σε βάθος χρόνου το ROI μένει θετικό και αν το Brier του μοντέλου πλησιάζει ή κερδίζει της αγοράς. Με λίγες δεκάδες στοιχήματα, το αποτέλεσμα είναι κυρίως τύχη.</p></section>` : ""}`;
+};
+Views.value.bind = () => {};
+
 Views.sims = () => {
   const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
   const C = SIMS?.check, up = G.filter(([, S]) => !S.played), pl = G.filter(([, S]) => S.played).reverse();
@@ -855,7 +921,7 @@ function route() {
   const [, view = "", arg = ""] = (location.hash || "#/").split("/");
   return { view: view || "home", arg: decodeURIComponent(arg) };
 }
-const NAV = { sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
+const NAV = { value: "#/value", sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
 function render() {
   const { view, arg } = route(), V = Views[view] || Views.home, el = $("#view");
   if (Live.stop) Live.stop();
@@ -866,6 +932,10 @@ function render() {
   const titles = { team: () => DB.teams[arg]?.name, player: () => DB.players[arg]?.name, game: () => { const g = DB.games[arg]; return g && `${team(g.home).name} – ${team(g.away).name}`; } };
   document.title = [titles[view]?.(), "o-dimarxos"].filter(Boolean).join(" · ");
 }
+document.addEventListener("input", (e) => {
+  const k = e.target.dataset?.val; if (!k) return;
+  VAL[k] = e.target.value; const o = $("#val-out"); if (o) o.innerHTML = valCalc();
+});
 document.addEventListener("change", (e) => {
   if (e.target.id === "rd-cmp") { RD_CMP.pid = e.target.value; const sec = $("#radar"); if (sec) sec.outerHTML = radarSection(e.target.dataset.pid); }
 });

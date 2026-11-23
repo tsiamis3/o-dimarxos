@@ -378,6 +378,16 @@
     return { tAdj: [0, 1].map((i) => clamp((w * (target[i] - m0[i])) / slope[i], -0.8, 0.8)), base: m0, slope };
   };
 
+  /** Από ιστόγραμμα κατανομής (dist.hist, dist.lo): πιθανότητα να «περάσει» μια γραμμή στοιχήματος.
+   *  side = +1: X + line > 0 (π.χ. γηπεδούχος με χάντικαπ line), side = -1: X + line < 0. Επιστρέφει { win, push }. */
+  SIM.lineProb = function (dist, line, side = 1) {
+    if (!dist?.hist) return null;
+    let win = 0, push = 0;
+    dist.hist.forEach((p, i) => { const v = dist.lo + i + line; if (Math.abs(v) < 1e-9) push += p; else if (side > 0 ? v > 0 : v < 0) win += p; });
+    const tot = dist.hist.reduce((a, b) => a + b, 0) || 1;
+    return { win: win / tot, push: push / tot };
+  };
+
   SIM.rng = rng;
   if (typeof module !== "undefined" && module.exports) module.exports = SIM; else root.SIM = SIM;
 })(typeof self !== "undefined" ? self : this);
