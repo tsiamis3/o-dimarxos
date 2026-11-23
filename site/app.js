@@ -1,5 +1,5 @@
 /* =============================================================================
-   o-dimarxos v2 · Stoiximan GBL (demo: Άρης, ΠΑΟΚ)
+   o-dimarxos v2 · Stoiximan GBL (όλες οι ομάδες)
 
    Μία βάση (db/demo.json, από scripts/build_demo.py) και σελίδες-πρότυπα, όλες συνδεδεμένες:
      #/                 αρχική: ομάδες, επόμενοι αγώνες, βαθμολογία, κορυφαίοι παίκτες
@@ -67,12 +67,11 @@ table.state = {};
 const Views = {};
 
 Views.home = () => {
-  const up = demoGames().filter((g) => !g.played).slice(0, 6);
-  const last = demoGames().filter((g) => g.played).slice(-4).reverse();
+  const UP = demoGames().filter((g) => !g.played), rnd = UP[0]?.round, up = UP.filter((g) => g.round === rnd);
+  const last = demoGames().filter((g) => g.played).slice(-6).reverse();
   const top = Object.values(DB.players).filter((p) => isDemo(p.team) && p.gp >= 2).sort((a, b) => b.avg.pir - a.avg.pir).slice(0, 5);
   return `
-  <section><div class="grid">${DB.demo.map(teamCard).join("")}</div></section>
-  <section><div class="section-head"><h2>Επόμενοι αγώνες</h2><a href="#/games">όλοι οι αγώνες →</a></div>${gamesList(up, "Δεν υπάρχουν επόμενοι αγώνες.")}</section>
+  <section><div class="section-head"><h2>Επόμενη αγωνιστική${rnd ? ` (${rnd}η)` : ""}</h2><a href="#/games">όλοι οι αγώνες →</a></div>${gamesList(up, "Δεν υπάρχουν επόμενοι αγώνες.")}</section>
   <section class="grid">
     <div><div class="section-head"><h2>Βαθμολογία</h2><a href="#/standings">πλήρης →</a></div>${standingsTable(true)}</div>
     <div style="display:flex;flex-direction:column;gap:20px">
@@ -93,7 +92,7 @@ function teamCard(c) {
 }
 
 function standingsTable(compact = false) {
-  const rows = DB.standings.map((s) => ({ ...s, diff: s.pf - s.pa, _hl: isDemo(s.code) }));
+  const rows = DB.standings.map((s) => ({ ...s, diff: s.pf - s.pa, _hl: false }));
   const cols = [{ key: "pos", label: "#", n: true }, { key: "code", label: "Ομάδα", html: (r) => tlink(r.code, 20), sv: (r) => team(r.code).name },
     { key: "gp", label: "Αγ.", n: true }, { key: "w", label: "Ν", n: true }, { key: "l", label: "Η", n: true }];
   if (!compact) cols.push({ key: "pf", label: "Υπέρ", n: true }, { key: "pa", label: "Κατά", n: true },
@@ -105,14 +104,13 @@ function standingsTable(compact = false) {
 }
 
 Views.standings = () => `<section><h2>Βαθμολογία ${esc(DB.league)}</h2>${standingsTable(false)}
-  <p class="muted" style="font-size:13px">Με μπλε οι ομάδες του demo (πάτα για τη σελίδα τους). Ισοβαθμίες με τη διαφορά πόντων.</p></section>`;
+  <p class="muted" style="font-size:13px">Πάτα μια ομάδα για τη σελίδα της. Ισοβαθμίες με τη διαφορά πόντων.</p></section>`;
 
-Views.teams = () => `<section><h2>Ομάδες</h2><div class="grid">${DB.demo.map(teamCard).join("")}</div>
-  <p class="muted" style="font-size:13px">Demo με δύο ομάδες. Οι υπόλοιπες εμφανίζονται ως αντίπαλοι.</p></section>`;
+Views.teams = () => `<section><h2>Ομάδες</h2><div class="grid">${DB.demo.map(teamCard).join("")}</div></section>`;
 
 Views.team = (c) => {
   const t = DB.teams[c];
-  if (!t) return `<div class="empty">Η ομάδα δεν είναι στο demo. <a href="#/teams">Ομάδες →</a></div>`;
+  if (!t) return `<div class="empty">Η ομάδα δεν βρέθηκε. <a href="#/teams">Ομάδες →</a></div>`;
   const r = t.record, roster = t.roster.map((pid) => DB.players[pid]);
   const G = t.games.map((g) => DB.games[g]).sort((a, b) => a.date.localeCompare(b.date));
   const played = G.filter((g) => g.played).reverse(), up = G.filter((g) => !g.played);
@@ -190,8 +188,12 @@ Views.games = () => {
   const G = demoGames(), up = G.filter((g) => !g.played), pl = G.filter((g) => g.played).reverse();
   const byRound = {};
   for (const g of up) (byRound[g.round] ||= []).push(g);
-  return `<section><h2>Επόμενοι αγώνες</h2>${Object.keys(byRound).length ? Object.entries(byRound).slice(0, 4).map(([r, L]) => `<h3 class="muted" style="margin:12px 0 6px">${r}η αγωνιστική</h3>${gamesList(L)}`).join("") : `<div class="empty">Κανένας.</div>`}</section>
-    <section><h2>Αποτελέσματα</h2>${gamesList(pl)}</section>`;
+  const byRoundP = {};
+  for (const g of pl) (byRoundP[g.round] ||= []).push(g);
+  const rounds = (R, openFirst) => Object.entries(R).sort((x, y) => (openFirst ? +x[0] - +y[0] : +y[0] - +x[0])).map(([r, L], i) =>
+    `<details class="tree" ${i === 0 ? "open" : ""}><summary><b>${r}η αγωνιστική</b> <span class="muted" style="font-size:12px">${dateGR(L[0].date, true)} · ${L.length} αγώνες</span></summary>${gamesList(L)}</details>`).join("");
+  return `<section><h2>Επόμενοι αγώνες</h2>${Object.keys(byRound).length ? rounds(byRound, true) : `<div class="empty">Κανένας.</div>`}</section>
+    <section><h2>Αποτελέσματα</h2>${rounds(byRoundP, false)}</section>`;
 };
 
 Views.game = (code) => {
@@ -215,7 +217,7 @@ Views.game = (code) => {
   const roster = (c) => { const L = (DB.teams[c]?.roster || Object.values(DB.players).filter((p) => p.team === c).sort((a, b) => b.avg.min - a.avg.min).map((p) => p.pid)).slice(0, 9).map((pid) => DB.players[pid]);
     return `<div class="card"><h3>${tlink(c, 20)}</h3>${L.length ? `<div style="overflow-x:auto"><table><thead><tr><th>Παίκτης</th><th class="n">Λεπ.</th><th class="n">Π</th><th class="n">Ρ</th><th class="n">Α</th><th class="n">PIR</th></tr></thead><tbody>
       ${L.map((p) => `<tr><td>${pbtn(p.pid)}</td><td class="n">${f1(p.avg.min)}</td><td class="n">${f1(p.avg.pts)}</td><td class="n">${f1(p.avg.reb)}</td><td class="n">${f1(p.avg.ast)}</td><td class="n"><b>${f1(p.avg.pir)}</b></td></tr>`).join("")}</tbody></table></div>`
-      : `<div class="muted">Δεν υπάρχουν στοιχεία για τους παίκτες (εκτός demo).</div>`}</div>`; };
+      : `<div class="muted">Δεν υπάρχουν στοιχεία για τους παίκτες .</div>`}</div>`; };
   const h2h = demoGames().filter((x) => x.played && [x.home, x.away].sort().join() === [g.home, g.away].sort().join());
   return head + `<section><h2>Ρόστερ (με σειρά λεπτών)</h2><div class="grid">${roster(g.home)}${roster(g.away)}</div></section>
     ${h2h.length ? `<section><h2>Φετινές συναντήσεις</h2>${gamesList(h2h)}</section>` : ""}`;
@@ -329,6 +331,22 @@ function simSection(code) {
     <p class="muted" style="font-size:12px">Δείχνονται μόνο οι κατανομές με τυπική απόκλιση έως ${Math.round(100 * (SIMS.show_cv ?? 0.8))}% του μέσου (CV ≤ ${SIMS.show_cv ?? 0.8}) και μέσο ≥ ${SIMS.show_min ?? 1}: οι υπόλοιπες είναι κυρίως θόρυβος.${act ? " Δεξιά: πραγματικό / διάμεσος της προσομοίωσης." : " Δεξιά: το μεσαίο 50%."}</p></section>`;
 }
 
+/** Ποιες πηγές δεδομένων βοηθούν: ίδιοι αγώνες, ίδια seeds, walk-forward. */
+function srcCard(L) {
+  const best = (k, lo = true) => (lo ? Math.min : Math.max)(...L.map((c) => c[k]));
+  const cell = (c, k, f, lo = true) => `<td class="n" style="${c[k] === best(k, lo) ? "color:var(--good);font-weight:700" : ""}">${f(c[k])}</td>`;
+  const S = DB.sources || {};
+  return `<section class="card"><h2>Δεδομένα από άλλες λίγκες: βοηθούν;</h2>
+    <p style="margin:0 0 8px;max-width:80ch">Οι ίδιοι ${L[0].games} παιγμένοι αγώνες, με ${L[0].sims_each.toLocaleString("el-GR")} προσομοιώσεις ο καθένας και ίδια ζάρια· αλλάζει μόνο από πού έρχονται τα ποσοστά των παικτών.
+    Από τις άλλες λίγκες παίρνουμε μόνο την <b>ποιότητα</b> (ποσοστά, λάθη, βολές, μερίδιο τριπόντων), με βάρος ${SIMS.ext_w ?? 0.5} ανά αγώνα και μόνο αγώνες πριν από την ημερομηνία· τα λεπτά και ο ρόλος έρχονται πάντα από τη GBL.</p>
+    <div class="tbl"><table><thead><tr><th>Πηγές</th><th class="n">Brier</th><th class="n">νικητής</th><th class="n">± διαφορά</th><th class="n">± σύνολο</th><th class="n">± πόντοι παίκτη</th></tr></thead><tbody>
+    ${L.map((c) => `<tr><td>${esc(c.label)}${c.sources.length ? `<div class="muted" style="font-size:11px">${c.sources.map((k) => esc(S[k]?.label || k)).join(" · ")}</div>` : ""}</td>
+      ${cell(c, "brier", (v) => v.toFixed(3))}${cell(c, "acc", pct, false)}${cell(c, "mae_margin", (v) => "±" + v.toFixed(2))}${cell(c, "mae_total", (v) => "±" + v.toFixed(2))}${cell(c, "mae_player_pts", (v) => "±" + v.toFixed(2))}</tr>`).join("")}</tbody></table></div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>Πηγή</th><th class="n">κοινοί παίκτες</th><th class="n">εμφανίσεις</th><th class="n">κλίμακα 2π</th><th class="n">3π</th><th class="n">βολές</th><th class="n">λάθη</th></tr></thead><tbody>
+    ${Object.entries(S).map(([k, x]) => `<tr><td>${esc(x.label)}</td><td class="n">${x.players}</td><td class="n">${x.games}</td>${["fg2", "fg3", "ft", "tov"].map((q) => `<td class="n">${x.shift[q] > 0 ? "+" : ""}${x.shift[q].toFixed(2)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">Πράσινο: το καλύτερο. «±»: μέσο απόλυτο σφάλμα, «νικητής»: πόσο συχνά βρήκε τον νικητή. Κλίμακα: πόσο (σε log-odds) διαφέρει το ποσοστό των ίδιων παικτών στη GBL από την πηγή· + σημαίνει ότι στη GBL ευστοχούν περισσότερο. Οι διαφορές είναι μικρές με ${L[0].games} αγώνες: δες τες ως ένδειξη.</p></section>`;
+}
+
 const BETAL = { tov: "Λάθη (ανά φάση)", ftrip: "Φάουλ → βολές (ανά φάση)", fg2: "Ευστοχία 2π", fg3: "Ευστοχία 3π", orb: "Επιθ. ριμπάουντ (ομάδα)" };
 function betaCard(F) {
   const f = (v) => (v == null ? "–" : v.toFixed(2));
@@ -352,7 +370,7 @@ function simDiagram() {
   const ar = (x1, y1, x2, y2, lab = "", dash = false) => `<path d="M${x1},${y1} L${x2},${y2}" class="dg-ar${dash ? " dash" : ""}" marker-end="url(#dgm)"/>` +
     (lab ? t((x1 + x2) / 2 + (x1 === x2 ? 6 : 0), (y1 + y2) / 2 + (x1 === x2 ? 4 : -5), lab, "lab" + (x1 === x2 ? " l" : "")) : "");
   // αριστερά: η αλυσίδα των αρχείων
-  const L = [["scripts/run_sims.js", "για κάθε αγώνα του demo"], ["dbAsOf(ημερομηνία)", "βάση μόνο με προηγούμενους αγώνες"],
+  const L = [["scripts/run_sims.js", "για κάθε αγώνα της λίγκας"], ["dbAsOf(ημερομηνία)", "βάση μόνο με προηγούμενους αγώνες"],
     ["fitBeta()", "β του log5 από προηγούμενους αγώνες"], ["SIM.prepare()", "ρόστερ · συρρίκνωση · άμυνα"],
     ["SIM.many(50.000)", "καλεί SIM.game ξανά και ξανά"], ["dist() · hcap()", "ροπές · ποσοστημόρια · χάντικαπ"],
     ["site/db/sims.json → app.js", "boxplots · βαθμονόμηση · ζωντανά"]];
@@ -403,6 +421,7 @@ Views.sims = () => {
       ${Object.entries(C.coverage || {}).map(([k, c]) => `<tr><td>${COVL[k] || k}</td><td class="n">${c.n}</td><td class="n" style="color:var(--${Math.abs(c.box - 0.5) <= 0.07 ? "good" : "bad"})">${pct(c.box)}</td>
         <td class="n" style="color:var(--${Math.abs(c.whisk - 0.9) <= 0.05 ? "good" : "bad"})">${pct(c.whisk)}</td><td class="n">${pct(c.below_median)}</td></tr>`).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">Πράσινο: κοντά στον στόχο. Αν το «κουτί» πιάνει πολύ περισσότερο από 50%, η προσομοίωση είναι πιο αβέβαιη απ' όσο χρειάζεται (πολύ φαρδιά)· αν πιάνει λιγότερο, είναι πολύ σίγουρη.</p></section>` : ""}
+  ${SIMS?.check_sources ? srcCard(SIMS.check_sources) : ""}
   ${SIMS?.beta_fit ? betaCard(SIMS.beta_fit) : ""}
   ${simDiagram()}
   <section class="card"><h2>Πώς δουλεύει</h2>
@@ -423,7 +442,7 @@ Views.sims.bind = () => {};
 const SCEN = {};
 const SC_F = [["min", "Λεπτά", 0, 40, 1, (v) => v.toFixed(0)], ["fga", "Σουτ (2π+3π)", 0, 25, 0.5, f1], ["fg2p", "2π %", 0.2, 0.8, 0.01, pct],
   ["fg3p", "3π %", 0.1, 0.6, 0.01, pct], ["ftp", "Βολές %", 0.3, 1, 0.01, pct], ["tov", "Λάθη", 0, 6, 0.1, f1], ["reb", "Ριμπάουντ", 0, 15, 0.1, f1], ["ast", "Ασίστ", 0, 12, 0.1, f1]];
-const scNew = () => ({ out: [], avg: {}, paceAdj: 0, tags: [] });
+const scNew = () => ({ out: [], avg: {}, paceAdj: 0, tags: [], sources: [], extW: 0.5 });
 /** Οι μέσοι όροι ενός παίκτη όπως είναι στο σενάριο (για τα sliders). */
 function scVals(pid, sc) {
   const p = DB.players[pid], a = SIM.adjAvg(p.avg, sc.avg[pid]), lg = DB.lg || {};
@@ -432,7 +451,8 @@ function scVals(pid, sc) {
     tov: a.tov, reb: a.oreb + a.dreb, ast: a.ast };
 }
 const scSet = (sc, pid, f, v) => { (sc.avg[pid] ||= {})[f] = v; };
-const scCount = (sc) => sc.out.length + Object.values(sc.avg).filter((o) => Object.keys(o).length).length + (sc.paceAdj ? 1 : 0);
+const scCount = (sc) => sc.out.length + Object.values(sc.avg).filter((o) => Object.keys(o).length).length + (sc.paceAdj ? 1 : 0) + (sc.sources.length ? 1 : 0);
+const extGames = (pid, sc) => sc.sources.reduce((n, k) => n + (DB.players[pid]?.ext?.[k]?.length || 0), 0);
 /** Έτοιμα σενάρια ανά ομάδα, από τους παίκτες της (πρώτος σκόρερ, πλέι-μέικερ, ριμπάουντερ, σουτέρ). */
 function scPresets(base) {
   const side = base.T.map((T) => {
@@ -462,7 +482,8 @@ function scTree(g, base, sc) {
   const slider = (pid, [f, lab, lo, hi, st, fmt], v, touched) => `<label class="sc-row${touched ? " on" : ""}"><span>${lab}</span>
     <input type="range" min="${lo}" max="${hi}" step="${st}" value="${v}" data-pid="${pid}" data-f="${f}"><output>${fmt(v)}</output></label>`;
   const player = (q) => { const pid = q.pid, o = sc.avg[pid] || {}, out = sc.out.includes(pid), v = scVals(pid, sc), k = Object.keys(o).length;
-    return `<details class="tree-node" data-k="p:${pid}"><summary>${esc(DB.players[pid].name)}${out ? ` <span class="sc-tag bad">εκτός</span>` : k ? ` <span class="sc-tag">${k} αλλαγ${k > 1 ? "ές" : "ή"}</span>` : ""}</summary>
+    const eg = extGames(pid, sc);
+    return `<details class="tree-node" data-k="p:${pid}"><summary>${esc(DB.players[pid].name)}${eg ? ` <span class="muted" style="font-size:11px">+${eg} αγ. εκτός GBL</span>` : ""}${out ? ` <span class="sc-tag bad">εκτός</span>` : k ? ` <span class="sc-tag">${k} αλλαγ${k > 1 ? "ές" : "ή"}</span>` : ""}</summary>
       <div class="tree-in"><label class="sc-row"><span>Παίζει</span><input type="checkbox" data-out="${pid}" ${out ? "" : "checked"}><output></output></label>
       ${out ? "" : SC_F.map((F) => slider(pid, F, +(+v[F[0]]).toFixed(3), o[F[0]] != null)).join("")}
       ${k || out ? `<button class="plink" data-screset="${pid}" style="font-size:12px">↺ πίσω στους πραγματικούς μέσους όρους</button>` : ""}</div></details>`; };
@@ -478,10 +499,22 @@ function scTree(g, base, sc) {
       <details class="tree-node" data-k="game"><summary>Αγώνας${sc.paceAdj ? ` <span class="sc-tag">ρυθμός ${sc.paceAdj > 0 ? "+" : ""}${sc.paceAdj}</span>` : ""}</summary><div class="tree-in">
         <label class="sc-row${sc.paceAdj ? " on" : ""}"><span>Ρυθμός (± κατοχές)</span><input type="range" min="-12" max="12" step="1" value="${sc.paceAdj}" data-pace><output>${sc.paceAdj > 0 ? "+" : ""}${sc.paceAdj}</output></label>
         <div class="muted" style="font-size:12px">Μέσος ρυθμός των δύο ομάδων: ${base.pace.toFixed(1)} κατοχές.</div></div></details>
+      ${srcNode(base, sc)}
       ${teamNode(0)}${teamNode(1)}
       ${n ? `<button class="plink" data-screset="*" style="font-size:13px">↺ Καθάρισμα όλων</button>` : ""}
       <div class="muted" style="font-size:12px;margin-top:4px">Ό,τι αλλάζεις θεωρείται η αλήθεια για τον αγώνα: ο παίκτης το πετυχαίνει απέναντι σε μέση άμυνα (χωρίς τη «συρρίκνωση» προς τη λίγκα). Μικρότερα λεπτά = λιγότερα σουτ, ριμπάουντ, ασίστ αναλογικά.</div>
     </div></details>`;
+}
+/** Κόμβος «Δεδομένα»: ποιες άλλες λίγκες/σεζόν μπαίνουν στα ποσοστά των παικτών και με τι βάρος. */
+function srcNode(base, sc) {
+  const S = DB.sources || {}, keys = Object.keys(S); if (!keys.length) return "";
+  const inGame = (k) => base.T.reduce((n, T) => n + T.pl.filter((q) => DB.players[q.pid]?.ext?.[k]?.length).length, 0);
+  const C = SIMS?.check_sources;
+  return `<details class="tree-node" data-k="src"><summary>Δεδομένα${sc.sources.length ? ` <span class="sc-tag">+${sc.sources.length} πηγ${sc.sources.length > 1 ? "ές" : "ή"}</span>` : ` <span class="muted" style="font-size:12px">μόνο GBL</span>`}</summary><div class="tree-in">
+    <label class="sc-row on"><span>GBL ${DB.season}-${String((DB.season + 1) % 100).padStart(2, "0")}</span><input type="checkbox" checked disabled><output></output></label>
+    ${keys.map((k) => `<label class="sc-row${sc.sources.includes(k) ? " on" : ""}"><span>${esc(S[k].label)}</span><input type="checkbox" data-src="${k}" ${sc.sources.includes(k) ? "checked" : ""}><output style="font-size:11px">${inGame(k)} παίκτ.</output></label>`).join("")}
+    <label class="sc-row${sc.sources.length ? " on" : ""}"><span>Βάρος ανά αγώνα</span><input type="range" min="0.1" max="1" step="0.05" value="${sc.extW}" data-extw><output>${sc.extW.toFixed(2)}</output></label>
+    <div class="muted" style="font-size:12px">Από τις άλλες λίγκες μετράει μόνο η ποιότητα (ποσοστά, λάθη, βολές), μετατρεμμένη στην κλίμακα της GBL· λεπτά και ρόλος μένουν από τη GBL. «παίκτ.» = πόσοι από τους δύο ρόστερ έχουν αγώνες εκεί.${C ? ` Στον έλεγχο (σελίδα <a href="#/sims">Προσομοιώσεις</a>) οι Ευρωπαϊκές λίγκες έδωσαν Brier ${C.find((c) => /Euro/.test(c.label))?.brier ?? "–"} έναντι ${C[0].brier} μόνο με GBL.` : ""}</div></div></details>`;
 }
 /** Σύγκριση βασικό ↔ σενάριο από Monte Carlo. */
 function scCompare(base, r, ctx) {
@@ -509,7 +542,7 @@ const Live = {
     try { ctx = base = SIM.prepare(DB, g.home, g.away, { beta: SIMS?.beta }); } catch (e) { el.innerHTML = `<div class="muted">Δεν γίνεται προσομοίωση: ${esc(e.message)}</div>`; return; }
     if (ctx.T[0].pl.length < 5 || ctx.T[1].pl.length < 5) { el.innerHTML = `<div class="muted">Δεν υπάρχουν αρκετοί παίκτες για προσομοίωση.</div>`; return; }
     const sc = (SCEN[g.code] ||= scNew());
-    const scOpts = () => ({ beta: SIMS?.beta, out: sc.out, avg: sc.avg, paceAdj: sc.paceAdj });
+    const scOpts = () => ({ beta: SIMS?.beta, out: sc.out, avg: sc.avg, paceAdj: sc.paceAdj, sources: sc.sources, extW: sc.extW });
     let baseMC = SIMS?.games?.[g.code] && !SIMS.games[g.code].played ? SIMS.games[g.code] : null;
     const SPEEDS = [["×10", 10], ["×60", 60], ["×240", 240], ["άμεσα", 1e9]];
     let speed = 60, log = [], idx = 0, clock = 0, raf = 0, last = 0, running = false, box = {};
@@ -597,6 +630,7 @@ const Live = {
     tree.addEventListener("input", (e) => {
       const t = e.target, o = t.parentElement.querySelector("output");
       if (t.dataset.pace != null) { sc.paceAdj = +t.value; o.textContent = (sc.paceAdj > 0 ? "+" : "") + sc.paceAdj; changed(); return; }
+      if (t.dataset.extw != null) { sc.extW = +t.value; o.textContent = sc.extW.toFixed(2); changed(); return; }
       if (!t.dataset.f) return;
       const pid = t.dataset.pid, F = SC_F.find((x) => x[0] === t.dataset.f);
       scSet(sc, pid, F[0], +t.value); o.textContent = F[5](+t.value); t.parentElement.classList.add("on");
@@ -607,7 +641,8 @@ const Live = {
       changed();
     });
     tree.addEventListener("change", (e) => { const t = e.target;
-      if (t.dataset.out) { const pid = t.dataset.out; sc.out = t.checked ? sc.out.filter((x) => x !== pid) : [...sc.out, pid]; redraw(); changed(); }
+      if (t.dataset.src) { const k = t.dataset.src; sc.sources = t.checked ? [...sc.sources, k] : sc.sources.filter((x) => x !== k); redraw(); changed(); }
+      else if (t.dataset.out) { const pid = t.dataset.out; sc.out = t.checked ? sc.out.filter((x) => x !== pid) : [...sc.out, pid]; redraw(); changed(); }
       else if (t.dataset.f || t.dataset.pace != null) redraw(); });
     tree.addEventListener("click", (e) => {
       const pr = e.target.closest("[data-preset]"), rs = e.target.closest("[data-screset]");
@@ -680,7 +715,7 @@ $("#theme").addEventListener("click", () => {
   try {
     DB = await fetch("db/demo.json?v=__BUILD__").then((r) => { if (!r.ok) throw new Error("db/demo.json"); return r.json(); });
     SIMS = await fetch("db/sims.json?v=__BUILD__").then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    $("#sub").textContent = `${DB.league} ${DB.season}-${String((DB.season + 1) % 100).padStart(2, "0")} · demo: ${DB.demo.map((c) => team(c).name).join(", ")}`;
+    $("#sub").textContent = `${DB.league} ${DB.season}-${String((DB.season + 1) % 100).padStart(2, "0")} · ${DB.demo.length} ομάδες`;
     $("#foot").textContent = `Δεδομένα: esake.gr (box scores), EuroLeague API/ESPN (βιογραφικά) · ενημέρωση ${DB.updated}`;
     render();
   } catch (e) {
