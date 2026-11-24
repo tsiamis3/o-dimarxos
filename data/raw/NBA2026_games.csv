@@ -247,16 +247,16 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401910033,5,2026-11-22,19:00,UTAH,Utah Jazz,DAL,Dallas Mavericks,114.0,116.0,True
 401910034,5,2026-11-22,20:00,NY,New York Knicks,IND,Indiana Pacers,113.0,106.0,True
 401910035,5,2026-11-22,20:30,GS,Golden State Warriors,BOS,Boston Celtics,88.0,87.0,True
-401910036,5,2026-11-23,19:00,CHA,Charlotte Hornets,MEM,Memphis Grizzlies,,,False
-401910037,5,2026-11-23,19:00,PHI,Philadelphia 76ers,POR,Portland Trail Blazers,,,False
-401910038,5,2026-11-23,19:30,IND,Indiana Pacers,OKC,Oklahoma City Thunder,,,False
-401910039,5,2026-11-23,19:30,TOR,Toronto Raptors,MIL,Milwaukee Bucks,,,False
-401910040,5,2026-11-23,19:30,MIN,Minnesota Timberwolves,BKN,Brooklyn Nets,,,False
-401910041,5,2026-11-23,20:00,CHI,Chicago Bulls,CLE,Cleveland Cavaliers,,,False
-401910042,5,2026-11-23,20:00,NO,New Orleans Pelicans,PHX,Phoenix Suns,,,False
-401910043,5,2026-11-23,20:30,HOU,Houston Rockets,LAC,LA Clippers,,,False
-401910044,5,2026-11-23,22:00,LAL,Los Angeles Lakers,UTAH,Utah Jazz,,,False
-401910045,5,2026-11-23,22:00,SAC,Sacramento Kings,SA,San Antonio Spurs,,,False
+401910036,5,2026-11-23,19:00,CHA,Charlotte Hornets,MEM,Memphis Grizzlies,111.0,117.0,True
+401910037,5,2026-11-23,19:00,PHI,Philadelphia 76ers,POR,Portland Trail Blazers,111.0,128.0,True
+401910038,5,2026-11-23,19:30,IND,Indiana Pacers,OKC,Oklahoma City Thunder,125.0,120.0,True
+401910039,5,2026-11-23,19:30,TOR,Toronto Raptors,MIL,Milwaukee Bucks,111.0,116.0,True
+401910040,5,2026-11-23,19:30,MIN,Minnesota Timberwolves,BKN,Brooklyn Nets,142.0,116.0,True
+401910041,5,2026-11-23,20:00,CHI,Chicago Bulls,CLE,Cleveland Cavaliers,122.0,108.0,True
+401910042,5,2026-11-23,20:00,NO,New Orleans Pelicans,PHX,Phoenix Suns,119.0,123.0,True
+401910043,5,2026-11-23,20:30,HOU,Houston Rockets,LAC,LA Clippers,116.0,104.0,True
+401910044,5,2026-11-23,22:00,LAL,Los Angeles Lakers,UTAH,Utah Jazz,109.0,94.0,True
+401910045,5,2026-11-23,22:00,SAC,Sacramento Kings,SA,San Antonio Spurs,107.0,123.0,True
 401909314,6,2026-11-24,19:00,ORL,Orlando Magic,DET,Detroit Pistons,,,False
 401909315,6,2026-11-24,20:00,WSH,Washington Wizards,BOS,Boston Celtics,,,False
 401909316,6,2026-11-24,22:00,DEN,Denver Nuggets,DAL,Dallas Mavericks,,,False
@@ -328,3 +328,4 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909451,7,2026-12-04,00:00,TBD,TBD,TBD,TBD,,,False
 401909452,7,2026-12-05,00:00,TBD,TBD,TBD,TBD,,,False
 401909453,7,2026-12-05,00:00,TBD,TBD,TBD,TBD,,,False
+401909454,8,2026-12-08,00:00,TBD,TBD,TBD,TBD,,,False
