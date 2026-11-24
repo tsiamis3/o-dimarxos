@@ -1,0 +1,1987 @@
+{
+ "generated": "2026-11-23 13:17 UTC",
+ "source": "betexplorer.com (μέσος όρος, κλείσιμο, 1/2 με παράταση)",
+ "vs_market": {
+  "games": 227,
+  "brier_model": 0.2086,
+  "brier_market": 0.1964,
+  "logloss_model": 0.604,
+  "logloss_market": 0.5754,
+  "avg_margin": 0.0616,
+  "by_league": {
+   "GBL": {
+    "games": 38,
+    "brier_model": 0.1694,
+    "brier_market": 0.1288
+   },
+   "E": {
+    "games": 101,
+    "brier_model": 0.2249,
+    "brier_market": 0.2269
+   },
+   "U": {
+    "games": 88,
+    "brier_model": 0.2067,
+    "brier_market": 0.1905
+   }
+  }
+ },
+ "variants": {
+  "βασικό (EV≥5%, ¼ Kelly, φίλτρα)": {
+   "n": 111,
+   "wins": 36,
+   "staked": 248.43,
+   "profit": -37.78,
+   "roi": -0.1521,
+   "roi_ci": [
+    -0.3797,
+    0.1017
+   ],
+   "final": 62.25,
+   "max_dd": 0.4596,
+   "avg_odds": 2.94,
+   "by_league": {
+    "GBL": {
+     "n": 12,
+     "wins": 5,
+     "profit": 1.67,
+     "roi": 0.0648
+    },
+    "E": {
+     "n": 61,
+     "wins": 21,
+     "profit": -12.6,
+     "roi": -0.0933
+    },
+    "U": {
+     "n": 38,
+     "wins": 10,
+     "profit": -26.85,
+     "roi": -0.3065
+    }
+   },
+   "bets": [
+    {
+     "L": "E",
+     "date": "2026-10-01",
+     "game": "Crvena Zvezda Meridianbet Belgrade – Anadolu Efes Istanbul",
+     "side": "home",
+     "odds": 1.65,
+     "p": 0.664,
+     "mp": 0.576,
+     "ev": 0.095,
+     "stake": 3,
+     "won": true,
+     "profit": 1.95,
+     "bank": 101.95
+    },
+    {
+     "L": "E",
+     "date": "2026-10-01",
+     "game": "Paris Basketball – Zalgiris Kaunas",
+     "side": "home",
+     "odds": 2.58,
+     "p": 0.423,
+     "mp": 0.368,
+     "ev": 0.091,
+     "stake": 1.45,
+     "won": true,
+     "profit": 2.28,
+     "bank": 104.23
+    },
+    {
+     "L": "E",
+     "date": "2026-10-02",
+     "game": "Besiktas Fuzul Istanbul – FC Barcelona",
+     "side": "home",
+     "odds": 1.8,
+     "p": 0.586,
+     "mp": 0.529,
+     "ev": 0.056,
+     "stake": 1.81,
+     "won": false,
+     "profit": -1.81,
+     "bank": 102.43
+    },
+    {
+     "L": "E",
+     "date": "2026-10-02",
+     "game": "Kosner Baskonia Vitoria-Gasteiz – Armani Olimpia Milan",
+     "side": "home",
+     "odds": 1.94,
+     "p": 0.562,
+     "mp": 0.491,
+     "ev": 0.091,
+     "stake": 2.52,
+     "won": true,
+     "profit": 2.37,
+     "bank": 104.8
+    },
+    {
+     "L": "E",
+     "date": "2026-10-02",
+     "game": "FC Bayern Munich – Partizan Mozzart Bet Belgrade",
+     "side": "away",
+     "odds": 2.47,
+     "p": 0.468,
+     "mp": 0.384,
+     "ev": 0.157,
+     "stake": 2.78,
+     "won": true,
+     "profit": 4.09,
+     "bank": 108.89
+    },
+    {
+     "L": "E",
+     "date": "2026-10-07",
+     "game": "Paris Basketball – LDLC ASVEL Villeurbanne",
+     "side": "home",
+     "odds": 1.48,
+     "p": 0.73,
+     "mp": 0.64,
+     "ev": 0.08,
+     "stake": 3.27,
+     "won": false,
+     "profit": -3.27,
+     "bank": 105.62
+    },
+    {
+     "L": "E",
+     "date": "2026-10-08",
+     "game": "Maccabi Rapyd Tel Aviv – Armani Olimpia Milan",
+     "side": "away",
+     "odds": 2.73,
+     "p": 0.435,
+     "mp": 0.347,
+     "ev": 0.188,
+     "stake": 2.87,
+     "won": false,
+     "profit": -2.87,
+     "bank": 102.75
+    },
+    {
+     "L": "E",
+     "date": "2026-10-08",
+     "game": "FC Bayern Munich – Virtus Bologna",
+     "side": "away",
+     "odds": 3.04,
+     "p": 0.435,
+     "mp": 0.312,
+     "ev": 0.323,
+     "stake": 3.17,
+     "won": true,
+     "profit": 6.46,
+     "bank": 109.21
+    },
+    {
+     "L": "E",
+     "date": "2026-10-08",
+     "game": "Valencia Basket – Hapoel IBI Tel Aviv",
+     "side": "home",
+     "odds": 1.65,
+     "p": 0.693,
+     "mp": 0.576,
+     "ev": 0.143,
+     "stake": 3.17,
+     "won": true,
+     "profit": 2.06,
+     "bank": 111.27
+    },
+    {
+     "L": "E",
+     "date": "2026-10-08",
+     "game": "Real Madrid – Partizan Mozzart Bet Belgrade",
+     "side": "away",
+     "odds": 4.3,
+     "p": 0.365,
+     "mp": 0.221,
+     "ev": 0.568,
+     "stake": 3.17,
+     "won": false,
+     "profit": -3.17,
+     "bank": 108.11
+    },
+    {
+     "L": "E",
+     "date": "2026-10-08",
+     "game": "Panathinaikos Aktor Athens – Fenerbahce Tarfin Istanbul",
+     "side": "away",
+     "odds": 2.78,
+     "p": 0.38,
+     "mp": 0.341,
+     "ev": 0.056,
+     "stake": 0.84,
+     "won": false,
+     "profit": -0.84,
+     "bank": 107.27
+    },
+    {
+     "L": "E",
+     "date": "2026-10-08",
+     "game": "Dubai Basketball – Crvena Zvezda Meridianbet Belgrade",
+     "side": "away",
+     "odds": 3.5,
+     "p": 0.395,
+     "mp": 0.271,
+     "ev": 0.384,
+     "stake": 3.17,
+     "won": true,
+     "profit": 7.92,
+     "bank": 115.19
+    },
+    {
+     "L": "E",
+     "date": "2026-10-09",
+     "game": "FC Barcelona – Zalgiris Kaunas",
+     "side": "home",
+     "odds": 1.76,
+     "p": 0.614,
+     "mp": 0.539,
+     "ev": 0.08,
+     "stake": 3.03,
+     "won": false,
+     "profit": -3.03,
+     "bank": 112.16
+    },
+    {
+     "L": "E",
+     "date": "2026-10-09",
+     "game": "Olympiacos Piraeus – Anadolu Efes Istanbul",
+     "side": "away",
+     "odds": 4.67,
+     "p": 0.238,
+     "mp": 0.203,
+     "ev": 0.112,
+     "stake": 0.88,
+     "won": false,
+     "profit": -0.88,
+     "bank": 111.28
+    },
+    {
+     "L": "E",
+     "date": "2026-10-13",
+     "game": "Kosner Baskonia Vitoria-Gasteiz – Dubai Basketball",
+     "side": "home",
+     "odds": 2.26,
+     "p": 0.568,
+     "mp": 0.421,
+     "ev": 0.283,
+     "stake": 3.34,
+     "won": false,
+     "profit": -3.34,
+     "bank": 107.94
+    },
+    {
+     "L": "E",
+     "date": "2026-10-13",
+     "game": "Armani Olimpia Milan – Real Madrid",
+     "side": "home",
+     "odds": 2.44,
+     "p": 0.476,
+     "mp": 0.39,
+     "ev": 0.162,
+     "stake": 3.14,
+     "won": false,
+     "profit": -3.14,
+     "bank": 104.8
+    },
+    {
+     "L": "U",
+     "date": "2026-10-13",
+     "game": "Neptunas Klaipeda – Cosea JL Bourg-En-Bresse",
+     "side": "home",
+     "odds": 2.21,
+     "p": 0.541,
+     "mp": 0.421,
+     "ev": 0.196,
+     "stake": 3.34,
+     "won": true,
+     "profit": 4.04,
+     "bank": 108.84
+    },
+    {
+     "L": "E",
+     "date": "2026-10-13",
+     "game": "Fenerbahce Tarfin Istanbul – Zalgiris Kaunas",
+     "side": "away",
+     "odds": 3.44,
+     "p": 0.365,
+     "mp": 0.276,
+     "ev": 0.256,
+     "stake": 2.91,
+     "won": false,
+     "profit": -2.91,
+     "bank": 105.93
+    },
+    {
+     "L": "E",
+     "date": "2026-10-13",
+     "game": "Partizan Mozzart Bet Belgrade – Panathinaikos Aktor Athens",
+     "side": "home",
+     "odds": 2.8,
+     "p": 0.462,
+     "mp": 0.338,
+     "ev": 0.294,
+     "stake": 3.34,
+     "won": false,
+     "profit": -3.34,
+     "bank": 102.59
+    },
+    {
+     "L": "U",
+     "date": "2026-10-14",
+     "game": "Riga Zelli – Cedevita Olimpija Ljubljana",
+     "side": "home",
+     "odds": 2.26,
+     "p": 0.54,
+     "mp": 0.411,
+     "ev": 0.219,
+     "stake": 3.08,
+     "won": true,
+     "profit": 3.88,
+     "bank": 106.47
+    },
+    {
+     "L": "U",
+     "date": "2026-10-14",
+     "game": "Le Mans Sarthe Basket – Rostock Seawolves",
+     "side": "away",
+     "odds": 3.07,
+     "p": 0.398,
+     "mp": 0.304,
+     "ev": 0.222,
+     "stake": 2.75,
+     "won": false,
+     "profit": -2.75,
+     "bank": 103.72
+    },
+    {
+     "L": "U",
+     "date": "2026-10-14",
+     "game": "Slask Wroclaw – Napoli Basketball",
+     "side": "home",
+     "odds": 3.96,
+     "p": 0.374,
+     "mp": 0.236,
+     "ev": 0.482,
+     "stake": 3.08,
+     "won": false,
+     "profit": -3.08,
+     "bank": 100.64
+    },
+    {
+     "L": "E",
+     "date": "2026-10-14",
+     "game": "Hapoel IBI Tel Aviv – Besiktas Fuzul Istanbul",
+     "side": "away",
+     "odds": 3.29,
+     "p": 0.437,
+     "mp": 0.288,
+     "ev": 0.437,
+     "stake": 3.08,
+     "won": false,
+     "profit": -3.08,
+     "bank": 97.56
+    },
+    {
+     "L": "U",
+     "date": "2026-10-15",
+     "game": "London Lions – Skyliners Frankfurt",
+     "side": "away",
+     "odds": 3.21,
+     "p": 0.363,
+     "mp": 0.291,
+     "ev": 0.164,
+     "stake": 1.81,
+     "won": true,
+     "profit": 4,
+     "bank": 101.56
+    },
+    {
+     "L": "E",
+     "date": "2026-10-15",
+     "game": "Fenerbahce Tarfin Istanbul – Partizan Mozzart Bet Belgrade",
+     "side": "away",
+     "odds": 4.78,
+     "p": 0.337,
+     "mp": 0.198,
+     "ev": 0.61,
+     "stake": 2.93,
+     "won": false,
+     "profit": -2.93,
+     "bank": 98.64
+    },
+    {
+     "L": "E",
+     "date": "2026-10-16",
+     "game": "Besiktas Fuzul Istanbul – FC Bayern Munich",
+     "side": "home",
+     "odds": 1.59,
+     "p": 0.674,
+     "mp": 0.598,
+     "ev": 0.072,
+     "stake": 2.96,
+     "won": true,
+     "profit": 1.75,
+     "bank": 100.38
+    },
+    {
+     "L": "E",
+     "date": "2026-10-16",
+     "game": "Virtus Bologna – Kosner Baskonia Vitoria-Gasteiz",
+     "side": "home",
+     "odds": 1.5,
+     "p": 0.702,
+     "mp": 0.634,
+     "ev": 0.053,
+     "stake": 2.6,
+     "won": true,
+     "profit": 1.3,
+     "bank": 101.68
+    },
+    {
+     "L": "E",
+     "date": "2026-10-16",
+     "game": "Panathinaikos Aktor Athens – Hapoel IBI Tel Aviv",
+     "side": "away",
+     "odds": 4.33,
+     "p": 0.297,
+     "mp": 0.22,
+     "ev": 0.285,
+     "stake": 2.11,
+     "won": true,
+     "profit": 7.03,
+     "bank": 108.71
+    },
+    {
+     "L": "GBL",
+     "date": "2026-10-17",
+     "game": "10 – ΜΥΚΟΝΟΣ Betsson BC",
+     "side": "away",
+     "odds": 4.42,
+     "p": 0.275,
+     "mp": 0.212,
+     "ev": 0.214,
+     "stake": 1.7,
+     "won": false,
+     "profit": -1.7,
+     "bank": 107.01
+    },
+    {
+     "L": "GBL",
+     "date": "2026-10-17",
+     "game": "11 – ΚΑΡΔΙΤΣΑ ΙΑΠΩΝΙΚΗ",
+     "side": "away",
+     "odds": 2.92,
+     "p": 0.398,
+     "mp": 0.321,
+     "ev": 0.163,
+     "stake": 2.3,
+     "won": false,
+     "profit": -2.3,
+     "bank": 104.71
+    },
+    {
+     "L": "U",
+     "date": "2026-10-20",
+     "game": "Buducnost Voli Podgorica – Neptunas Klaipeda",
+     "side": "away",
+     "odds": 4.74,
+     "p": 0.267,
+     "mp": 0.197,
+     "ev": 0.267,
+     "stake": 1.87,
+     "won": false,
+     "profit": -1.87,
+     "bank": 102.84
+    },
+    {
+     "L": "U",
+     "date": "2026-10-21",
+     "game": "Cedevita Olimpija Ljubljana – Le Mans Sarthe Basket",
+     "side": "home",
+     "odds": 1.6,
+     "p": 0.686,
+     "mp": 0.583,
+     "ev": 0.098,
+     "stake": 3.09,
+     "won": false,
+     "profit": -3.09,
+     "bank": 99.76
+    },
+    {
+     "L": "U",
+     "date": "2026-10-21",
+     "game": "U-Bt Cluj-Napoca – London Lions",
+     "side": "away",
+     "odds": 3.15,
+     "p": 0.346,
+     "mp": 0.297,
+     "ev": 0.089,
+     "stake": 1.06,
+     "won": true,
+     "profit": 2.28,
+     "bank": 102.04
+    },
+    {
+     "L": "E",
+     "date": "2026-10-21",
+     "game": "Hapoel IBI Tel Aviv – Virtus Bologna",
+     "side": "away",
+     "odds": 3.62,
+     "p": 0.333,
+     "mp": 0.263,
+     "ev": 0.205,
+     "stake": 2.02,
+     "won": false,
+     "profit": -2.02,
+     "bank": 100.02
+    },
+    {
+     "L": "E",
+     "date": "2026-10-22",
+     "game": "Maccabi Rapyd Tel Aviv – Real Madrid",
+     "side": "home",
+     "odds": 2.52,
+     "p": 0.458,
+     "mp": 0.378,
+     "ev": 0.154,
+     "stake": 2.54,
+     "won": false,
+     "profit": -2.54,
+     "bank": 97.49
+    },
+    {
+     "L": "E",
+     "date": "2026-10-22",
+     "game": "Armani Olimpia Milan – FC Barcelona",
+     "side": "away",
+     "odds": 2.04,
+     "p": 0.548,
+     "mp": 0.467,
+     "ev": 0.119,
+     "stake": 2.85,
+     "won": true,
+     "profit": 2.97,
+     "bank": 100.45
+    },
+    {
+     "L": "E",
+     "date": "2026-10-22",
+     "game": "Anadolu Efes Istanbul – Besiktas Fuzul Istanbul",
+     "side": "away",
+     "odds": 2.59,
+     "p": 0.433,
+     "mp": 0.367,
+     "ev": 0.123,
+     "stake": 1.93,
+     "won": false,
+     "profit": -1.93,
+     "bank": 98.53
+    },
+    {
+     "L": "E",
+     "date": "2026-10-22",
+     "game": "FC Bayern Munich – Dubai Basketball",
+     "side": "home",
+     "odds": 2.06,
+     "p": 0.521,
+     "mp": 0.462,
+     "ev": 0.073,
+     "stake": 1.73,
+     "won": false,
+     "profit": -1.73,
+     "bank": 96.8
+    },
+    {
+     "L": "E",
+     "date": "2026-10-23",
+     "game": "Zalgiris Kaunas – LDLC ASVEL Villeurbanne",
+     "side": "away",
+     "odds": 3.85,
+     "p": 0.3,
+     "mp": 0.248,
+     "ev": 0.155,
+     "stake": 1.32,
+     "won": false,
+     "profit": -1.32,
+     "bank": 95.48
+    },
+    {
+     "L": "E",
+     "date": "2026-10-23",
+     "game": "Paris Basketball – Valencia Basket",
+     "side": "home",
+     "odds": 2.57,
+     "p": 0.422,
+     "mp": 0.369,
+     "ev": 0.084,
+     "stake": 1.3,
+     "won": false,
+     "profit": -1.3,
+     "bank": 94.19
+    },
+    {
+     "L": "E",
+     "date": "2026-10-23",
+     "game": "Olympiacos Piraeus – Fenerbahce Tarfin Istanbul",
+     "side": "home",
+     "odds": 1.76,
+     "p": 0.599,
+     "mp": 0.543,
+     "ev": 0.055,
+     "stake": 1.74,
+     "won": false,
+     "profit": -1.74,
+     "bank": 92.45
+    },
+    {
+     "L": "GBL",
+     "date": "2026-10-24",
+     "game": "ΠΑΟΚ – 10",
+     "side": "away",
+     "odds": 4.65,
+     "p": 0.309,
+     "mp": 0.202,
+     "ev": 0.438,
+     "stake": 2.77,
+     "won": false,
+     "profit": -2.77,
+     "bank": 89.68
+    },
+    {
+     "L": "GBL",
+     "date": "2026-10-24",
+     "game": "ΜΥΚΟΝΟΣ Betsson BC – 5",
+     "side": "home",
+     "odds": 4.19,
+     "p": 0.35,
+     "mp": 0.224,
+     "ev": 0.468,
+     "stake": 2.77,
+     "won": false,
+     "profit": -2.77,
+     "bank": 86.9
+    },
+    {
+     "L": "E",
+     "date": "2026-10-27",
+     "game": "Dubai Basketball – Paris Basketball",
+     "side": "away",
+     "odds": 4.32,
+     "p": 0.315,
+     "mp": 0.22,
+     "ev": 0.361,
+     "stake": 2.36,
+     "won": true,
+     "profit": 7.84,
+     "bank": 94.74
+    },
+    {
+     "L": "E",
+     "date": "2026-10-27",
+     "game": "Kosner Baskonia Vitoria-Gasteiz – Real Madrid",
+     "side": "home",
+     "odds": 4.16,
+     "p": 0.37,
+     "mp": 0.227,
+     "ev": 0.539,
+     "stake": 2.61,
+     "won": false,
+     "profit": -2.61,
+     "bank": 92.14
+    },
+    {
+     "L": "U",
+     "date": "2026-10-27",
+     "game": "Dolomiti Energia Trento – Buducnost Voli Podgorica",
+     "side": "home",
+     "odds": 2.36,
+     "p": 0.474,
+     "mp": 0.396,
+     "ev": 0.118,
+     "stake": 1.89,
+     "won": true,
+     "profit": 2.57,
+     "bank": 94.7
+    },
+    {
+     "L": "U",
+     "date": "2026-10-27",
+     "game": "Roma Basketball – Bosna BH Telecom Sarajevo",
+     "side": "away",
+     "odds": 2.95,
+     "p": 0.427,
+     "mp": 0.316,
+     "ev": 0.26,
+     "stake": 2.61,
+     "won": true,
+     "profit": 5.08,
+     "bank": 99.79
+    },
+    {
+     "L": "U",
+     "date": "2026-10-28",
+     "game": "Le Mans Sarthe Basket – Hapoel Midtown Jerusalem",
+     "side": "home",
+     "odds": 3.01,
+     "p": 0.398,
+     "mp": 0.311,
+     "ev": 0.198,
+     "stake": 2.46,
+     "won": false,
+     "profit": -2.46,
+     "bank": 97.33
+    },
+    {
+     "L": "U",
+     "date": "2026-10-28",
+     "game": "London Lions – Turk Telekom Ankara",
+     "side": "home",
+     "odds": 2.37,
+     "p": 0.516,
+     "mp": 0.394,
+     "ev": 0.222,
+     "stake": 2.99,
+     "won": true,
+     "profit": 4.1,
+     "bank": 101.43
+    },
+    {
+     "L": "U",
+     "date": "2026-10-28",
+     "game": "Neptunas Klaipeda – Napoli Basketball",
+     "side": "home",
+     "odds": 2.43,
+     "p": 0.502,
+     "mp": 0.385,
+     "ev": 0.219,
+     "stake": 2.99,
+     "won": false,
+     "profit": -2.99,
+     "bank": 98.44
+    },
+    {
+     "L": "E",
+     "date": "2026-10-28",
+     "game": "Hapoel IBI Tel Aviv – Anadolu Efes Istanbul",
+     "side": "away",
+     "odds": 3.21,
+     "p": 0.333,
+     "mp": 0.296,
+     "ev": 0.068,
+     "stake": 0.77,
+     "won": false,
+     "profit": -0.77,
+     "bank": 97.67
+    },
+    {
+     "L": "E",
+     "date": "2026-10-28",
+     "game": "LDLC ASVEL Villeurbanne – Partizan Mozzart Bet Belgrade",
+     "side": "away",
+     "odds": 1.84,
+     "p": 0.599,
+     "mp": 0.516,
+     "ev": 0.102,
+     "stake": 2.99,
+     "won": false,
+     "profit": -2.99,
+     "bank": 94.67
+    },
+    {
+     "L": "E",
+     "date": "2026-10-29",
+     "game": "Crvena Zvezda Meridianbet Belgrade – FC Bayern Munich",
+     "side": "away",
+     "odds": 3.49,
+     "p": 0.319,
+     "mp": 0.271,
+     "ev": 0.113,
+     "stake": 1.07,
+     "won": false,
+     "profit": -1.07,
+     "bank": 93.6
+    },
+    {
+     "L": "E",
+     "date": "2026-10-29",
+     "game": "Maccabi Rapyd Tel Aviv – Paris Basketball",
+     "side": "away",
+     "odds": 2.46,
+     "p": 0.461,
+     "mp": 0.385,
+     "ev": 0.133,
+     "stake": 2.16,
+     "won": true,
+     "profit": 3.15,
+     "bank": 96.75
+    },
+    {
+     "L": "E",
+     "date": "2026-10-29",
+     "game": "Real Madrid – Fenerbahce Tarfin Istanbul",
+     "side": "away",
+     "odds": 2.9,
+     "p": 0.435,
+     "mp": 0.327,
+     "ev": 0.261,
+     "stake": 2.84,
+     "won": false,
+     "profit": -2.84,
+     "bank": 93.91
+    },
+    {
+     "L": "E",
+     "date": "2026-10-30",
+     "game": "Dubai Basketball – Hapoel IBI Tel Aviv",
+     "side": "away",
+     "odds": 2.14,
+     "p": 0.509,
+     "mp": 0.444,
+     "ev": 0.089,
+     "stake": 1.83,
+     "won": false,
+     "profit": -1.83,
+     "bank": 92.08
+    },
+    {
+     "L": "E",
+     "date": "2026-10-30",
+     "game": "LDLC ASVEL Villeurbanne – Kosner Baskonia Vitoria-Gasteiz",
+     "side": "away",
+     "odds": 2.53,
+     "p": 0.435,
+     "mp": 0.375,
+     "ev": 0.101,
+     "stake": 1.55,
+     "won": false,
+     "profit": -1.55,
+     "bank": 90.53
+    },
+    {
+     "L": "E",
+     "date": "2026-10-30",
+     "game": "Zalgiris Kaunas – Partizan Mozzart Bet Belgrade",
+     "side": "away",
+     "odds": 3.23,
+     "p": 0.38,
+     "mp": 0.293,
+     "ev": 0.229,
+     "stake": 2.41,
+     "won": false,
+     "profit": -2.41,
+     "bank": 88.12
+    },
+    {
+     "L": "E",
+     "date": "2026-10-30",
+     "game": "Anadolu Efes Istanbul – Panathinaikos Aktor Athens",
+     "side": "home",
+     "odds": 2.96,
+     "p": 0.382,
+     "mp": 0.321,
+     "ev": 0.131,
+     "stake": 1.57,
+     "won": true,
+     "profit": 3.08,
+     "bank": 91.21
+    },
+    {
+     "L": "E",
+     "date": "2026-10-30",
+     "game": "Virtus Bologna – Besiktas Fuzul Istanbul",
+     "side": "away",
+     "odds": 2.62,
+     "p": 0.402,
+     "mp": 0.363,
+     "ev": 0.053,
+     "stake": 0.76,
+     "won": true,
+     "profit": 1.24,
+     "bank": 92.45
+    },
+    {
+     "L": "GBL",
+     "date": "2026-10-31",
+     "game": "ΜΥΚΟΝΟΣ Betsson BC – ΔΟΞΑ ΛΕΥΚΑΔΑΣ ELABET",
+     "side": "away",
+     "odds": 3.41,
+     "p": 0.391,
+     "mp": 0.274,
+     "ev": 0.333,
+     "stake": 2.77,
+     "won": true,
+     "profit": 6.68,
+     "bank": 99.13
+    },
+    {
+     "L": "GBL",
+     "date": "2026-10-31",
+     "game": "ΚΑΡΔΙΤΣΑ ΙΑΠΩΝΙΚΗ – ΚΟΛΟΣΣΟΣ H HOTELS COLLECTION",
+     "side": "home",
+     "odds": 1.61,
+     "p": 0.67,
+     "mp": 0.582,
+     "ev": 0.078,
+     "stake": 2.77,
+     "won": true,
+     "profit": 1.69,
+     "bank": 100.82
+    },
+    {
+     "L": "GBL",
+     "date": "2026-10-31",
+     "game": "VIKOS ΦALCONS – 10",
+     "side": "home",
+     "odds": 2.46,
+     "p": 0.529,
+     "mp": 0.383,
+     "ev": 0.301,
+     "stake": 2.77,
+     "won": true,
+     "profit": 4.05,
+     "bank": 104.87
+    },
+    {
+     "L": "U",
+     "date": "2026-11-03",
+     "game": "Tofas Bursa – Neptunas Klaipeda",
+     "side": "away",
+     "odds": 4.69,
+     "p": 0.239,
+     "mp": 0.2,
+     "ev": 0.12,
+     "stake": 0.85,
+     "won": false,
+     "profit": -0.85,
+     "bank": 104.02
+    },
+    {
+     "L": "U",
+     "date": "2026-11-03",
+     "game": "PAOK Thessaloniki – Roma Basketball",
+     "side": "away",
+     "odds": 4.41,
+     "p": 0.292,
+     "mp": 0.213,
+     "ev": 0.287,
+     "stake": 2.21,
+     "won": false,
+     "profit": -2.21,
+     "bank": 101.81
+    },
+    {
+     "L": "U",
+     "date": "2026-11-04",
+     "game": "Recoletas Salud San Pablo Burgos – Rostock Seawolves",
+     "side": "away",
+     "odds": 3.51,
+     "p": 0.328,
+     "mp": 0.267,
+     "ev": 0.153,
+     "stake": 1.55,
+     "won": true,
+     "profit": 3.89,
+     "bank": 105.7
+    },
+    {
+     "L": "U",
+     "date": "2026-11-04",
+     "game": "Turk Telekom Ankara – Skyliners Frankfurt",
+     "side": "away",
+     "odds": 4.36,
+     "p": 0.337,
+     "mp": 0.214,
+     "ev": 0.468,
+     "stake": 3.05,
+     "won": false,
+     "profit": -3.05,
+     "bank": 102.64
+    },
+    {
+     "L": "U",
+     "date": "2026-11-04",
+     "game": "Slask Wroclaw – Cosea JL Bourg-En-Bresse",
+     "side": "home",
+     "odds": 3.04,
+     "p": 0.437,
+     "mp": 0.308,
+     "ev": 0.33,
+     "stake": 3.05,
+     "won": false,
+     "profit": -3.05,
+     "bank": 99.59
+    },
+    {
+     "L": "U",
+     "date": "2026-11-04",
+     "game": "Lietkabelis Panevezys – Kids&us Manresa",
+     "side": "home",
+     "odds": 2.11,
+     "p": 0.522,
+     "mp": 0.442,
+     "ev": 0.101,
+     "stake": 2.33,
+     "won": false,
+     "profit": -2.33,
+     "bank": 97.26
+    },
+    {
+     "L": "U",
+     "date": "2026-11-04",
+     "game": "Bosna BH Telecom Sarajevo – Balkan Botevgrad",
+     "side": "away",
+     "odds": 4.81,
+     "p": 0.26,
+     "mp": 0.194,
+     "ev": 0.252,
+     "stake": 1.68,
+     "won": true,
+     "profit": 6.4,
+     "bank": 103.67
+    },
+    {
+     "L": "E",
+     "date": "2026-11-05",
+     "game": "LDLC ASVEL Villeurbanne – FC Bayern Munich",
+     "side": "home",
+     "odds": 1.7,
+     "p": 0.619,
+     "mp": 0.558,
+     "ev": 0.052,
+     "stake": 1.91,
+     "won": false,
+     "profit": -1.91,
+     "bank": 101.76
+    },
+    {
+     "L": "E",
+     "date": "2026-11-05",
+     "game": "Armani Olimpia Milan – Valencia Basket",
+     "side": "away",
+     "odds": 1.73,
+     "p": 0.628,
+     "mp": 0.548,
+     "ev": 0.087,
+     "stake": 3.09,
+     "won": true,
+     "profit": 2.26,
+     "bank": 104.01
+    },
+    {
+     "L": "E",
+     "date": "2026-11-06",
+     "game": "Olympiacos Piraeus – Crvena Zvezda Meridianbet Belgrade",
+     "side": "away",
+     "odds": 2.76,
+     "p": 0.387,
+     "mp": 0.343,
+     "ev": 0.069,
+     "stake": 1.01,
+     "won": true,
+     "profit": 1.79,
+     "bank": 105.8
+    },
+    {
+     "L": "E",
+     "date": "2026-11-06",
+     "game": "Virtus Bologna – Dubai Basketball",
+     "side": "home",
+     "odds": 2.33,
+     "p": 0.504,
+     "mp": 0.409,
+     "ev": 0.173,
+     "stake": 3.12,
+     "won": false,
+     "profit": -3.12,
+     "bank": 102.68
+    },
+    {
+     "L": "U",
+     "date": "2026-11-10",
+     "game": "U-Bt Cluj-Napoca – Turk Telekom Ankara",
+     "side": "home",
+     "odds": 2.42,
+     "p": 0.468,
+     "mp": 0.386,
+     "ev": 0.132,
+     "stake": 2.39,
+     "won": false,
+     "profit": -2.39,
+     "bank": 100.29
+    },
+    {
+     "L": "U",
+     "date": "2026-11-10",
+     "game": "Cosea JL Bourg-En-Bresse – Buducnost Voli Podgorica",
+     "side": "home",
+     "odds": 2.14,
+     "p": 0.551,
+     "mp": 0.435,
+     "ev": 0.179,
+     "stake": 3.08,
+     "won": false,
+     "profit": -3.08,
+     "bank": 97.21
+    },
+    {
+     "L": "U",
+     "date": "2026-11-10",
+     "game": "Kids&us Manresa – Bosna BH Telecom Sarajevo",
+     "side": "away",
+     "odds": 3.89,
+     "p": 0.304,
+     "mp": 0.24,
+     "ev": 0.183,
+     "stake": 1.63,
+     "won": false,
+     "profit": -1.63,
+     "bank": 95.58
+    },
+    {
+     "L": "U",
+     "date": "2026-11-11",
+     "game": "Niners Chemnitz – Napoli Basketball",
+     "side": "home",
+     "odds": 2.17,
+     "p": 0.567,
+     "mp": 0.429,
+     "ev": 0.23,
+     "stake": 2.87,
+     "won": false,
+     "profit": -2.87,
+     "bank": 92.72
+    },
+    {
+     "L": "U",
+     "date": "2026-11-11",
+     "game": "Roma Basketball – Ratiopharm Ulm",
+     "side": "away",
+     "odds": 3.56,
+     "p": 0.4,
+     "mp": 0.263,
+     "ev": 0.423,
+     "stake": 2.87,
+     "won": false,
+     "profit": -2.87,
+     "bank": 89.85
+    },
+    {
+     "L": "U",
+     "date": "2026-11-11",
+     "game": "Le Mans Sarthe Basket – Recoletas Salud San Pablo Burgos",
+     "side": "away",
+     "odds": 4.39,
+     "p": 0.349,
+     "mp": 0.213,
+     "ev": 0.532,
+     "stake": 2.87,
+     "won": false,
+     "profit": -2.87,
+     "bank": 86.98
+    },
+    {
+     "L": "U",
+     "date": "2026-11-11",
+     "game": "Baglietto Derthona Tortona – Hapoel Midtown Jerusalem",
+     "side": "home",
+     "odds": 3.28,
+     "p": 0.33,
+     "mp": 0.284,
+     "ev": 0.082,
+     "stake": 0.86,
+     "won": false,
+     "profit": -0.86,
+     "bank": 86.12
+    },
+    {
+     "L": "E",
+     "date": "2026-11-12",
+     "game": "Maccabi Rapyd Tel Aviv – Hapoel IBI Tel Aviv",
+     "side": "home",
+     "odds": 3.15,
+     "p": 0.394,
+     "mp": 0.302,
+     "ev": 0.242,
+     "stake": 2.43,
+     "won": true,
+     "profit": 5.22,
+     "bank": 91.34
+    },
+    {
+     "L": "U",
+     "date": "2026-11-12",
+     "game": "Skyliners Frankfurt – Maxima Roma",
+     "side": "home",
+     "odds": 2.41,
+     "p": 0.533,
+     "mp": 0.388,
+     "ev": 0.285,
+     "stake": 2.58,
+     "won": false,
+     "profit": -2.58,
+     "bank": 88.76
+    },
+    {
+     "L": "E",
+     "date": "2026-11-12",
+     "game": "Real Madrid – Crvena Zvezda Meridianbet Belgrade",
+     "side": "away",
+     "odds": 3,
+     "p": 0.424,
+     "mp": 0.317,
+     "ev": 0.271,
+     "stake": 2.58,
+     "won": false,
+     "profit": -2.58,
+     "bank": 86.17
+    },
+    {
+     "L": "E",
+     "date": "2026-11-13",
+     "game": "LDLC ASVEL Villeurbanne – Besiktas Fuzul Istanbul",
+     "side": "away",
+     "odds": 2.13,
+     "p": 0.509,
+     "mp": 0.445,
+     "ev": 0.084,
+     "stake": 1.6,
+     "won": true,
+     "profit": 1.81,
+     "bank": 87.99
+    },
+    {
+     "L": "E",
+     "date": "2026-11-13",
+     "game": "Anadolu Efes Istanbul – Virtus Bologna",
+     "side": "away",
+     "odds": 3.03,
+     "p": 0.379,
+     "mp": 0.313,
+     "ev": 0.147,
+     "stake": 1.56,
+     "won": false,
+     "profit": -1.56,
+     "bank": 86.43
+    },
+    {
+     "L": "GBL",
+     "date": "2026-11-14",
+     "game": "10 – ΔΟΞΑ ΛΕΥΚΑΔΑΣ ELABET",
+     "side": "away",
+     "odds": 3.33,
+     "p": 0.317,
+     "mp": 0.282,
+     "ev": 0.055,
+     "stake": 0.51,
+     "won": true,
+     "profit": 1.19,
+     "bank": 87.61
+    },
+    {
+     "L": "GBL",
+     "date": "2026-11-15",
+     "game": "ΠΕΡΙΣΤΕΡΙ Betsson – ΜΥΚΟΝΟΣ Betsson BC",
+     "side": "away",
+     "odds": 4.02,
+     "p": 0.27,
+     "mp": 0.233,
+     "ev": 0.084,
+     "stake": 0.61,
+     "won": false,
+     "profit": -0.61,
+     "bank": 87.01
+    },
+    {
+     "L": "GBL",
+     "date": "2026-11-15",
+     "game": "VIKOS ΦALCONS – ΜΑΡΟΥΣΙ",
+     "side": "home",
+     "odds": 1.94,
+     "p": 0.586,
+     "mp": 0.483,
+     "ev": 0.137,
+     "stake": 2.63,
+     "won": false,
+     "profit": -2.63,
+     "bank": 84.38
+    },
+    {
+     "L": "GBL",
+     "date": "2026-11-15",
+     "game": "5 – 2",
+     "side": "home",
+     "odds": 2.24,
+     "p": 0.503,
+     "mp": 0.42,
+     "ev": 0.126,
+     "stake": 2.23,
+     "won": true,
+     "profit": 2.77,
+     "bank": 87.14
+    },
+    {
+     "L": "E",
+     "date": "2026-11-17",
+     "game": "Dubai Basketball – Anadolu Efes Istanbul",
+     "side": "away",
+     "odds": 3.78,
+     "p": 0.382,
+     "mp": 0.251,
+     "ev": 0.444,
+     "stake": 2.61,
+     "won": false,
+     "profit": -2.61,
+     "bank": 84.53
+    },
+    {
+     "L": "E",
+     "date": "2026-11-17",
+     "game": "Kosner Baskonia Vitoria-Gasteiz – Hapoel IBI Tel Aviv",
+     "side": "home",
+     "odds": 3.28,
+     "p": 0.339,
+     "mp": 0.29,
+     "ev": 0.111,
+     "stake": 1.06,
+     "won": false,
+     "profit": -1.06,
+     "bank": 83.47
+    },
+    {
+     "L": "U",
+     "date": "2026-11-17",
+     "game": "Rostock Seawolves – Hapoel Midtown Jerusalem",
+     "side": "home",
+     "odds": 4.42,
+     "p": 0.303,
+     "mp": 0.212,
+     "ev": 0.337,
+     "stake": 2.15,
+     "won": false,
+     "profit": -2.15,
+     "bank": 81.32
+    },
+    {
+     "L": "E",
+     "date": "2026-11-17",
+     "game": "Armani Olimpia Milan – Crvena Zvezda Meridianbet Belgrade",
+     "side": "away",
+     "odds": 1.84,
+     "p": 0.597,
+     "mp": 0.517,
+     "ev": 0.099,
+     "stake": 2.57,
+     "won": false,
+     "profit": -2.57,
+     "bank": 78.74
+    },
+    {
+     "L": "U",
+     "date": "2026-11-17",
+     "game": "Turk Telekom Ankara – La Laguna Tenerife",
+     "side": "away",
+     "odds": 2.26,
+     "p": 0.493,
+     "mp": 0.413,
+     "ev": 0.115,
+     "stake": 1.99,
+     "won": true,
+     "profit": 2.51,
+     "bank": 81.25
+    },
+    {
+     "L": "E",
+     "date": "2026-11-17",
+     "game": "Virtus Bologna – Panathinaikos Aktor Athens",
+     "side": "home",
+     "odds": 3.24,
+     "p": 0.41,
+     "mp": 0.293,
+     "ev": 0.328,
+     "stake": 2.61,
+     "won": true,
+     "profit": 5.86,
+     "bank": 87.11
+    },
+    {
+     "L": "U",
+     "date": "2026-11-17",
+     "game": "London Lions – Siauliai Basketball",
+     "side": "away",
+     "odds": 3.81,
+     "p": 0.343,
+     "mp": 0.246,
+     "ev": 0.308,
+     "stake": 2.38,
+     "won": false,
+     "profit": -2.38,
+     "bank": 84.72
+    },
+    {
+     "L": "U",
+     "date": "2026-11-17",
+     "game": "Roma Basketball – Bahcesehir College Istanbul",
+     "side": "home",
+     "odds": 3.13,
+     "p": 0.387,
+     "mp": 0.298,
+     "ev": 0.213,
+     "stake": 2.17,
+     "won": false,
+     "profit": -2.17,
+     "bank": 82.55
+    },
+    {
+     "L": "U",
+     "date": "2026-11-18",
+     "game": "Aris Thessaloniki – Le Mans Sarthe Basket",
+     "side": "away",
+     "odds": 4.23,
+     "p": 0.317,
+     "mp": 0.221,
+     "ev": 0.34,
+     "stake": 2.17,
+     "won": false,
+     "profit": -2.17,
+     "bank": 80.37
+    },
+    {
+     "L": "U",
+     "date": "2026-11-18",
+     "game": "Skyliners Frankfurt – Umana Reyer Venice",
+     "side": "home",
+     "odds": 3.05,
+     "p": 0.415,
+     "mp": 0.307,
+     "ev": 0.266,
+     "stake": 2.48,
+     "won": false,
+     "profit": -2.48,
+     "bank": 77.9
+    },
+    {
+     "L": "U",
+     "date": "2026-11-18",
+     "game": "Niners Chemnitz – Tofas Bursa",
+     "side": "home",
+     "odds": 2.16,
+     "p": 0.526,
+     "mp": 0.432,
+     "ev": 0.137,
+     "stake": 2.43,
+     "won": false,
+     "profit": -2.43,
+     "bank": 75.47
+    },
+    {
+     "L": "U",
+     "date": "2026-11-18",
+     "game": "Dolomiti Energia Trento – Neptunas Klaipeda",
+     "side": "away",
+     "odds": 2.93,
+     "p": 0.427,
+     "mp": 0.317,
+     "ev": 0.251,
+     "stake": 2.48,
+     "won": false,
+     "profit": -2.48,
+     "bank": 72.99
+    },
+    {
+     "L": "U",
+     "date": "2026-11-18",
+     "game": "Bosna BH Telecom Sarajevo – Lietkabelis Panevezys",
+     "side": "away",
+     "odds": 3.05,
+     "p": 0.365,
+     "mp": 0.307,
+     "ev": 0.113,
+     "stake": 1.13,
+     "won": false,
+     "profit": -1.13,
+     "bank": 71.86
+    },
+    {
+     "L": "U",
+     "date": "2026-11-18",
+     "game": "Kids&us Manresa – PAOK Thessaloniki",
+     "side": "home",
+     "odds": 1.91,
+     "p": 0.554,
+     "mp": 0.487,
+     "ev": 0.059,
+     "stake": 1.33,
+     "won": false,
+     "profit": -1.33,
+     "bank": 70.53
+    },
+    {
+     "L": "E",
+     "date": "2026-11-19",
+     "game": "Zalgiris Kaunas – Panathinaikos Aktor Athens",
+     "side": "home",
+     "odds": 2.02,
+     "p": 0.606,
+     "mp": 0.471,
+     "ev": 0.225,
+     "stake": 2.12,
+     "won": false,
+     "profit": -2.12,
+     "bank": 68.41
+    },
+    {
+     "L": "E",
+     "date": "2026-11-19",
+     "game": "Maccabi Rapyd Tel Aviv – Dubai Basketball",
+     "side": "home",
+     "odds": 2.38,
+     "p": 0.498,
+     "mp": 0.399,
+     "ev": 0.185,
+     "stake": 2.12,
+     "won": false,
+     "profit": -2.12,
+     "bank": 66.3
+    },
+    {
+     "L": "E",
+     "date": "2026-11-19",
+     "game": "FC Bayern Munich – Kosner Baskonia Vitoria-Gasteiz",
+     "side": "away",
+     "odds": 3.49,
+     "p": 0.33,
+     "mp": 0.271,
+     "ev": 0.152,
+     "stake": 1.07,
+     "won": false,
+     "profit": -1.07,
+     "bank": 65.22
+    },
+    {
+     "L": "E",
+     "date": "2026-11-19",
+     "game": "Valencia Basket – Virtus Bologna",
+     "side": "away",
+     "odds": 4.76,
+     "p": 0.286,
+     "mp": 0.2,
+     "ev": 0.36,
+     "stake": 1.69,
+     "won": false,
+     "profit": -1.69,
+     "bank": 63.53
+    },
+    {
+     "L": "E",
+     "date": "2026-11-20",
+     "game": "Anadolu Efes Istanbul – LDLC ASVEL Villeurbanne",
+     "side": "away",
+     "odds": 3.51,
+     "p": 0.307,
+     "mp": 0.27,
+     "ev": 0.078,
+     "stake": 0.5,
+     "won": false,
+     "profit": -0.5,
+     "bank": 63.04
+    },
+    {
+     "L": "E",
+     "date": "2026-11-20",
+     "game": "Olympiacos Piraeus – Real Madrid",
+     "side": "home",
+     "odds": 1.74,
+     "p": 0.616,
+     "mp": 0.546,
+     "ev": 0.071,
+     "stake": 1.53,
+     "won": true,
+     "profit": 1.14,
+     "bank": 64.17
+    },
+    {
+     "L": "GBL",
+     "date": "2026-11-21",
+     "game": "ΔΟΞΑ ΛΕΥΚΑΔΑΣ ELABET – ΠΕΡΙΣΤΕΡΙ Betsson",
+     "side": "home",
+     "odds": 1.86,
+     "p": 0.653,
+     "mp": 0.503,
+     "ev": 0.214,
+     "stake": 1.93,
+     "won": false,
+     "profit": -1.93,
+     "bank": 62.25
+    }
+   ],
+   "curve": [
+    [
+     "2026-10-01",
+     104.23
+    ],
+    [
+     "2026-10-02",
+     108.89
+    ],
+    [
+     "2026-10-07",
+     105.62
+    ],
+    [
+     "2026-10-08",
+     115.19
+    ],
+    [
+     "2026-10-09",
+     111.28
+    ],
+    [
+     "2026-10-13",
+     102.59
+    ],
+    [
+     "2026-10-14",
+     97.56
+    ],
+    [
+     "2026-10-15",
+     98.64
+    ],
+    [
+     "2026-10-16",
+     108.71
+    ],
+    [
+     "2026-10-17",
+     104.71
+    ],
+    [
+     "2026-10-18",
+     104.71
+    ],
+    [
+     "2026-10-20",
+     102.84
+    ],
+    [
+     "2026-10-21",
+     100.02
+    ],
+    [
+     "2026-10-22",
+     96.8
+    ],
+    [
+     "2026-10-23",
+     92.45
+    ],
+    [
+     "2026-10-24",
+     86.9
+    ],
+    [
+     "2026-10-25",
+     86.9
+    ],
+    [
+     "2026-10-27",
+     99.79
+    ],
+    [
+     "2026-10-28",
+     94.67
+    ],
+    [
+     "2026-10-29",
+     93.91
+    ],
+    [
+     "2026-10-30",
+     92.45
+    ],
+    [
+     "2026-10-31",
+     104.87
+    ],
+    [
+     "2026-11-01",
+     104.87
+    ],
+    [
+     "2026-11-03",
+     101.81
+    ],
+    [
+     "2026-11-04",
+     103.67
+    ],
+    [
+     "2026-11-05",
+     104.01
+    ],
+    [
+     "2026-11-06",
+     102.68
+    ],
+    [
+     "2026-11-07",
+     102.68
+    ],
+    [
+     "2026-11-08",
+     102.68
+    ],
+    [
+     "2026-11-10",
+     95.58
+    ],
+    [
+     "2026-11-11",
+     86.12
+    ],
+    [
+     "2026-11-12",
+     86.17
+    ],
+    [
+     "2026-11-13",
+     86.43
+    ],
+    [
+     "2026-11-14",
+     87.61
+    ],
+    [
+     "2026-11-15",
+     87.14
+    ],
+    [
+     "2026-11-17",
+     82.55
+    ],
+    [
+     "2026-11-18",
+     70.53
+    ],
+    [
+     "2026-11-19",
+     63.53
+    ],
+    [
+     "2026-11-20",
+     64.17
+    ],
+    [
+     "2026-11-21",
+     62.25
+    ]
+   ]
+  },
+  "χωρίς φίλτρα διαφωνίας/απόδοσης": {
+   "n": 170,
+   "wins": 50,
+   "staked": 444.24,
+   "profit": -35.61,
+   "roi": -0.0802,
+   "roi_ci": [
+    -0.3199,
+    0.1665
+   ],
+   "final": 64.41,
+   "max_dd": 0.5118,
+   "avg_odds": 3.91,
+   "by_league": {
+    "GBL": {
+     "n": 30,
+     "wins": 6,
+     "profit": -33.77,
+     "roi": -0.45
+    },
+    "E": {
+     "n": 70,
+     "wins": 25,
+     "profit": -0.52,
+     "roi": -0.003
+    },
+    "U": {
+     "n": 70,
+     "wins": 19,
+     "profit": -1.32,
+     "roi": -0.0067
+    }
+   }
+  },
+  "EV ≥ 0%": {
+   "n": 133,
+   "wins": 48,
+   "staked": 274.03,
+   "profit": -34.68,
+   "roi": -0.1266,
+   "roi_ci": [
+    -0.3689,
+    0.1592
+   ],
+   "final": 65.34,
+   "max_dd": 0.4391,
+   "avg_odds": 2.86,
+   "by_league": {
+    "GBL": {
+     "n": 14,
+     "wins": 6,
+     "profit": 2.26,
+     "roi": 0.0809
+    },
+    "E": {
+     "n": 75,
+     "wins": 29,
+     "profit": -8.41,
+     "roi": -0.0556
+    },
+    "U": {
+     "n": 44,
+     "wins": 13,
+     "profit": -28.53,
+     "roi": -0.3009
+    }
+   }
+  },
+  "EV ≥ 10%": {
+   "n": 82,
+   "wins": 23,
+   "staked": 201.44,
+   "profit": -34.86,
+   "roi": -0.1731,
+   "roi_ci": [
+    -0.4482,
+    0.1316
+   ],
+   "final": 65.19,
+   "max_dd": 0.429,
+   "avg_odds": 3.17,
+   "by_league": {
+    "GBL": {
+     "n": 9,
+     "wins": 3,
+     "profit": -0.24,
+     "roi": -0.0106
+    },
+    "E": {
+     "n": 39,
+     "wins": 11,
+     "profit": -10.2,
+     "roi": -0.1072
+    },
+    "U": {
+     "n": 34,
+     "wins": 9,
+     "profit": -24.42,
+     "roi": -0.2915
+    }
+   }
+  },
+  "½ Kelly": {
+   "n": 111,
+   "wins": 36,
+   "staked": 456.76,
+   "profit": -66.34,
+   "roi": -0.1452,
+   "roi_ci": [
+    -0.3841,
+    0.1006
+   ],
+   "final": 33.67,
+   "max_dd": 0.7433,
+   "avg_odds": 2.94,
+   "by_league": {
+    "GBL": {
+     "n": 12,
+     "wins": 5,
+     "profit": 2.26,
+     "roi": 0.0509
+    },
+    "E": {
+     "n": 61,
+     "wins": 21,
+     "profit": -24.7,
+     "roi": -0.0972
+    },
+    "U": {
+     "n": 38,
+     "wins": 10,
+     "profit": -43.9,
+     "roi": -0.2777
+    }
+   }
+  },
+  "ολόκληρο Kelly (χωρίς όριο)": {
+   "n": 111,
+   "wins": 36,
+   "staked": 737.04,
+   "profit": -98.05,
+   "roi": -0.133,
+   "roi_ci": [
+    -0.4234,
+    0.1448
+   ],
+   "final": 1.98,
+   "max_dd": 0.989,
+   "avg_odds": 2.94,
+   "by_league": {
+    "GBL": {
+     "n": 12,
+     "wins": 5,
+     "profit": 0.51,
+     "roi": 0.01
+    },
+    "E": {
+     "n": 61,
+     "wins": 21,
+     "profit": -73.8,
+     "roi": -0.1581
+    },
+    "U": {
+     "n": 38,
+     "wins": 10,
+     "profit": -24.76,
+     "roi": -0.1131
+    }
+   }
+  },
+  "σταθερό 1 μονάδα": {
+   "n": 111,
+   "wins": 36,
+   "staked": 111,
+   "profit": -15.46,
+   "roi": -0.1393,
+   "roi_ci": [
+    -0.3865,
+    0.1012
+   ],
+   "final": 84.54,
+   "max_dd": 0.1936,
+   "avg_odds": 2.94,
+   "by_league": {
+    "GBL": {
+     "n": 12,
+     "wins": 5,
+     "profit": 1.05,
+     "roi": 0.0875
+    },
+    "E": {
+     "n": 61,
+     "wins": 21,
+     "profit": -7.6,
+     "roi": -0.1246
+    },
+    "U": {
+     "n": 38,
+     "wins": 10,
+     "profit": -8.91,
+     "roi": -0.2345
+    }
+   }
+  }
+ }
+}

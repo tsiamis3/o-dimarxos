@@ -598,6 +598,7 @@ Views.value = () => {
     <p class="muted" style="font-size:12px">«αγορά»: η πιθανότητα που δίνουν οι bookmakers χωρίς το περιθώριό τους (μέσος όρος).</p>` : `<div class="empty">Κανένα στοίχημα με αξία ≥ ${Math.round(100 * V.rules.min_ev)}% αυτή τη στιγμή.</div>`}</section>` : ""}
   <section><h2>Δίκαιες αποδόσεις του μοντέλου</h2>${up.length ? `<div class="tbl"><table><thead><tr><th>Ημ/νία</th><th>Αγώνας</th><th class="n">P(γηπ.)</th><th class="n">1</th><th class="n">2</th><th class="n">χάντικαπ γηπ.</th><th class="n">σύνολο</th><th class="n">P(over)</th></tr></thead><tbody>${up.map(fairRow).join("")}</tbody></table></div>
     <p class="muted" style="font-size:12px">1/2: δίκαιες αποδόσεις νίκης (χωρίς περιθώριο). Χάντικαπ: η διάμεσος της διαφοράς από τη μεριά του γηπεδούχου. Σύνολο: διάμεσος· P(over) για τη μισή γραμμή πάνω από τη διάμεσο. Από ${SIMS.n.toLocaleString("el-GR")} προσομοιώσεις ανά αγώνα (με ratings και αβεβαιότητα).</p>` : `<div class="empty">Δεν υπάρχουν επόμενοι αγώνες με προσομοίωση.</div>`}</section>
+  <section class="card" style="border-left:4px solid var(--bad)"><b>Προσοχή:</b> σε backtest με τις αποδόσεις κλεισίματος της φετινής σεζόν, κανένας κανόνας στοιχηματισμού πάνω σε αυτό το μοντέλο δεν κέρδισε σε αγώνες που δεν είχε δει. <a href="#/strategy">Δες τη μελέτη «Στρατηγική» →</a></section>
   <section class="card" id="val-calc"><h2>Έχει αξία;</h2><div id="val-form">${valForm()}</div></section>
   ${valHelp()}
   ${Lg && (Lg.n || Lg.open) ? `<section class="card"><h2>Ημερολόγιο (εικονικά στοιχήματα)</h2>
@@ -619,6 +620,106 @@ function valHelp() {
     <p><b>5. Γι' αυτό ¼ Kelly και όριο 3%.</b> Παίζουμε το ένα τέταρτο: 7.6% / 4 = 1.9% του κεφαλαίου (με κεφάλαιο 100: 1.90). Κρατά το μεγαλύτερο μέρος της ανάπτυξης με πολύ μικρότερο ρίσκο, και κανένα στοίχημα δεν ξεπερνά το 3%. Το κεφάλαιο ενημερώνεται μετά από κάθε στοίχημα (το ποσό είναι πάντα ποσοστό του τωρινού).</p>
     <p style="margin-bottom:0"><b>Μονά, όχι παρολί.</b> Σε ένα παρολί πολλαπλασιάζονται οι αποδόσεις αλλά και το περιθώριο του bookmaker (≈5% ανά επιλογή) και τα λάθη του μοντέλου· ένα 10× παρολί σχεδόν πάντα έχει αρνητική αναμενόμενη απόδοση, ακόμη κι όταν κάθε επιλογή μοιάζει καλή.</p></div></section>`;
 }
+
+// ----------------------------------------------------------------------------- Στρατηγική: γενετικός αλγόριθμος
+let STRAT = null;
+const fmtN = (v) => (v >= 100 ? Math.round(v).toLocaleString("el-GR") : v.toFixed(1));
+/** Γράφημα κεφαλαίου (λογαριθμικός άξονας, ένας άξονας): series [{ pts: [[ημ/νία, τιμή]], cls, label, dash }] */
+function bankChart(series, { cut, w = 720, h = 300 } = {}) {
+  const all = series.flatMap((s) => s.pts), dates = [...new Set(all.map((p) => p[0]))].sort();
+  const vals = all.map((p) => p[1]).filter((v) => v > 0), lo = Math.max(10, Math.min(50, ...vals) * 0.8), hi = Math.max(150, ...vals) * 1.15;
+  const L = 46, R = 92, T = 12, B = 28, X = (d) => L + ((w - L - R) * dates.indexOf(d)) / Math.max(1, dates.length - 1),
+    Y = (v) => T + (h - T - B) * (1 - (Math.log(Math.max(v, lo)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)));
+  let g = "";
+  for (const v of [12.5, 25, 50, 100, 200, 400, 800, 1600, 3200].filter((v) => v >= lo && v <= hi))
+    g += `<line x1="${L}" x2="${w - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" ${v === 100 ? "" : 'stroke-dasharray="2 4"'}/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" class="ax">${fmtN(v)}</text>`;
+  if (cut && dates.includes(cut)) g += `<line x1="${X(cut)}" x2="${X(cut)}" y1="${T}" y2="${h - B}" stroke="var(--muted)" stroke-dasharray="4 3"/><text x="${X(cut) + 5}" y="${h - B - 6}" class="ax">δοκιμή →</text><text x="${X(cut) - 5}" y="${h - B - 6}" class="ax" text-anchor="end">← εκπαίδευση</text>`;
+  [0, Math.floor(dates.length / 2), dates.length - 1].forEach((i) => { if (dates[i]) g += `<text x="${X(dates[i])}" y="${h - 8}" text-anchor="middle" class="ax">${dateGR(dates[i])}</text>`; });
+  // ετικέτες στο τέλος: χωρίς επικαλύψεις (τουλάχιστον 14px κάθετη απόσταση)
+  const ends = series.filter((s) => s.pts.length).map((s) => ({ s, y: Y(s.pts.at(-1)[1]) })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 14) ends[i].y = ends[i - 1].y + 14;
+  const labY = new Map(ends.map((e) => [e.s, e.y]));
+  for (const s of series) {
+    if (!s.pts.length) continue;
+    g += `<polyline fill="none" class="${s.cls}" stroke-width="2" ${s.dash ? 'stroke-dasharray="6 4"' : ""} points="${s.pts.map(([d, v]) => `${X(d).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}"/>`;
+    g += s.pts.map(([d, v]) => `<circle cx="${X(d).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="7" fill="transparent"><title>${esc(s.label)} · ${dateGR(d)}: ${fmtN(v)}</title></circle>`).join("");
+    const [d, v] = s.pts.at(-1); g += `<circle cx="${X(d)}" cy="${Y(v)}" r="4" class="${s.cls} dot"/><text x="${X(d) + 8}" y="${labY.get(s) + 4}" class="lab">${esc(s.short || "")} ${fmtN(v)}</text>`;
+  }
+  return `<svg viewBox="0 0 ${w} ${h}" class="st-chart" role="img" aria-label="Εξέλιξη κεφαλαίου">${g}</svg>
+    <div class="st-legend">${series.map((s) => `<span><i class="${s.cls}${s.dash ? " dash" : ""}"></i>${esc(s.label)}</span>`).join("")}</div>`;
+}
+/** Λωρίδα κουκκίδων: οι ψεύτικες σεζόν (γκρι) και η πραγματική (χρώμα), σε λογαριθμικό άξονα. */
+function nullStrip(vals, real, label) {
+  const w = 720, h = 70, L = 46, R = 20, lo = Math.max(5, Math.min(real, ...vals) * 0.8), hi = Math.max(real, ...vals) * 1.2;
+  const X = (v) => L + ((w - L - R) * (Math.log(v) - Math.log(lo))) / (Math.log(hi) - Math.log(lo));
+  let g = `<line x1="${L}" x2="${w - R}" y1="38" y2="38" stroke="var(--line)"/>`;
+  for (const v of [12.5, 25, 50, 100, 200, 400, 800, 1600, 3200, 6400].filter((v) => v >= lo && v <= hi)) g += `<line x1="${X(v)}" x2="${X(v)}" y1="34" y2="42" stroke="var(--line)"/><text x="${X(v)}" y="62" text-anchor="middle" class="ax">${fmtN(v)}</text>`;
+  const sorted = [...vals].sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)];
+  vals.forEach((v, i) => { g += `<circle cx="${X(v).toFixed(1)}" cy="${30 - (i % 4) * 6}" r="3.2" fill="var(--muted)" opacity=".55"><title>ψεύτικη σεζόν: ${fmtN(v)}</title></circle>`; });
+  g += `<line x1="${X(med)}" x2="${X(med)}" y1="8" y2="42" stroke="var(--muted)" stroke-width="2"/><text x="${X(med)}" y="7" text-anchor="middle" class="ax">διάμεσος ${fmtN(med)}</text>`;
+  g += `<circle cx="${X(real)}" cy="38" r="6" class="st-a dot"><title>πραγματική: ${fmtN(real)}</title></circle><text x="${X(real)}" y="54" text-anchor="middle" class="lab">πραγματική ${fmtN(real)}</text>`;
+  return `<div style="font-size:13px;margin-top:6px">${label}</div><svg viewBox="0 0 ${w} ${h}" class="st-chart" role="img" aria-label="${esc(label)}">${g}</svg>`;
+}
+function fitChart(hist) {
+  const w = 340, h = 150, L = 34, R = 10, T = 10, B = 22, n = hist.length, all = hist.flat(), lo = Math.min(...all), hi = Math.max(...all);
+  const X = (i) => L + ((w - L - R) * i) / Math.max(1, n - 1), Y = (v) => T + (h - T - B) * (1 - (v - lo) / (hi - lo || 1));
+  const line = (k, cls) => `<polyline fill="none" class="${cls}" stroke-width="2" points="${hist.map((x, i) => `${X(i).toFixed(1)},${Y(x[k]).toFixed(1)}`).join(" ")}"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" class="st-chart" role="img" aria-label="Σύγκλιση"><line x1="${L}" x2="${w - R}" y1="${h - B}" y2="${h - B}" stroke="var(--line)"/>
+    ${line(0, "st-a")}${line(1, "st-b")}<text x="${L}" y="${h - 6}" class="ax">γενιά 1</text><text x="${w - R}" y="${h - 6}" class="ax" text-anchor="end">${n}</text></svg>
+    <div class="st-legend"><span><i class="st-a"></i>καλύτερη στρατηγική</span><span><i class="st-b"></i>μέσος όρος πληθυσμού</span></div>`;
+}
+const stratText = (s) => [s.legs === 1 ? "μονά" : `παρολί ${s.legs} επιλογών`, `αξία ≥ ${Math.round(100 * s.minEv)}%`, `αποδόσεις ${s.minOdds}–${s.maxOdds}`,
+  s.fav !== "όλα" ? s.fav : "", s.ha !== "όλα" ? s.ha : "", `λίγκες ${s.leagues.map((L) => ({ GBL: "GBL", E: "EuroLeague", U: "EuroCup" })[L]).join(", ")}`,
+  s.k != null ? `μοντέλο ×${s.k} στα log-odds` : "", s.alpha ? `${Math.round(100 * s.alpha)}% αγορά` : "", `${s.frac >= 0.99 ? "ολόκληρο" : Math.round(100 * s.frac) + "%"} Kelly${s.cap != null ? `, έως ${(100 * s.cap).toFixed(1)}% ανά στοίχημα` : ""}`].filter(Boolean).join(" · ");
+Views.strategy = () => {
+  if (!STRAT) { fetch("strategy.json?v=__BUILD__").then((r) => (r.ok ? r.json() : null)).then((x) => { STRAT = x || { error: true }; if (route().view === "strategy") render(); }).catch(() => { STRAT = { error: true }; render(); });
+    return `<div class="empty">Φόρτωση…</div>`; }
+  if (STRAT.error) return `<div class="empty">Τα αποτελέσματα δεν βρέθηκαν.</div>`;
+  const S = STRAT, B = S.best, C = S.safe, O = S.refs.ours, q = (a, p) => { a = [...a].sort((x, y) => x - y); return a[Math.floor(p * (a.length - 1))]; };
+  const hero = (v, l, cls = "") => `<div class="tile st-hero"><div class="v ${cls}">${v}</div><div class="l">${l}</div></div>`;
+  const pc = (x) => `<span style="color:var(--${x >= 0 ? "good" : "bad"})">${x >= 0 ? "+" : ""}${(100 * x).toFixed(0)}%</span>`;
+  const curveFull = [...B.curve_train, ...B.curve_test.map(([d, v]) => [d, (v * B.train.final) / 100])];
+  return `<section class="card"><h2>Η καλύτερη στρατηγική στοιχηματισμού: τι βρήκε ο γενετικός αλγόριθμος</h2>
+    <p style="margin:0 0 10px;max-width:80ch">${S.games} παιγμένοι αγώνες GBL, EuroLeague και EuroCup της φετινής σεζόν (${dateGR(S.split.from)} – ${dateGR(S.split.to)}), με την πιθανότητα της προσομοίωσης (κάθε αγώνας μόνο με τους προηγούμενους) και τις μέσες αποδόσεις κλεισίματος (betexplorer, περιθώριο bookmaker ${(100 * S.margin).toFixed(1)}%).
+    Ο αλγόριθμος ψάχνει ανάμεσα σε μονά και παρολί, όρια αξίας και αποδόσεων, φαβορί/αουτσάιντερ, λίγκες και μέγεθος πονταρίσματος (Kelly). <b>Μαθαίνει</b> στους πρώτους ${S.split.train_games} αγώνες και <b>κρίνεται</b> στους επόμενους ${S.split.test_games}, που δεν έχει δει.</p>
+    <div class="tiles">${hero("100 → " + fmtN(B.train.final), "στους αγώνες που «έμαθε»", "good")}${hero("100 → " + fmtN(B.test.final), "στους αγώνες που δεν είχε δει", "bad")}${hero("100 → " + fmtN(S.rolling.final), "αν τον χρησιμοποιούσαμε όλη τη σεζόν (κυλιόμενα)", "bad")}${hero(fmtN(q(S.nulls.train_final, 0.5)), "διάμεσο «κέρδος» σε σεζόν χωρίς καμία ευκαιρία")}</div>
+    <p style="margin:12px 0 0;max-width:80ch;font-size:15px"><b>Συμπέρασμα:</b> δεν υπάρχει κερδοφόρα στρατηγική με αυτό το μοντέλο απέναντι στις αποδόσεις κλεισίματος. Ό,τι «δουλεύει» στους αγώνες που ο αλγόριθμος έχει δει είναι τύχη: σε ${S.nulls.n} ψεύτικες σεζόν όπου η αγορά έχει πάντα δίκιο, βρίσκει το ίδιο εύκολα «στρατηγικές» που πολλαπλασιάζουν το κεφάλαιο — και χάνουν μόλις παιχτούν σε νέους αγώνες.</p></section>
+  <section class="card"><h2>Εξέλιξη κεφαλαίου</h2>
+    ${bankChart([{ pts: curveFull, cls: "st-a", label: "Γενετικός (καλύτερη στην εκπαίδευση)", short: "ΓΑ" }, { pts: [...(C.curve_train || []), ...(C.curve_test || []).map(([d, v]) => [d, (v * C.train.final) / 100])], cls: "st-a", dash: true, label: "Γενετικός, συντηρητικός", short: "ΓΑ-σ" },
+      { pts: S.rolling.curve, cls: "st-b", label: "Κυλιόμενα (μαθαίνει μόνο από το παρελθόν)", short: "κυλ." }, { pts: O.curve_test.map(([d, v]) => [d, (v * O.train.final) / 100]), cls: "st-c", label: "Οι κανόνες της «Αξίας» (δοκιμή)", short: "Αξία" }], { cut: S.cut })}
+    <p class="muted" style="font-size:12px">Λογαριθμικός άξονας (κάθε γραμμή διπλασιάζει). Οι στρατηγικές του γενετικού στη δοκιμή ξεκινούν από όπου έφτασαν στην εκπαίδευση: η πτώση μετά τη διακεκομμένη γραμμή είναι η αλήθεια. Δείξε με το ποντίκι για τιμές.</p></section>
+  <section class="card"><h2>Τύχη ή ικανότητα;</h2>
+    <p style="margin:0 0 6px;max-width:80ch">Ο ίδιος αλγόριθμος έτρεξε σε ${S.nulls.n} «ψεύτικες» σεζόν: ίδιοι αγώνες, ίδιες αποδόσεις, αλλά τα αποτελέσματα κληρώθηκαν από τις πιθανότητες της αγοράς — άρα κανένα πλεονέκτημα δεν υπάρχει. Κάθε γκρι κουκκίδα είναι μια τέτοια σεζόν.</p>
+    ${nullStrip(S.nulls.train_final, S.nulls.real_train_final, "Τελικό κεφάλαιο στους αγώνες που «έμαθε» (από 100)")}
+    ${nullStrip(S.nulls.test_final, S.nulls.real_test_final, "Τελικό κεφάλαιο στους αγώνες που δεν είχε δει (από 100)")}
+    <p class="muted" style="font-size:12px">Στην εκπαίδευση η πραγματική σεζόν (${fmtN(S.nulls.real_train_final)}) είναι μέσα στο εύρος της τύχης: το ${Math.round(100 * S.nulls.share_better_or_equal)}% των ψεύτικων σεζόν τα πήγε εξίσου ή καλύτερα. Στη δοκιμή, οι ψεύτικες σεζόν χάνουν κατά διάμεσο όρο ${100 - Math.round(q(S.nulls.test_final, 0.5))}% — περίπου όσο το περιθώριο του bookmaker επί τα στοιχήματα — και η πραγματική χάνει ${100 - Math.round(S.nulls.real_test_final)}%.</p></section>
+  <section class="grid">
+    <div class="card"><h3>Η «καλύτερη» στρατηγική</h3><p style="margin:0;font-size:14px">${esc(stratText(B.strategy))}</p>
+      <div class="tbl" style="margin-top:8px"><table><thead><tr><th></th><th class="n">στοιχήματα</th><th class="n">κερδισμένα</th><th class="n">ROI</th><th class="n">κεφάλαιο</th><th class="n">μέγ. πτώση</th></tr></thead><tbody>
+        <tr><td>εκπαίδευση</td><td class="n">${B.train.n}</td><td class="n">${B.train.wins}</td><td class="n">${pc(B.train.roi)}</td><td class="n">${fmtN(B.train.final)}</td><td class="n">${Math.round(100 * B.train.max_dd)}%</td></tr>
+        <tr><td>δοκιμή</td><td class="n">${B.test.n}</td><td class="n">${B.test.wins}</td><td class="n">${pc(B.test.roi)}</td><td class="n">${fmtN(B.test.final)}</td><td class="n">${Math.round(100 * B.test.max_dd)}%</td></tr></tbody></table></div>
+      <h3 style="margin-top:12px">Συντηρητική εκδοχή</h3><p style="margin:0;font-size:14px">${esc(stratText(C.strategy))}</p>
+      <p class="muted" style="font-size:13px">Βαριά ποινή στις πτώσεις, τουλάχιστον 30 στοιχήματα: εκπαίδευση 100 → ${fmtN(C.train.final)}, δοκιμή 100 → ${fmtN(C.test.final)}, κυλιόμενα 100 → ${fmtN(C.rolling.final)}.</p></div>
+    <div class="card"><h3>Πώς έψαξε ο γενετικός</h3>${fitChart(S.ga.hist)}
+      <p class="muted" style="font-size:12px">${S.ga.pop} στρατηγικές × ${S.ga.gens} γενιές × ${S.ga.seeds} ανεξάρτητες εκκινήσεις. Κάθε στρατηγική είναι ${S.ga.genes} «γονίδια»· σε κάθε γενιά επιβιώνουν οι καλύτερες (τουρνουά), διασταυρώνονται και μεταλλάσσονται. Καταλληλότητα: ο λογάριθμος του τελικού κεφαλαίου μείον ποινή για τη μέγιστη πτώση.</p></div></section>
+  <section><h2>Οι 10 καλύτερες στην εκπαίδευση — και τι έγινε μετά</h2><div class="tbl"><table><thead><tr><th>Στρατηγική</th><th class="n">εκπ.: στοιχ.</th><th class="n">ROI</th><th class="n">κεφάλαιο</th><th class="n">δοκιμή: στοιχ.</th><th class="n">ROI</th><th class="n">κεφάλαιο</th></tr></thead><tbody>
+    ${S.top.map((t) => `<tr><td style="white-space:normal;font-size:13px">${esc(stratText(t))}</td><td class="n">${t.train.n}</td><td class="n">${pc(t.train.roi)}</td><td class="n">${fmtN(t.train.final)}</td><td class="n">${t.test.n}</td><td class="n">${pc(t.test.roi)}</td><td class="n"><b>${fmtN(t.test.final)}</b></td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">Όλες οι «καλύτερες» είναι παρολί με ολόκληρο Kelly: η πιο ριψοκίνδυνη επιλογή κερδίζει στην εκπαίδευση όταν έτυχε να βγουν τα αποτελέσματα — και χάνει τα περισσότερα όταν δεν βγαίνουν.</p></section>
+  <section class="grid"><div><h2>Κυλιόμενη δοκιμή</h2><div class="tbl"><table><thead><tr><th>Τμήμα</th><th class="n">στοιχήματα</th><th class="n">ROI</th><th class="n">κεφάλαιο ×</th></tr></thead><tbody>
+      ${S.rolling.blocks.map((x) => `<tr><td>${dateGR(x.from)} – ${dateGR(x.to)} <span class="muted" style="font-size:11px">${x.legs === 1 ? "μονά" : "παρολί " + x.legs}</span></td><td class="n">${x.n}</td><td class="n">${pc(x.roi)}</td><td class="n">×${x.mult.toFixed(2)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted" style="font-size:12px">Σε κάθε τμήμα ο αλγόριθμος ξαναψάχνει με ό,τι έχει παιχτεί μέχρι τότε και η στρατηγική του παίζεται στο επόμενο τμήμα: έτσι θα δούλευε στην πράξη.</p></div>
+    <div><h2>Σημεία αναφοράς (δοκιμή)</h2><div class="tbl"><table><thead><tr><th></th><th class="n">στοιχήματα</th><th class="n">ROI</th></tr></thead><tbody>
+      <tr><td>Κανόνες «Αξίας» (¼ Kelly, EV ≥ 5%)</td><td class="n">${O.test.n}</td><td class="n">${pc(O.test.roi)}</td></tr>
+      <tr><td>Πάντα το φαβορί, σταθερό ποσό</td><td class="n">${S.refs.fav_flat.test.n}</td><td class="n">${pc(S.refs.fav_flat.test.roi)}</td></tr>
+      <tr><td>Πάντα το αουτσάιντερ, σταθερό ποσό</td><td class="n">${S.refs.dog_flat.test.n}</td><td class="n">${pc(S.refs.dog_flat.test.roi)}</td></tr>
+      <tr><td>Κανένα στοίχημα</td><td class="n">0</td><td class="n">0%</td></tr></tbody></table></div>
+      <p class="muted" style="font-size:12px">Όλη η σεζόν με τους κανόνες της «Αξίας»: ${O.train.n + O.test.n} στοιχήματα, κεφάλαιο 100 → ${fmtN((O.full?.final) || 0)}.</p></div></section>
+  <section class="card"><h2>Τι σημαίνει</h2><ol style="margin:0;max-width:80ch;line-height:1.6">
+    <li><b>Με τόσους αγώνες, η βελτιστοποίηση βρίσκει πάντα κάτι.</b> 15 ρυθμίσεις, 227 αγώνες: αρκεί για να «χωρέσει» ο αλγόριθμος την τύχη μιας σεζόν. Γι' αυτό κρίνουμε μόνο σε αγώνες που δεν έχει δει.</li>
+    <li><b>Το παρολί μεγαλώνει την τύχη, όχι την αξία.</b> Πολλαπλασιάζει και το περιθώριο του bookmaker· βγαίνει «καλύτερο» στο παρελθόν μόνο επειδή είναι το πιο ριψοκίνδυνο.</li>
+    <li><b>Ο αλγόριθμος δεν μπορεί να φτιάξει πλεονέκτημα που δεν έχει το μοντέλο.</b> Το μοντέλο προβλέπει χειρότερα από τις αποδόσεις κλεισίματος (Brier 0.209 έναντι 0.196)· καμία στρατηγική πάνω του δεν κερδίζει μακροπρόθεσμα.</li>
+    <li><b>Τι θα χρειαζόταν:</b> μοντέλο που κερδίζει την αγορά (ratings από πολλές σεζόν, απουσίες, ενδεκάδες), αποδόσεις ανοίγματος πριν «κάτσει» η αγορά, ή αγορές που τιμολογούνται χειρότερα (στατιστικά παικτών) — και μετά ξανά αυτή η δοκιμή.</li></ol></section>`;
+};
 
 Views.sims = () => {
   const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
@@ -954,7 +1055,7 @@ function route() {
   const [, view = "", arg = ""] = (location.hash || "#/").split("/");
   return { view: view || "home", arg: decodeURIComponent(arg) };
 }
-const NAV = { value: "#/value", sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
+const NAV = { strategy: "#/strategy", value: "#/value", sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
 function render() {
   const { view, arg } = route(), V = Views[view] || Views.home, el = $("#view");
   if (Live.stop) Live.stop();

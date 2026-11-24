@@ -153,3 +153,20 @@ details.tree { border: 1px solid var(--line); border-radius: var(--r); backgroun
 .rd-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .rd-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; cursor: pointer; font: inherit; color: var(--fg); text-align: center; }
 .rd-card:hover { border-color: var(--accent); }
+
+/* ---------- στρατηγική: γραφήματα (σειρές: μπλε, κεχριμπαρί, γκρι· επικυρωμένες για CVD) ---------- */
+:root { --st-a: #2f6fdf; --st-b: #b07800; --st-c: var(--muted); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --st-a: #5b8ff0; --st-b: #b98318; } }
+:root[data-theme="dark"] { --st-a: #5b8ff0; --st-b: #b98318; }
+.st-chart { width: 100%; height: auto; display: block; }
+.st-chart .ax { font: 11px var(--font-num); fill: var(--muted); }
+.st-chart .lab { font: 600 12px var(--font-body); fill: var(--fg); }
+.st-chart polyline.st-a { stroke: var(--st-a); } .st-chart polyline.st-b { stroke: var(--st-b); } .st-chart polyline.st-c { stroke: var(--st-c); }
+.st-chart circle.dot.st-a { fill: var(--st-a); stroke: var(--surface); stroke-width: 2; }
+.st-chart circle.dot.st-b { fill: var(--st-b); stroke: var(--surface); stroke-width: 2; }
+.st-chart circle.dot.st-c { fill: var(--st-c); stroke: var(--surface); stroke-width: 2; }
+.st-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.st-legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 6px; }
+.st-legend i.st-a { border-color: var(--st-a); } .st-legend i.st-b { border-color: var(--st-b); } .st-legend i.st-c { border-color: var(--st-c); }
+.st-legend i.dash { border-top-style: dashed; }
+.st-hero .v { font-size: 24px; } .st-hero .v.good { color: var(--good); } .st-hero .v.bad { color: var(--bad); }
