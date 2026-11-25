@@ -200,21 +200,25 @@ def groups_of(games, teams):
 
 
 def main():
+    """Χωρίς ορίσματα: η τρέχουσα σεζόν κάθε λίγκας -> site/db/<λίγκα>.json.
+    --season 2025: προηγούμενη σεζόν -> data/hist/<λίγκα><σεζόν>.json (για εκπαίδευση μοντέλων, όχι για το σάιτ)."""
+    import sys
+    season = int(sys.argv[sys.argv.index("--season") + 1]) if "--season" in sys.argv else None
     for comp in LEAGUES:
-        build(comp)
+        build(comp, season)
 
 
-def build(comp):
+def build(comp, season_req=None):
     man = json.loads((SITE_DATA / "manifest.json").read_text())
     C = next((c for c in man["competitions"] if c["code"] == comp), None)
     if not C:
         print(f"   ! {comp}: δεν υπάρχει στο manifest")
         return
-    season = max(C["seasons"])
+    season = season_req or max(C["seasons"])
     if not (SITE_DATA / f"{comp}{season}.json").exists():
         print(f"   ! {comp}{season}.json λείπει")
         return
-    OUT = ROOT / "site" / "db" / f"{comp}.json"
+    OUT = ROOT / "site" / "db" / f"{comp}.json" if not season_req else ROOT / "data" / "hist" / f"{comp}{season}.json"
     S = json.loads((SITE_DATA / f"{comp}{season}.json").read_text())
     meta = json.loads((SITE_DATA / "teams_meta.json").read_text()).get(comp, {}) if (SITE_DATA / "teams_meta.json").exists() else {}
     edge = json.loads((SITE_DATA / f"edge_{comp}.json").read_text()) if (SITE_DATA / f"edge_{comp}.json").exists() else {}

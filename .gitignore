@@ -10,3 +10,5 @@ data/raw/.demo
 
 # δεδομένα εκπαίδευσης GNN (ξαναχτίζονται από το scripts/gnn_data.py)
 data/gnn/
+data/hist/
+data/ml/*.csv
