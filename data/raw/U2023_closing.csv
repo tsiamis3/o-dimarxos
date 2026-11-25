@@ -1,0 +1,179 @@
+gameCode,date,home,away,hs,as,odds_home,odds_away,src_home,src_away
+196,2024-04-12,BOU,PRS,81,89,2.9,1.43,JL Bourg,Paris
+195,2024-04-09,PRS,BOU,77,64,1.17,5.5,Paris,JL Bourg
+194,2024-04-03,BOU,BES,89,63,1.5,2.65,JL Bourg,Besiktas
+192,2024-03-29,BES,BOU,82,71,1.43,2.9,Besiktas,JL Bourg
+191,2024-03-29,LLI,PRS,85,93,2.3,1.65,London Lions,Paris
+190,2024-03-26,BOU,BES,86,74,1.53,2.6,JL Bourg,Besiktas
+189,2024-03-26,PRS,LLI,99,86,1.25,4.2,Paris,London Lions
+185,2024-03-14,PRS,JOV,86,70,1.37,3.2,Paris,Joventut Badalona
+186,2024-03-13,CLU,LLI,79,91,2.05,1.8,Cluj-Napoca,London Lions
+188,2024-03-13,HTA,BES,89,94,1.43,2.9,Hapoel Tel Aviv,Besiktas
+187,2024-03-12,BOU,PMT,95,82,1.59,2.45,JL Bourg,Prometey
+183,2024-03-06,CAN,BES,78,80,1.08,9.0,Gran Canaria,Besiktas
+181,2024-03-06,LLI,TTK,100,77,1.31,3.6,London Lions,Turk Telekom
+184,2024-03-06,PMT,ARI,95,67,1.26,4.1,Prometey,Aris
+182,2024-03-05,ULM,JOV,79,88,2.55,1.54,Ulm,Joventut Badalona
+177,2024-02-07,ARI,TRN,84,77,1.59,2.45,Aris,Trento
+178,2024-02-07,BUD,CAN,90,77,2.65,1.5,Buducnost,Gran Canaria
+179,2024-02-07,LKB,CLU,92,87,3.2,1.37,Lietkabelis,Cluj-Napoca
+172,2024-02-07,BES,HTA,73,94,2.45,1.59,Besiktas,Hapoel Tel Aviv
+174,2024-02-07,LLI,WOL,80,85,1.19,4.9,London Lions,BC Wolves
+173,2024-02-07,PRS,LJU,119,66,1.03,15.0,Paris,Cedevita Olimpija
+171,2024-02-07,PMT,JOV,94,80,1.87,1.95,Prometey,Joventut Badalona
+176,2024-02-06,BOU,ULM,81,85,1.4,3.05,JL Bourg,Ulm
+180,2024-02-06,WRO,TTK,70,86,4.75,1.2,Slask Wroclaw,Turk Telekom
+175,2024-02-06,HAM,VNC,83,90,3.05,1.4,Hamburg,Venezia
+169,2024-01-31,TRN,BUD,78,97,1.71,2.2,Trento,Buducnost
+166,2024-01-31,TTK,BOU,64,68,2.15,1.74,Turk Telekom,JL Bourg
+170,2024-01-31,ULM,ARI,66,86,1.4,3.05,Ulm,Aris
+163,2024-01-31,LJU,LLI,85,92,2.75,1.48,Cedevita Olimpija,London Lions
+167,2024-01-30,LKB,WRO,91,75,1.28,3.8,Lietkabelis,Slask Wroclaw
+162,2024-01-30,WOL,HAM,94,84,1.2,4.75,BC Wolves,Hamburg
+164,2024-01-30,BES,PRS,72,95,2.2,1.71,Besiktas,Paris
+165,2024-01-30,JOV,HTA,85,91,1.5,2.65,Joventut Badalona,Hapoel Tel Aviv
+161,2024-01-30,VNC,PMT,108,92,2.4,1.61,Venezia,Prometey
+156,2024-01-24,ARI,BOU,68,76,2.85,1.44,Aris,JL Bourg
+159,2024-01-24,WRO,CAN,68,92,6.0,1.14,Slask Wroclaw,Gran Canaria
+160,2024-01-24,TTK,LKB,88,73,1.3,3.65,Turk Telekom,Lietkabelis
+154,2024-01-24,HAM,LJU,83,114,1.8,2.05,Hamburg,Cedevita Olimpija
+151,2024-01-24,HTA,PMT,105,113,1.53,2.6,Hapoel Tel Aviv,Prometey
+153,2024-01-24,LLI,BES,93,72,1.65,2.3,London Lions,Besiktas
+155,2024-01-24,VNC,WOL,57,75,1.28,3.8,Venezia,BC Wolves
+158,2024-01-23,CLU,TRN,88,83,1.37,3.2,Cluj-Napoca,Trento
+152,2024-01-23,PRS,JOV,89,82,1.25,4.2,Paris,Joventut Badalona
+150,2024-01-17,ARI,BUD,76,75,1.8,2.05,Aris,Buducnost
+147,2024-01-17,CAN,TTK,73,83,1.13,6.25,Gran Canaria,Turk Telekom
+146,2024-01-17,BOU,LKB,104,71,1.14,6.0,JL Bourg,Lietkabelis
+149,2024-01-17,ULM,CLU,81,85,1.59,2.45,Ulm,Cluj-Napoca
+142,2024-01-17,LJU,VNC,93,104,2.75,1.48,Cedevita Olimpija,Venezia
+145,2024-01-17,HTA,PRS,86,104,2.75,1.48,Hapoel Tel Aviv,Paris
+144,2024-01-17,LLI,JOV,80,82,1.8,2.05,London Lions,Joventut Badalona
+141,2024-01-17,PMT,WOL,91,64,1.25,4.2,Prometey,BC Wolves
+148,2024-01-16,TRN,WRO,85,79,1.13,6.25,Trento,Slask Wroclaw
+137,2024-01-10,CLU,ARI,90,74,1.4,3.05,Cluj-Napoca,Aris
+140,2024-01-10,LKB,CAN,84,92,3.4,1.33,Lietkabelis,Gran Canaria
+138,2024-01-10,WRO,ULM,100,88,3.65,1.3,Slask Wroclaw,Ulm
+139,2024-01-10,TTK,TRN,78,70,1.5,2.65,Turk Telekom,Trento
+133,2024-01-10,HAM,JOV,90,96,4.2,1.25,Hamburg,Joventut Badalona
+131,2024-01-10,PRS,PMT,93,72,1.11,7.0,Paris,Prometey
+135,2024-01-09,WOL,LJU,91,89,1.43,2.9,BC Wolves,Cedevita Olimpija
+132,2024-01-09,HTA,LLI,96,100,1.5,2.65,Hapoel Tel Aviv,London Lions
+13,2024-01-03,HTA,WOL,89,80,1.37,3.2,Hapoel Tel Aviv,BC Wolves
+129,2023-12-27,ARI,WRO,93,71,1.18,5.0,Aris,Slask Wroclaw
+130,2023-12-27,BUD,CLU,77,79,1.74,2.15,Buducnost,Cluj-Napoca
+127,2023-12-27,TRN,LKB,76,70,1.5,2.65,Trento,Lietkabelis
+122,2023-12-27,BES,WOL,72,59,1.13,6.25,Besiktas,BC Wolves
+124,2023-12-27,HTA,HAM,118,101,1.05,11.0,Hapoel Tel Aviv,Hamburg
+121,2023-12-27,PMT,LJU,105,100,1.03,15.0,Prometey,Cedevita Olimpija
+128,2023-12-26,ULM,TTK,79,85,1.22,4.5,Ulm,Turk Telekom
+123,2023-12-26,JOV,VNC,89,81,1.3,3.65,Joventut Badalona,Venezia
+125,2023-12-26,PRS,LLI,94,77,1.2,4.75,Paris,London Lions
+117,2023-12-20,WRO,BUD,79,80,4.75,1.2,Slask Wroclaw,Buducnost
+114,2023-12-20,WOL,JOV,79,94,2.9,1.43,BC Wolves,Joventut Badalona
+113,2023-12-20,HTA,VNC,100,81,1.31,3.6,Hapoel Tel Aviv,Venezia
+111,2023-12-20,LLI,PMT,89,88,1.74,2.15,London Lions,Prometey
+112,2023-12-20,PRS,HAM,120,91,1.02,17.0,Paris,Hamburg
+116,2023-12-19,CLU,BOU,89,98,1.8,2.05,Cluj-Napoca,JL Bourg
+120,2023-12-19,CAN,TRN,76,98,1.1,7.5,Gran Canaria,Trento
+119,2023-12-19,LKB,ULM,94,90,2.45,1.59,Lietkabelis,Ulm
+118,2023-12-19,TTK,ARI,85,95,1.4,3.05,Turk Telekom,Aris
+115,2023-12-19,LJU,BES,83,88,2.9,1.43,Cedevita Olimpija,Besiktas
+109,2023-12-13,BUD,TTK,73,96,1.32,3.55,Buducnost,Turk Telekom
+106,2023-12-13,BOU,TRN,79,67,1.26,4.0,JL Bourg,Trento
+102,2023-12-13,JOV,LJU,83,81,1.07,9.5,Joventut Badalona,Cedevita Olimpija
+105,2023-12-13,LLI,HAM,81,83,1.05,11.0,London Lions,Hamburg
+101,2023-12-13,PMT,BES,89,70,1.56,2.5,Prometey,Besiktas
+108,2023-12-12,ARI,LKB,69,60,1.74,2.15,Aris,Lietkabelis
+110,2023-12-12,CLU,WRO,80,76,1.03,16.5,Cluj-Napoca,Slask Wroclaw
+103,2023-12-12,WOL,HTA,81,89,3.2,1.37,BC Wolves,Hapoel Tel Aviv
+104,2023-12-12,PRS,VNC,100,70,1.18,5.0,Paris,Venezia
+99,2023-12-06,CAN,ARI,93,65,1.05,12.25,Gran Canaria,Aris
+98,2023-12-06,LKB,BUD,81,83,1.5,2.7,Lietkabelis,Buducnost
+100,2023-12-06,TRN,ULM,83,85,2.05,1.8,Trento,Ulm
+93,2023-12-06,WOL,PRS,79,110,3.1,1.4,BC Wolves,Paris
+95,2023-12-06,BES,JOV,81,85,1.5,2.7,Besiktas,Joventut Badalona
+94,2023-12-06,LJU,HTA,80,95,3.6,1.31,Cedevita Olimpija,Hapoel Tel Aviv
+96,2023-12-05,WRO,BOU,63,72,17.0,1.02,Slask Wroclaw,JL Bourg
+97,2023-12-05,TTK,CLU,95,84,2.7,1.5,Turk Telekom,Cluj-Napoca
+91,2023-12-05,HAM,PMT,83,97,3.6,1.31,Hamburg,Prometey
+92,2023-12-05,VNC,LLI,91,95,1.59,2.5,Venezia,London Lions
+88,2023-11-29,CAN,BUD,97,70,1.12,6.75,Gran Canaria,Buducnost
+87,2023-11-29,TRN,ARI,69,67,1.25,4.2,Trento,Aris
+86,2023-11-29,ULM,BOU,84,89,1.43,2.9,Ulm,JL Bourg
+83,2023-11-29,LJU,PRS,77,93,3.3,1.36,Cedevita Olimpija,Paris
+82,2023-11-29,HTA,BES,81,75,1.48,2.75,Hapoel Tel Aviv,Besiktas
+81,2023-11-29,JOV,PMT,79,76,1.48,2.75,Joventut Badalona,Prometey
+90,2023-11-28,TTK,WRO,71,80,1.07,10.0,Turk Telekom,Slask Wroclaw
+84,2023-11-28,WOL,LLI,87,101,1.8,2.05,BC Wolves,London Lions
+85,2023-11-28,VNC,HAM,94,77,1.13,6.25,Venezia,Hamburg
+77,2023-11-22,WRO,LKB,71,75,3.15,1.38,Slask Wroclaw,Lietkabelis
+75,2023-11-22,HTA,JOV,103,99,1.59,2.5,Hapoel Tel Aviv,Joventut Badalona
+73,2023-11-22,LLI,LJU,101,95,1.28,3.8,London Lions,Cedevita Olimpija
+71,2023-11-22,PMT,VNC,89,82,1.28,3.8,Prometey,Venezia
+78,2023-11-21,CLU,CAN,70,92,1.61,2.45,Cluj-Napoca,Gran Canaria
+76,2023-11-21,BOU,TTK,86,67,1.33,3.4,JL Bourg,Turk Telekom
+72,2023-11-21,HAM,WOL,71,84,1.8,2.05,Hamburg,BC Wolves
+74,2023-11-21,PRS,BES,63,68,1.25,4.2,Paris,Besiktas
+69,2023-11-15,CAN,WRO,81,77,1.02,17.0,Gran Canaria,Slask Wroclaw
+68,2023-11-15,TRN,CLU,60,98,1.74,2.15,Trento,Cluj-Napoca
+65,2023-11-15,WOL,VNC,77,93,1.91,1.91,BC Wolves,Venezia
+63,2023-11-15,BES,LLI,80,83,1.48,2.75,Besiktas,London Lions
+64,2023-11-15,LJU,HAM,83,86,1.25,4.2,Cedevita Olimpija,Hamburg
+66,2023-11-14,BOU,ARI,72,65,1.27,3.9,JL Bourg,Aris
+67,2023-11-14,ULM,BUD,84,67,1.43,2.95,Ulm,Buducnost
+61,2023-11-14,PMT,HTA,98,89,3.2,1.37,Prometey,Hapoel Tel Aviv
+60,2023-11-08,BUD,ARI,63,65,1.25,4.2,Buducnost,Aris
+59,2023-11-08,CLU,ULM,86,75,1.74,2.15,Cluj-Napoca,Ulm
+58,2023-11-08,WRO,TRN,75,84,2.65,1.54,Slask Wroclaw,Trento
+57,2023-11-08,TTK,CAN,69,82,2.35,1.65,Turk Telekom,Gran Canaria
+51,2023-11-08,WOL,PMT,85,71,1.8,2.05,BC Wolves,Prometey
+53,2023-11-08,BES,HAM,90,78,1.04,13.5,Besiktas,Hamburg
+54,2023-11-08,JOV,LLI,76,87,1.41,3.05,Joventut Badalona,London Lions
+55,2023-11-08,PRS,HTA,114,87,1.48,2.75,Paris,Hapoel Tel Aviv
+56,2023-11-07,LKB,BOU,100,96,2.05,1.8,Lietkabelis,JL Bourg
+52,2023-11-07,VNC,LJU,95,87,1.22,4.5,Venezia,Cedevita Olimpija
+42,2023-11-02,LLI,HTA,90,98,2.6,1.56,London Lions,Hapoel Tel Aviv
+47,2023-11-01,ARI,CLU,59,61,1.65,2.35,Aris,Cluj-Napoca
+50,2023-11-01,CAN,LKB,88,77,1.08,9.0,Gran Canaria,Lietkabelis
+46,2023-11-01,BOU,BUD,78,73,1.56,2.6,JL Bourg,Buducnost
+44,2023-11-01,BES,VNC,74,68,1.48,2.75,Besiktas,Venezia
+41,2023-11-01,PMT,PRS,79,96,2.5,1.59,Prometey,Paris
+45,2023-10-31,LJU,WOL,78,86,1.48,2.75,Cedevita Olimpija,BC Wolves
+43,2023-10-31,JOV,HAM,108,76,1.13,6.5,Joventut Badalona,Hamburg
+40,2023-10-25,CLU,BUD,89,74,1.65,2.35,Cluj-Napoca,Buducnost
+36,2023-10-25,CAN,BOU,84,76,1.2,4.75,Gran Canaria,JL Bourg
+37,2023-10-25,LKB,TRN,92,93,1.59,2.5,Lietkabelis,Trento
+39,2023-10-25,WRO,ARI,63,80,2.25,1.69,Slask Wroclaw,Aris
+38,2023-10-25,TTK,ULM,78,91,1.69,2.25,Turk Telekom,Ulm
+31,2023-10-25,LJU,PMT,83,90,2.25,1.69,Cedevita Olimpija,Prometey
+32,2023-10-24,WOL,BES,90,88,2.25,1.69,BC Wolves,Besiktas
+34,2023-10-24,HAM,HTA,72,111,8.5,1.08,Hamburg,Hapoel Tel Aviv
+33,2023-10-24,VNC,JOV,79,64,1.8,2.05,Venezia,Joventut Badalona
+28,2023-10-18,ARI,TTK,68,66,2.5,1.59,Aris,Turk Telekom
+30,2023-10-18,TRN,CAN,73,87,3.65,1.3,Trento,Gran Canaria
+25,2023-10-18,BES,LJU,73,66,1.22,4.5,Besiktas,Cedevita Olimpija
+22,2023-10-18,HAM,PRS,69,105,5.25,1.18,Hamburg,Paris
+21,2023-10-18,PMT,LLI,87,99,1.31,3.6,Prometey,London Lions
+27,2023-10-17,BUD,WRO,103,89,1.07,9.5,Buducnost,Slask Wroclaw
+26,2023-10-17,BOU,CLU,92,88,1.37,3.2,JL Bourg,Cluj-Napoca
+29,2023-10-17,ULM,LKB,99,74,1.2,4.75,Ulm,Lietkabelis
+23,2023-10-17,VNC,HTA,81,97,1.48,2.75,Venezia,Hapoel Tel Aviv
+17,2023-10-11,CAN,ULM,111,82,1.32,3.5,Gran Canaria,Ulm
+20,2023-10-11,WRO,CLU,67,70,2.85,1.44,Slask Wroclaw,Cluj-Napoca
+19,2023-10-11,TTK,BUD,79,77,1.44,2.85,Turk Telekom,Buducnost
+14,2023-10-11,VNC,PRS,75,81,2.05,1.8,Venezia,Paris
+18,2023-10-10,LKB,ARI,84,74,1.4,3.1,Lietkabelis,Aris
+16,2023-10-10,TRN,BOU,72,79,1.91,1.91,Trento,JL Bourg
+11,2023-10-10,BES,PMT,92,70,2.05,1.8,Besiktas,Prometey
+15,2023-10-10,HAM,LLI,94,100,2.5,1.59,Hamburg,London Lions
+6,2023-10-05,BOU,WRO,90,74,1.14,6.0,JL Bourg,Slask Wroclaw
+9,2023-10-04,ARI,CAN,66,82,1.37,3.2,Aris,Gran Canaria
+8,2023-10-04,BUD,LKB,76,65,3.25,1.36,Buducnost,Lietkabelis
+7,2023-10-04,CLU,TTK,80,71,1.8,2.05,Cluj-Napoca,Turk Telekom
+5,2023-10-04,JOV,BES,62,63,4.2,1.25,Joventut Badalona,Besiktas
+2,2023-10-04,LLI,VNC,76,69,1.65,2.35,London Lions,Venezia
+1,2023-10-04,PMT,HAM,97,77,6.0,1.14,Prometey,Hamburg
+10,2023-10-03,ULM,TRN,80,70,2.9,1.43,Ulm,Trento
+4,2023-10-03,HTA,LJU,100,73,4.5,1.22,Hapoel Tel Aviv,Cedevita Olimpija
+3,2023-10-03,PRS,WOL,105,78,4.5,1.22,Paris,BC Wolves

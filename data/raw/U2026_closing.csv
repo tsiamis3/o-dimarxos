@@ -1,120 +1,120 @@
 gameCode,date,home,away,hs,as,odds_home,odds_away,src_home,src_away
-126,2026-11-18,MAN,PAO,80,88,1.91,1.81,Manresa,PAOK
+126,2026-11-18,MAN,PAO,80,88,1.9,1.81,Manresa,PAOK
 125,2026-11-18,BOS,LKB,91,84,1.35,3.05,KK Bosna,Lietkabelis
-121,2026-11-18,BUD,WRO,94,88,1.07,7.44,Buducnost,Slask Wroclaw
-123,2026-11-18,NIN,BUR,85,94,2.16,1.64,Chemnitz,Tofas
-122,2026-11-18,BOU,NAP,91,79,2.08,1.69,JL Bourg,Basket Napoli
-124,2026-11-18,TRN,KLA,96,83,1.36,2.93,Trento,Neptunas
-118,2026-11-18,CLU,MRO,87,79,2.18,1.63,Cluj-Napoca,Maxima Roma
-119,2026-11-18,FRA,VNC,97,107,3.05,1.35,Frankfurt,Venezia
-116,2026-11-18,ARI,LEM,96,86,1.2,4.23,Aris,Le Mans
-113,2026-11-18,LJU,BGS,76,62,1.32,3.22,Cedevita Olimpija,San Pablo Burgos
-115,2026-11-18,TRT,RIG,92,96,1.2,4.26,Tortona,Rigas Zelli
-127,2026-11-17,BLK,ULM,86,78,3.34,1.3,Balkan,Ulm
-128,2026-11-17,BCR,BAH,70,92,3.13,1.33,BC Roma,Bahcesehir Kol.
-120,2026-11-17,LLI,SIA,68,55,1.24,3.81,London Lions,Siauliai
-117,2026-11-17,TTK,TNF,88,91,1.59,2.26,Turk Telekom,Tenerife
-114,2026-11-17,RTK,JER,80,91,4.42,1.19,Rostock,Hapoel Jerusalem
-103,2026-11-12,FRA,MRO,89,113,2.41,1.53,Frankfurt,Maxima Roma
-109,2026-11-11,BAH,LKB,99,61,1.05,8.54,Bahcesehir Kol.,Lietkabelis
-110,2026-11-11,BCR,ULM,83,78,1.27,3.56,BC Roma,Ulm
-107,2026-11-11,NIN,NAP,90,112,2.17,1.63,Chemnitz,Basket Napoli
-101,2026-11-11,SIA,TNF,71,86,4.44,1.18,Siauliai,Tenerife
-98,2026-11-11,ARI,RIG,105,81,1.07,7.59,Aris,Rigas Zelli
-99,2026-11-11,TRT,JER,77,91,3.28,1.3,Tortona,Hapoel Jerusalem
-97,2026-11-11,LEM,BGS,88,80,1.19,4.39,Le Mans,San Pablo Burgos
-111,2026-11-10,BLK,PAO,56,79,6.07,1.11,Balkan,PAOK
-112,2026-11-10,MAN,BOS,86,82,1.23,3.89,Manresa,KK Bosna
-108,2026-11-10,BOU,BUD,66,68,2.14,1.65,JL Bourg,Buducnost
-105,2026-11-10,KLA,WRO,90,82,1.34,3.08,Neptunas,Slask Wroclaw
-106,2026-11-10,TRN,BUR,86,96,2.21,1.61,Trento,Tofas
-104,2026-11-10,CLU,TTK,81,89,2.42,1.52,Cluj-Napoca,Turk Telekom
-100,2026-11-10,RTK,LJU,71,88,1.7,2.05,Rostock,Cedevita Olimpija
-85,2026-11-05,TNF,CLU,113,73,1.13,5.53,Tenerife,Cluj-Napoca
-93,2026-11-04,LKB,MAN,66,80,2.11,1.67,Lietkabelis,Manresa
-94,2026-11-04,BOS,BLK,69,78,1.16,4.81,KK Bosna,Balkan
-89,2026-11-04,WRO,BOU,84,88,3.04,1.35,Slask Wroclaw,JL Bourg
-86,2026-11-04,TTK,FRA,98,78,1.19,4.36,Turk Telekom,Frankfurt
-88,2026-11-04,VNC,SIA,98,77,1.12,5.69,Venezia,Siauliai
-83,2026-11-04,JER,ARI,84,73,1.58,2.27,Hapoel Jerusalem,Aris
-84,2026-11-04,RIG,LEM,65,71,2.21,1.61,Rigas Zelli,Le Mans
-81,2026-11-04,BGS,RTK,59,86,1.28,3.51,San Pablo Burgos,Rostock
-95,2026-11-03,PAO,BCR,113,111,1.19,4.41,PAOK,BC Roma
-96,2026-11-03,ULM,BAH,82,96,3.23,1.32,Ulm,Bahcesehir Kol.
-91,2026-11-03,NAP,TRN,90,79,1.2,4.28,Basket Napoli,Trento
-90,2026-11-03,BUD,NIN,96,84,1.21,4.16,Buducnost,Chemnitz
-92,2026-11-03,BUR,KLA,94,79,1.17,4.69,Tofas,Neptunas
-76,2026-10-28,NIN,BOU,96,77,1.57,2.31,Chemnitz,JL Bourg
-74,2026-10-28,KLA,NAP,85,94,2.43,1.52,Neptunas,Basket Napoli
-73,2026-10-28,WRO,BUR,74,90,4.01,1.22,Slask Wroclaw,Tofas
-71,2026-10-28,LLI,TTK,79,61,2.37,1.54,London Lions,Turk Telekom
-70,2026-10-28,SIA,MRO,98,93,3.08,1.34,Siauliai,Maxima Roma
-69,2026-10-28,TNF,VNC,82,80,1.2,4.31,Tenerife,Venezia
-67,2026-10-28,ARI,LJU,78,73,1.1,6.4,Aris,Cedevita Olimpija
-68,2026-10-28,TRT,RTK,86,83,1.22,4.06,Tortona,Rostock
-66,2026-10-28,LEM,JER,83,90,3.01,1.36,Le Mans,Hapoel Jerusalem
-65,2026-10-28,BGS,RIG,71,79,1.17,4.63,San Pablo Burgos,Rigas Zelli
+121,2026-11-18,BUD,WRO,94,88,1.08,6.98,Buducnost,Slask Wroclaw
+123,2026-11-18,NIN,BUR,85,94,2.12,1.65,Chemnitz,Tofas
+122,2026-11-18,BOU,NAP,91,79,2.05,1.71,JL Bourg,Basket Napoli
+124,2026-11-18,TRN,KLA,96,83,1.37,2.98,Trento,Neptunas
+118,2026-11-18,CLU,MRO,87,79,2.08,1.7,Cluj-Napoca,Maxima Roma
+119,2026-11-18,FRA,VNC,97,107,3.07,1.35,Frankfurt,Venezia
+116,2026-11-18,ARI,LEM,96,86,1.19,4.23,Aris,Le Mans
+113,2026-11-18,LJU,BGS,76,62,1.32,3.13,Cedevita Olimpija,San Pablo Burgos
+115,2026-11-18,TRT,RIG,92,96,1.21,4.2,Tortona,Rigas Zelli
+127,2026-11-17,BLK,ULM,86,78,3.3,1.29,Balkan,Ulm
+128,2026-11-17,BCR,BAH,70,92,3.05,1.34,BC Roma,Bahcesehir Kol.
+120,2026-11-17,LLI,SIA,68,55,1.24,3.75,London Lions,Siauliai
+117,2026-11-17,TTK,TNF,88,91,1.6,2.22,Turk Telekom,Tenerife
+114,2026-11-17,RTK,JER,80,91,4.51,1.17,Rostock,Hapoel Jerusalem
+103,2026-11-12,FRA,MRO,89,113,2.42,1.52,Frankfurt,Maxima Roma
+109,2026-11-11,BAH,LKB,99,61,1.04,9.13,Bahcesehir Kol.,Lietkabelis
+110,2026-11-11,BCR,ULM,83,78,1.26,3.57,BC Roma,Ulm
+107,2026-11-11,NIN,NAP,90,112,2.11,1.66,Chemnitz,Basket Napoli
+101,2026-11-11,SIA,TNF,71,86,4.2,1.2,Siauliai,Tenerife
+98,2026-11-11,ARI,RIG,105,81,1.06,8.42,Aris,Rigas Zelli
+99,2026-11-11,TRT,JER,77,91,3.22,1.31,Tortona,Hapoel Jerusalem
+97,2026-11-11,LEM,BGS,88,80,1.19,4.23,Le Mans,San Pablo Burgos
+111,2026-11-10,BLK,PAO,56,79,6.05,1.11,Balkan,PAOK
+112,2026-11-10,MAN,BOS,86,82,1.23,3.92,Manresa,KK Bosna
+108,2026-11-10,BOU,BUD,66,68,2.13,1.65,JL Bourg,Buducnost
+105,2026-11-10,KLA,WRO,90,82,1.34,3.05,Neptunas,Slask Wroclaw
+106,2026-11-10,TRN,BUR,86,96,2.19,1.61,Trento,Tofas
+104,2026-11-10,CLU,TTK,81,89,2.36,1.54,Cluj-Napoca,Turk Telekom
+100,2026-11-10,RTK,LJU,71,88,1.72,2.02,Rostock,Cedevita Olimpija
+85,2026-11-05,TNF,CLU,113,73,1.13,5.55,Tenerife,Cluj-Napoca
+93,2026-11-04,LKB,MAN,66,80,2.2,1.61,Lietkabelis,Manresa
+94,2026-11-04,BOS,BLK,69,78,1.15,4.83,KK Bosna,Balkan
+89,2026-11-04,WRO,BOU,84,88,3.15,1.32,Slask Wroclaw,JL Bourg
+86,2026-11-04,TTK,FRA,98,78,1.19,4.33,Turk Telekom,Frankfurt
+88,2026-11-04,VNC,SIA,98,77,1.13,5.87,Venezia,Siauliai
+83,2026-11-04,JER,ARI,84,73,1.58,2.29,Hapoel Jerusalem,Aris
+84,2026-11-04,RIG,LEM,65,71,2.22,1.62,Rigas Zelli,Le Mans
+81,2026-11-04,BGS,RTK,59,86,1.33,3.12,San Pablo Burgos,Rostock
+95,2026-11-03,PAO,BCR,113,111,1.19,4.27,PAOK,BC Roma
+96,2026-11-03,ULM,BAH,82,96,3.12,1.33,Ulm,Bahcesehir Kol.
+91,2026-11-03,NAP,TRN,90,79,1.19,4.3,Basket Napoli,Trento
+90,2026-11-03,BUD,NIN,96,84,1.19,4.28,Buducnost,Chemnitz
+92,2026-11-03,BUR,KLA,94,79,1.17,4.55,Tofas,Neptunas
+76,2026-10-28,NIN,BOU,96,77,1.55,2.38,Chemnitz,JL Bourg
+74,2026-10-28,KLA,NAP,85,94,2.48,1.51,Neptunas,Basket Napoli
+73,2026-10-28,WRO,BUR,74,90,3.9,1.24,Slask Wroclaw,Tofas
+71,2026-10-28,LLI,TTK,79,61,2.26,1.6,London Lions,Turk Telekom
+70,2026-10-28,SIA,MRO,98,93,3.17,1.33,Siauliai,Maxima Roma
+69,2026-10-28,TNF,VNC,82,80,1.18,4.75,Tenerife,Venezia
+67,2026-10-28,ARI,LJU,78,73,1.1,6.22,Aris,Cedevita Olimpija
+68,2026-10-28,TRT,RTK,86,83,1.22,4.17,Tortona,Rostock
+66,2026-10-28,LEM,JER,83,90,3.02,1.36,Le Mans,Hapoel Jerusalem
+65,2026-10-28,BGS,RIG,71,79,1.19,4.47,San Pablo Burgos,Rigas Zelli
 78,2026-10-27,BAH,PAO,84,81,1.43,2.7,Bahcesehir Kol.,PAOK
-80,2026-10-27,BLK,MAN,65,76,4.84,1.16,Balkan,Manresa
-77,2026-10-27,LKB,ULM,68,86,1.53,2.4,Lietkabelis,Ulm
-79,2026-10-27,BCR,BOS,80,85,1.36,2.95,BC Roma,KK Bosna
-75,2026-10-27,TRN,BUD,94,92,2.36,1.55,Trento,Buducnost
-72,2026-10-27,FRA,CLU,113,97,2.1,1.69,Frankfurt,Cluj-Napoca
-64,2026-10-21,PAO,ULM,87,78,1.08,6.98,PAOK,Ulm
-63,2026-10-21,BOS,BAH,86,77,4.41,1.19,KK Bosna,Bahcesehir Kol.
-57,2026-10-21,NIN,WRO,95,67,1.29,3.39,Chemnitz,Slask Wroclaw
-54,2026-10-21,CLU,LLI,72,89,1.33,3.15,Cluj-Napoca,London Lions
-53,2026-10-21,FRA,TNF,94,104,3.99,1.22,Frankfurt,Tenerife
-51,2026-10-21,LJU,LEM,66,84,1.6,2.24,Cedevita Olimpija,Le Mans
-49,2026-10-21,TRT,BGS,89,79,1.48,2.53,Tortona,San Pablo Burgos
-52,2026-10-21,JER,RIG,100,64,1.04,9.28,Hapoel Jerusalem,Rigas Zelli
-61,2026-10-20,BLK,LKB,57,64,2.27,1.59,Balkan,Lietkabelis
-62,2026-10-20,MAN,BCR,108,88,1.5,2.48,Manresa,BC Roma
-59,2026-10-20,BUD,KLA,104,89,1.16,4.74,Buducnost,Neptunas
-55,2026-10-20,TTK,SIA,84,94,1.02,11.38,Turk Telekom,Siauliai
-50,2026-10-20,RTK,ARI,79,110,3.77,1.24,Rostock,Aris
-40,2026-10-15,LLI,FRA,76,81,1.32,3.21,London Lions,Frankfurt
-46,2026-10-14,ULM,BOS,102,93,1.44,2.65,Ulm,KK Bosna
-41,2026-10-14,WRO,NAP,82,86,3.96,1.22,Slask Wroclaw,Basket Napoli
-42,2026-10-14,BUR,BUD,90,85,1.48,2.56,Tofas,Buducnost
-37,2026-10-14,TNF,MRO,96,71,1.32,3.19,Tenerife,Maxima Roma
-38,2026-10-14,VNC,TTK,75,65,1.83,1.9,Venezia,Turk Telekom
-36,2026-10-14,ARI,TRT,88,68,1.06,8.13,Aris,Tortona
+80,2026-10-27,BLK,MAN,65,76,4.6,1.18,Balkan,Manresa
+77,2026-10-27,LKB,ULM,68,86,1.54,2.41,Lietkabelis,Ulm
+79,2026-10-27,BCR,BOS,80,85,1.4,2.85,BC Roma,KK Bosna
+75,2026-10-27,TRN,BUD,94,92,2.35,1.56,Trento,Buducnost
+72,2026-10-27,FRA,CLU,113,97,2.15,1.63,Frankfurt,Cluj-Napoca
+64,2026-10-21,PAO,ULM,87,78,1.07,7.0,PAOK,Ulm
+63,2026-10-21,BOS,BAH,86,77,4.57,1.18,KK Bosna,Bahcesehir Kol.
+57,2026-10-21,NIN,WRO,95,67,1.31,3.32,Chemnitz,Slask Wroclaw
+54,2026-10-21,CLU,LLI,72,89,1.32,3.25,Cluj-Napoca,London Lions
+53,2026-10-21,FRA,TNF,94,104,4.13,1.21,Frankfurt,Tenerife
+51,2026-10-21,LJU,LEM,66,84,1.54,2.39,Cedevita Olimpija,Le Mans
+49,2026-10-21,TRT,BGS,89,79,1.48,2.55,Tortona,San Pablo Burgos
+52,2026-10-21,JER,RIG,100,64,1.04,9.45,Hapoel Jerusalem,Rigas Zelli
+61,2026-10-20,BLK,LKB,57,64,2.22,1.63,Balkan,Lietkabelis
+62,2026-10-20,MAN,BCR,108,88,1.48,2.5,Manresa,BC Roma
+59,2026-10-20,BUD,KLA,104,89,1.15,4.93,Buducnost,Neptunas
+55,2026-10-20,TTK,SIA,84,94,1.02,10.5,Turk Telekom,Siauliai
+50,2026-10-20,RTK,ARI,79,110,3.77,1.25,Rostock,Aris
+40,2026-10-15,LLI,FRA,76,81,1.35,3.12,London Lions,Frankfurt
+46,2026-10-14,ULM,BOS,102,93,1.45,2.61,Ulm,KK Bosna
+41,2026-10-14,WRO,NAP,82,86,3.98,1.22,Slask Wroclaw,Basket Napoli
+42,2026-10-14,BUR,BUD,90,85,1.45,2.6,Tofas,Buducnost
+37,2026-10-14,TNF,MRO,96,71,1.34,3.08,Tenerife,Maxima Roma
+38,2026-10-14,VNC,TTK,75,65,1.91,1.8,Venezia,Turk Telekom
+36,2026-10-14,ARI,TRT,88,68,1.05,8.17,Aris,Tortona
 35,2026-10-14,LEM,RTK,82,70,1.34,3.07,Le Mans,Rostock
-34,2026-10-14,RIG,LJU,89,79,2.26,1.58,Rigas Zelli,Cedevita Olimpija
-33,2026-10-14,BGS,JER,84,85,2.75,1.41,San Pablo Burgos,Hapoel Jerusalem
-47,2026-10-13,BAH,MAN,100,88,1.1,6.51,Bahcesehir Kol.,Manresa
-45,2026-10-13,LKB,PAO,95,86,4.34,1.2,Lietkabelis,PAOK
-43,2026-10-13,KLA,BOU,93,89,2.21,1.61,Neptunas,JL Bourg
-44,2026-10-13,TRN,NIN,80,88,1.49,2.52,Trento,Chemnitz
-29,2026-10-07,BCR,LKB,92,87,1.12,5.9,BC Roma,Lietkabelis
-31,2026-10-07,MAN,ULM,101,89,1.36,2.97,Manresa,Ulm
-26,2026-10-07,NIN,KLA,93,84,1.56,2.31,Chemnitz,Neptunas
-23,2026-10-07,CLU,VNC,98,92,2.14,1.65,Cluj-Napoca,Venezia
-17,2026-10-07,ARI,BGS,93,80,1.24,3.83,Aris,San Pablo Burgos
-18,2026-10-07,TRT,LEM,89,83,1.46,2.59,Tortona,Le Mans
-32,2026-10-06,BOS,PAO,72,75,5.4,1.13,KK Bosna,PAOK
-28,2026-10-06,BUD,NAP,75,93,1.35,3.07,Buducnost,Basket Napoli
-27,2026-10-06,BOU,BUR,82,89,1.44,2.66,JL Bourg,Tofas
-25,2026-10-06,TRN,WRO,81,94,1.09,6.5,Trento,Slask Wroclaw
-22,2026-10-06,FRA,SIA,79,71,1.46,2.6,Frankfurt,Siauliai
-21,2026-10-06,LLI,TNF,89,77,2.66,1.44,London Lions,Tenerife
-24,2026-10-06,TTK,MRO,92,77,1.29,3.42,Turk Telekom,Maxima Roma
-20,2026-10-06,LJU,JER,64,75,2.64,1.45,Cedevita Olimpija,Hapoel Jerusalem
-19,2026-10-06,RTK,RIG,87,86,1.29,3.42,Rostock,Rigas Zelli
-16,2026-09-30,BAH,BCR,91,78,1.12,5.79,Bahcesehir Kol.,BC Roma
-14,2026-09-30,PAO,MAN,93,78,1.1,6.42,PAOK,Manresa
-15,2026-09-30,ULM,BLK,98,84,1.08,7.1,Ulm,Balkan
-13,2026-09-30,LKB,BOS,75,72,1.58,2.28,Lietkabelis,KK Bosna
-10,2026-09-30,NAP,BOU,84,76,1.38,2.9,Basket Napoli,JL Bourg
-9,2026-09-30,WRO,BUD,75,99,3.1,1.34,Slask Wroclaw,Buducnost
-6,2026-09-30,MRO,CLU,89,55,1.59,2.26,Maxima Roma,Cluj-Napoca
-8,2026-09-30,SIA,LLI,74,71,3.24,1.31,Siauliai,London Lions
-5,2026-09-30,TNF,TTK,82,75,1.53,2.39,Tenerife,Turk Telekom
-3,2026-09-30,RIG,TRT,86,84,3.48,1.28,Rigas Zelli,Tortona
-1,2026-09-30,BGS,LJU,85,81,1.4,2.82,San Pablo Burgos,Cedevita Olimpija
-12,2026-09-29,KLA,TRN,73,76,1.94,1.79,Neptunas,Trento
-11,2026-09-29,BUR,NIN,82,69,1.19,4.32,Tofas,Chemnitz
-7,2026-09-29,VNC,FRA,104,72,1.14,5.06,Venezia,Frankfurt
-2,2026-09-29,JER,RTK,94,73,1.06,7.82,Hapoel Jerusalem,Rostock
-4,2026-09-29,LEM,ARI,74,87,3.72,1.25,Le Mans,Aris
+34,2026-10-14,RIG,LJU,89,79,2.33,1.55,Rigas Zelli,Cedevita Olimpija
+33,2026-10-14,BGS,JER,84,85,2.62,1.44,San Pablo Burgos,Hapoel Jerusalem
+47,2026-10-13,BAH,MAN,100,88,1.1,6.45,Bahcesehir Kol.,Manresa
+45,2026-10-13,LKB,PAO,95,86,4.27,1.2,Lietkabelis,PAOK
+43,2026-10-13,KLA,BOU,93,89,2.19,1.63,Neptunas,JL Bourg
+44,2026-10-13,TRN,NIN,80,88,1.5,2.48,Trento,Chemnitz
+29,2026-10-07,BCR,LKB,92,87,1.12,6.08,BC Roma,Lietkabelis
+31,2026-10-07,MAN,ULM,101,89,1.37,2.98,Manresa,Ulm
+26,2026-10-07,NIN,KLA,93,84,1.59,2.28,Chemnitz,Neptunas
+23,2026-10-07,CLU,VNC,98,92,2.04,1.72,Cluj-Napoca,Venezia
+17,2026-10-07,ARI,BGS,93,80,1.24,3.9,Aris,San Pablo Burgos
+18,2026-10-07,TRT,LEM,89,83,1.47,2.57,Tortona,Le Mans
+32,2026-10-06,BOS,PAO,72,75,5.52,1.13,KK Bosna,PAOK
+28,2026-10-06,BUD,NAP,75,93,1.33,3.17,Buducnost,Basket Napoli
+27,2026-10-06,BOU,BUR,82,89,1.46,2.62,JL Bourg,Tofas
+25,2026-10-06,TRN,WRO,81,94,1.1,6.43,Trento,Slask Wroclaw
+22,2026-10-06,FRA,SIA,79,71,1.47,2.6,Frankfurt,Siauliai
+21,2026-10-06,LLI,TNF,89,77,2.63,1.46,London Lions,Tenerife
+24,2026-10-06,TTK,MRO,92,77,1.28,3.45,Turk Telekom,Maxima Roma
+20,2026-10-06,LJU,JER,64,75,2.63,1.46,Cedevita Olimpija,Hapoel Jerusalem
+19,2026-10-06,RTK,RIG,87,86,1.28,3.48,Rostock,Rigas Zelli
+16,2026-09-30,BAH,BCR,91,78,1.13,5.76,Bahcesehir Kol.,BC Roma
+14,2026-09-30,PAO,MAN,93,78,1.1,6.7,PAOK,Manresa
+15,2026-09-30,ULM,BLK,98,84,1.08,7.08,Ulm,Balkan
+13,2026-09-30,LKB,BOS,75,72,1.58,2.29,Lietkabelis,KK Bosna
+10,2026-09-30,NAP,BOU,84,76,1.37,2.97,Basket Napoli,JL Bourg
+9,2026-09-30,WRO,BUD,75,99,3.0,1.37,Slask Wroclaw,Buducnost
+6,2026-09-30,MRO,CLU,89,55,1.58,2.29,Maxima Roma,Cluj-Napoca
+8,2026-09-30,SIA,LLI,74,71,3.12,1.34,Siauliai,London Lions
+5,2026-09-30,TNF,TTK,82,75,1.53,2.4,Tenerife,Turk Telekom
+3,2026-09-30,RIG,TRT,86,84,3.42,1.29,Rigas Zelli,Tortona
+1,2026-09-30,BGS,LJU,85,81,1.39,2.9,San Pablo Burgos,Cedevita Olimpija
+12,2026-09-29,KLA,TRN,73,76,1.92,1.81,Neptunas,Trento
+11,2026-09-29,BUR,NIN,82,69,1.19,4.35,Tofas,Chemnitz
+7,2026-09-29,VNC,FRA,104,72,1.15,5.07,Venezia,Frankfurt
+2,2026-09-29,JER,RTK,94,73,1.08,7.43,Hapoel Jerusalem,Rostock
+4,2026-09-29,LEM,ARI,74,87,3.68,1.26,Le Mans,Aris

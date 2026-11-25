@@ -5,7 +5,8 @@
 
 Έξοδος: data/raw/{C}{season}_closing.csv  (gameCode, date, home, away, hs, as, odds_home, odds_away, src_home, src_away)
 
-    python scripts/scrapers/betexplorer_closing.py            # GBL, E, U
+    python scripts/scrapers/betexplorer_closing.py                    # τρέχουσα σεζόν: GBL, E, U
+    python scripts/scrapers/betexplorer_closing.py --season 2025      # προηγούμενη σεζόν (όλες οι φάσεις: κανονική, πλέι-οφ…)
 """
 import csv
 import html
@@ -20,8 +21,9 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import RAW_DIR, SITE_DATA  # noqa: E402
 
-PAGES = {"E": "/basketball/europe/euroleague/results/", "U": "/basketball/europe/eurocup/results/",
-         "GBL": "/basketball/greece/basket-league/results/"}
+PAGES = {"E": "/basketball/europe/euroleague{}/results/", "U": "/basketball/europe/eurocup{}/results/",
+         "GBL": "/basketball/greece/basket-league{}/results/"}
+STAGE = re.compile(r'href="(\?stage=[A-Za-z0-9]+)"')
 ROW = re.compile(r'<tr><td class="h-text-left"><a[^>]*class="in-match"><span>(?:<strong>)?([^<]*)(?:</strong>)?</span> - <span>(?:<strong>)?([^<]*)'
                  r'(?:</strong>)?</span></a></td><td class="h-text-center"><a[^>]*>([^<]*)</a></td>(.*?)<td class="h-text-right h-text-no-wrap">([^<]*)</td></tr>', re.S)
 
@@ -46,21 +48,28 @@ def when(s: str, season: int, today: date) -> date | None:
     return date(y, mo, d)
 
 
-def main(today: date | None = None):
+def main(today: date | None = None, season_req: int | None = None):
     today = today or date.today()
     man = json.loads((SITE_DATA / "manifest.json").read_text())
-    for comp, page in PAGES.items():
-        season = max(next(c for c in man["competitions"] if c["code"] == comp)["seasons"])
+    for comp, tmpl in PAGES.items():
+        season = season_req or max(next(c for c in man["competitions"] if c["code"] == comp)["seasons"])
+        page = tmpl.format(f"-{season}-{season + 1}" if season_req else "")
         S = json.loads((SITE_DATA / f"{comp}{season}.json").read_text())
         games = [dict(zip(S["games"]["cols"], r)) for r in S["games"]["rows"]]
-        rows = []
-        for hm, aw, sc, mid, d in ROW.findall(fetch(page)):
+        first = fetch(page)
+        htmls = [first] + [(time.sleep(1.5), fetch(page + st))[1] for st in sorted(set(STAGE.findall(first)))]
+        rows, seen = [], set()
+        for hm, aw, sc, mid, d in [r for h in htmls for r in ROW.findall(h)]:
             od = re.findall(r'data-odd="([0-9.]+)"', mid)
             m = re.match(r"(\d+):(\d+)", sc.strip())
             dt = when(d, season, today)
             if len(od) != 2 or not m or not dt:
                 continue
-            rows.append((dt, html.unescape(hm).strip(), html.unescape(aw).strip(), int(m.group(1)), int(m.group(2)), float(od[0]), float(od[1])))
+            key = (dt, html.unescape(hm).strip(), html.unescape(aw).strip())
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append((dt, key[1], key[2], int(m.group(1)), int(m.group(2)), float(od[0]), float(od[1])))
         out, miss = [], 0
         for dt, hm, aw, hs, as_, o1, o2 in rows:
             cand = [g for g in games if g["hs"] == hs and g["as"] == as_ and abs((date.fromisoformat(g["date"]) - dt).days) <= 1]
@@ -75,9 +84,9 @@ def main(today: date | None = None):
             w = csv.DictWriter(f, fieldnames=list(out[0].keys()) if out else ["gameCode"])
             w.writeheader()
             w.writerows(out)
-        print(f"== {comp}: {len(rows)} αγώνες με αποδόσεις, {len(out)} αντιστοιχίστηκαν, {miss} όχι -> {path.name}")
+        print(f"== {comp}{season}: {len(htmls)} σελίδες, {len(rows)} αγώνες με αποδόσεις, {len(out)} αντιστοιχίστηκαν, {miss} όχι -> {path.name}")
         time.sleep(2)
 
 
 if __name__ == "__main__":
-    main()
+    main(season_req=int(sys.argv[sys.argv.index("--season") + 1]) if "--season" in sys.argv else None)

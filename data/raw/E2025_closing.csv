@@ -1,0 +1,380 @@
+gameCode,date,home,away,hs,as,odds_home,odds_away,src_home,src_away
+406,2026-05-24,OLY,MAD,92,85,1.3,3.45,Olympiacos,Real Madrid
+404,2026-05-22,OLY,ULK,79,61,1.41,2.87,Olympiacos,Fenerbahce
+405,2026-05-22,PAM,MAD,90,105,1.88,1.88,Valencia,Real Madrid
+383,2026-04-24,MCO,BAR,79,70,1.76,2.03,Monaco,Barcelona
+382,2026-04-21,BAR,RED,80,72,1.5,2.53,Barcelona,Crvena Zvezda Meridianbet
+381,2026-04-21,PAN,MCO,87,79,1.25,3.8,Panathinaikos,Monaco
+403,2026-05-13,PAM,PAN,81,64,1.61,2.25,Valencia,Panathinaikos
+399,2026-05-08,PAN,PAM,86,89,1.43,2.77,Panathinaikos,Valencia
+398,2026-05-07,HTA,MAD,81,87,2.38,1.57,Hapoel Tel Aviv,Real Madrid
+395,2026-05-06,PAN,PAM,87,91,1.4,2.83,Panathinaikos,Valencia
+393,2026-05-06,ZAL,ULK,81,78,1.72,2.08,Zalgiris Kaunas,Fenerbahce
+392,2026-05-05,MCO,OLY,82,105,4.5,1.19,Monaco,Olympiacos
+394,2026-05-05,HTA,MAD,76,69,1.85,1.91,Hapoel Tel Aviv,Real Madrid
+390,2026-05-01,MAD,HTA,102,75,1.31,3.38,Real Madrid,Hapoel Tel Aviv
+389,2026-04-30,ULK,ZAL,86,74,1.38,2.95,Fenerbahce,Zalgiris Kaunas
+388,2026-04-30,OLY,MCO,94,64,1.18,4.6,Olympiacos,Monaco
+386,2026-04-29,MAD,HTA,86,82,1.31,3.4,Real Madrid,Hapoel Tel Aviv
+385,2026-04-28,ULK,ZAL,89,78,1.41,2.87,Fenerbahce,Zalgiris Kaunas
+384,2026-04-28,OLY,MCO,91,70,1.21,4.22,Olympiacos,Monaco
+387,2026-04-28,PAM,PAN,67,68,1.61,2.28,Valencia,Panathinaikos
+377,2026-04-17,MCO,HTA,105,85,1.68,2.15,Monaco,Hapoel Tel Aviv
+379,2026-04-17,BAR,MUN,95,69,1.22,4.17,Barcelona,Bayern
+378,2026-04-17,DUB,PAM,85,95,1.94,1.83,Dubai,Valencia
+376,2026-04-17,PAN,IST,97,62,1.12,6.0,Panathinaikos,Anadolu Efes
+380,2026-04-17,ZAL,PRS,85,79,1.24,3.82,Zalgiris Kaunas,Paris
+371,2026-04-16,ASV,ULK,76,81,3.3,1.32,Lyon-Villeurbanne,Fenerbahce
+372,2026-04-16,TEL,VIR,85,89,1.32,3.3,Maccabi Tel Aviv,Virtus Bologna
+375,2026-04-16,OLY,MIL,85,76,1.11,5.92,Olympiacos,Olimpia Milano
+373,2026-04-16,PAR,BAS,91,79,1.41,2.77,Partizan Mozzart Bet,Baskonia
+374,2026-04-16,MAD,RED,103,82,1.32,3.28,Real Madrid,Crvena Zvezda Meridianbet
+293,2026-04-12,TEL,HTA,88,99,2.55,1.49,Maccabi Tel Aviv,Hapoel Tel Aviv
+366,2026-04-10,MCO,BAR,93,86,1.6,2.29,Monaco,Barcelona
+367,2026-04-10,DUB,IST,69,85,1.26,3.67,Dubai,Anadolu Efes
+368,2026-04-10,ASV,RED,93,106,3.05,1.36,Lyon-Villeurbanne,Crvena Zvezda Meridianbet
+369,2026-04-10,PAR,ZAL,74,83,2.22,1.64,Partizan Mozzart Bet,Zalgiris Kaunas
+370,2026-04-10,VIR,BAS,72,82,1.64,2.18,Virtus Bologna,Baskonia
+362,2026-04-09,ULK,MAD,69,74,1.76,2.02,Fenerbahce,Real Madrid
+363,2026-04-09,HTA,OLY,85,89,2.08,1.71,Hapoel Tel Aviv,Olympiacos
+361,2026-04-09,MIL,MUN,84,94,1.4,2.88,Olimpia Milano,Bayern
+364,2026-04-09,PRS,TEL,113,80,1.92,1.85,Paris,Maccabi Tel Aviv
+365,2026-04-09,PAM,PAN,102,84,1.91,1.85,Valencia,Panathinaikos
+360,2026-04-08,MCO,ASV,81,76,1.23,4.07,Monaco,Lyon-Villeurbanne
+353,2026-04-07,BAR,PAN,79,93,2.18,1.66,Barcelona,Panathinaikos
+352,2026-04-07,RED,PRS,94,81,1.32,3.27,Crvena Zvezda Meridianbet,Paris
+354,2026-04-07,HTA,ULK,95,80,1.69,2.1,Hapoel Tel Aviv,Fenerbahce
+355,2026-04-07,OLY,MAD,102,88,1.43,2.75,Olympiacos,Real Madrid
+351,2026-04-07,BAS,TEL,101,98,1.87,1.89,Baskonia,Maccabi Tel Aviv
+356,2026-04-07,PAM,MIL,102,96,1.3,3.43,Valencia,Olimpia Milano
+357,2026-04-07,VIR,MUN,80,85,1.72,2.09,Virtus Bologna,Bayern
+358,2026-04-07,ZAL,DUB,65,77,1.33,3.27,Zalgiris Kaunas,Dubai
+349,2026-04-03,ASV,OLY,74,82,4.3,1.21,Lyon-Villeurbanne,Olympiacos
+346,2026-04-03,BAS,MAD,98,96,3.25,1.33,Baskonia,Real Madrid
+350,2026-04-03,VIR,PAM,81,94,2.77,1.42,Virtus Bologna,Valencia
+342,2026-04-02,RED,PAR,82,89,1.36,3.13,Crvena Zvezda Meridianbet,Partizan Mozzart Bet
+347,2026-04-02,DUB,MCO,101,91,1.56,2.38,Dubai,Monaco
+343,2026-04-02,HTA,PAN,92,88,2.03,1.76,Hapoel Tel Aviv,Panathinaikos
+341,2026-04-02,TEL,IST,103,89,1.39,2.92,Maccabi Tel Aviv,Anadolu Efes
+344,2026-04-02,PRS,MIL,103,93,1.81,1.97,Paris,Olimpia Milano
+345,2026-04-02,ZAL,BAR,83,71,1.52,2.48,Zalgiris Kaunas,Barcelona
+348,2026-04-01,MUN,ULK,85,76,3.2,1.33,Bayern,Fenerbahce
+328,2026-03-31,VIR,PRS,82,103,1.67,2.16,Virtus Bologna,Paris
+338,2026-03-27,ULK,ZAL,82,92,1.43,2.78,Fenerbahce,Zalgiris Kaunas
+339,2026-03-27,PAN,MCO,107,97,1.22,4.17,Panathinaikos,Monaco
+336,2026-03-27,BAS,HTA,118,109,2.82,1.42,Baskonia,Hapoel Tel Aviv
+332,2026-03-26,MUN,ASV,93,83,1.35,3.13,Bayern,Lyon-Villeurbanne
+331,2026-03-26,MIL,VIR,103,87,1.34,3.22,Olimpia Milano,Virtus Bologna
+335,2026-03-26,MAD,IST,82,71,1.13,5.53,Real Madrid,Anadolu Efes
+321,2026-03-24,MCO,MIL,90,85,1.71,2.1,Monaco,Olimpia Milano
+322,2026-03-24,DUB,PAN,104,107,2.18,1.65,Dubai,Panathinaikos
+324,2026-03-24,TEL,ULK,94,89,2.2,1.63,Maccabi Tel Aviv,Fenerbahce
+325,2026-03-24,PAR,ASV,79,78,1.27,3.58,Partizan Mozzart Bet,Lyon-Villeurbanne
+326,2026-03-24,MAD,HTA,92,83,1.38,2.93,Real Madrid,Hapoel Tel Aviv
+327,2026-03-24,PAM,OLY,85,84,1.95,1.79,Valencia,Olympiacos
+317,2026-03-20,ULK,MIL,79,75,1.32,3.32,Fenerbahce,Olimpia Milano
+318,2026-03-20,ASV,TEL,85,89,2.05,1.74,Lyon-Villeurbanne,Maccabi Tel Aviv
+319,2026-03-20,PAN,RED,82,74,1.31,3.4,Panathinaikos,Crvena Zvezda Meridianbet
+320,2026-03-20,ZAL,MAD,87,85,1.93,1.83,Zalgiris Kaunas,Real Madrid
+316,2026-03-19,IST,MCO,93,98,1.51,2.52,Anadolu Efes,Monaco
+311,2026-03-19,MUN,DUB,74,87,1.86,1.89,Bayern,Dubai
+312,2026-03-19,HTA,VIR,109,91,1.22,4.2,Hapoel Tel Aviv,Virtus Bologna
+313,2026-03-19,OLY,BAS,90,80,1.07,7.98,Olympiacos,Baskonia
+314,2026-03-19,PRS,PAR,81,90,1.47,2.65,Paris,Partizan Mozzart Bet
+315,2026-03-19,PAM,BAR,62,66,1.38,2.98,Valencia,Barcelona
+294,2026-03-17,PAR,DUB,88,74,2.16,1.68,Partizan Mozzart Bet,Dubai
+205,2026-03-17,HTA,PRS,93,82,1.37,2.95,Hapoel Tel Aviv,Paris
+134,2026-03-17,OLY,ULK,104,87,1.43,2.78,Olympiacos,Fenerbahce
+310,2026-03-13,BAR,HTA,75,80,1.66,2.18,Barcelona,Hapoel Tel Aviv
+307,2026-03-13,RED,ULK,79,73,1.78,1.99,Crvena Zvezda Meridianbet,Fenerbahce
+309,2026-03-13,MIL,TEL,96,87,1.52,2.5,Olimpia Milano,Maccabi Tel Aviv
+306,2026-03-12,MCO,OLY,81,80,3.32,1.33,Monaco,Olympiacos
+301,2026-03-12,MUN,IST,80,81,1.51,2.47,Bayern,Anadolu Efes
+308,2026-03-12,DUB,BAS,100,94,1.32,3.37,Dubai,Baskonia
+305,2026-03-12,PAN,ZAL,92,88,1.29,3.57,Panathinaikos,Zalgiris Kaunas
+302,2026-03-12,PRS,ASV,90,81,1.42,2.83,Paris,Lyon-Villeurbanne
+303,2026-03-12,MAD,PAM,96,79,1.38,3.0,Real Madrid,Valencia
+304,2026-03-11,VIR,PAR,82,88,1.49,2.58,Virtus Bologna,Partizan Mozzart Bet
+334,2026-03-10,PRS,OLY,87,104,2.63,1.48,Paris,Olympiacos
+297,2026-03-06,IST,ASV,88,91,1.25,3.93,Anadolu Efes,Lyon-Villeurbanne
+299,2026-03-06,RED,MUN,80,85,1.24,3.97,Crvena Zvezda Meridianbet,Bayern
+300,2026-03-06,OLY,PAN,86,80,2.1,1.69,Olympiacos,Panathinaikos
+298,2026-03-06,BAS,PRS,81,97,1.63,2.26,Baskonia,Paris
+292,2026-03-05,ULK,MCO,88,70,1.43,2.8,Fenerbahce,Monaco
+291,2026-03-05,MIL,BAR,87,84,1.86,1.91,Olimpia Milano,Barcelona
+295,2026-03-05,MAD,VIR,92,84,1.13,5.88,Real Madrid,Virtus Bologna
+296,2026-03-05,PAM,ZAL,91,87,1.44,2.75,Valencia,Zalgiris Kaunas
+284,2026-02-26,MCO,TEL,86,91,1.37,3.12,Monaco,Maccabi Tel Aviv
+287,2026-02-26,DUB,ASV,96,85,1.13,5.47,Dubai,Lyon-Villeurbanne
+288,2026-02-26,HTA,MIL,92,86,1.35,3.18,Hapoel Tel Aviv,Olimpia Milano
+289,2026-02-26,PAN,PRS,99,104,1.19,4.77,Panathinaikos,Paris
+290,2026-02-26,MAD,MUN,93,70,1.15,5.27,Real Madrid,Bayern
+285,2026-02-26,BAS,PAM,79,108,2.2,1.66,Baskonia,Valencia
+286,2026-02-25,RED,IST,91,81,1.33,3.32,Crvena Zvezda Meridianbet,Anadolu Efes
+281,2026-02-25,ULK,PAR,81,78,1.17,5.05,Fenerbahce,Partizan Mozzart Bet
+282,2026-02-25,VIR,BAR,85,80,2.35,1.58,Virtus Bologna,Barcelona
+277,2026-02-13,MCO,BAS,102,92,1.22,4.07,Monaco,Baskonia
+278,2026-02-13,MIL,DUB,78,96,1.69,2.15,Olimpia Milano,Dubai
+279,2026-02-13,PAN,ULK,83,85,1.6,2.31,Panathinaikos,Fenerbahce
+276,2026-02-13,PAR,MAD,73,77,3.23,1.34,Partizan Mozzart Bet,Real Madrid
+280,2026-02-13,ZAL,HTA,93,82,1.71,2.13,Zalgiris Kaunas,Hapoel Tel Aviv
+271,2026-02-12,IST,VIR,91,60,1.49,2.6,Anadolu Efes,Virtus Bologna
+275,2026-02-12,BAR,PRS,74,85,1.29,3.58,Barcelona,Paris
+272,2026-02-12,OLY,RED,92,86,1.29,3.58,Olympiacos,Crvena Zvezda Meridianbet
+274,2026-02-12,PAM,ASV,82,67,1.11,6.13,Valencia,Lyon-Villeurbanne
+266,2026-02-06,IST,ZAL,92,82,2.09,1.74,Anadolu Efes,Zalgiris Kaunas
+268,2026-02-06,RED,TEL,82,83,1.34,3.28,Crvena Zvezda Meridianbet,Maccabi Tel Aviv
+269,2026-02-06,ASV,MIL,76,77,2.33,1.62,Lyon-Villeurbanne,Olimpia Milano
+270,2026-02-06,OLY,VIR,109,77,1.13,6.17,Olympiacos,Virtus Bologna
+267,2026-02-06,BAS,BAR,91,97,2.2,1.68,Baskonia,Barcelona
+262,2026-02-05,MUN,MCO,91,82,2.36,1.6,Bayern,Monaco
+261,2026-02-05,DUB,MAD,93,85,2.2,1.68,Dubai,Real Madrid
+264,2026-02-05,PRS,ULK,90,92,2.79,1.45,Paris,Fenerbahce
+265,2026-02-05,PAR,PAN,78,62,2.93,1.41,Partizan Mozzart Bet,Panathinaikos
+260,2026-02-04,VIR,ASV,70,80,1.23,4.3,Virtus Bologna,Lyon-Villeurbanne
+251,2026-02-03,IST,PAM,107,90,2.39,1.58,Anadolu Efes,Valencia
+255,2026-02-03,BAR,ULK,78,82,1.67,2.23,Barcelona,Fenerbahce
+256,2026-02-03,MUN,PRS,81,75,1.52,2.53,Bayern,Paris
+252,2026-02-03,RED,HTA,87,75,1.56,2.46,Crvena Zvezda Meridianbet,Hapoel Tel Aviv
+257,2026-02-03,TEL,PAR,95,93,1.28,3.73,Maccabi Tel Aviv,Partizan Mozzart Bet
+254,2026-02-03,MIL,BAS,109,89,1.4,2.98,Olimpia Milano,Baskonia
+258,2026-02-03,PAN,MAD,82,81,1.84,1.97,Panathinaikos,Real Madrid
+259,2026-02-03,ZAL,MCO,104,87,1.81,2.01,Zalgiris Kaunas,Monaco
+247,2026-01-30,MCO,VIR,82,84,1.18,4.97,Monaco,Virtus Bologna
+249,2026-01-30,RED,DUB,95,92,1.36,3.17,Crvena Zvezda Meridianbet,Dubai
+250,2026-01-30,ASV,PAN,78,79,3.52,1.3,Lyon-Villeurbanne,Panathinaikos
+248,2026-01-30,BAS,ZAL,102,91,1.95,1.85,Baskonia,Zalgiris Kaunas
+242,2026-01-29,ULK,IST,79,62,1.3,3.53,Fenerbahce,Anadolu Efes
+243,2026-01-29,HTA,MUN,64,79,1.19,4.82,Hapoel Tel Aviv,Bayern
+246,2026-01-29,MIL,PAR,85,79,1.22,4.45,Olimpia Milano,Partizan Mozzart Bet
+244,2026-01-29,OLY,BAR,87,75,1.38,3.12,Olympiacos,Barcelona
+245,2026-01-29,PAM,TEL,94,83,1.35,3.27,Valencia,Maccabi Tel Aviv
+241,2026-01-27,PRS,MAD,98,92,3.63,1.29,Paris,Real Madrid
+237,2026-01-23,ULK,BAS,84,71,1.15,5.53,Fenerbahce,Baskonia
+238,2026-01-23,ASV,BAR,91,98,3.87,1.26,Lyon-Villeurbanne,Barcelona
+240,2026-01-23,VIR,RED,93,102,1.8,2.02,Virtus Bologna,Crvena Zvezda Meridianbet
+231,2026-01-22,IST,OLY,68,74,3.3,1.33,Anadolu Efes,Olympiacos
+232,2026-01-22,MUN,PAM,93,89,2.75,1.45,Bayern,Valencia
+233,2026-01-22,TEL,PAN,75,71,1.82,1.99,Maccabi Tel Aviv,Panathinaikos
+236,2026-01-22,MIL,ZAL,82,86,1.57,2.44,Olimpia Milano,Zalgiris Kaunas
+234,2026-01-22,PRS,DUB,79,99,1.85,1.95,Paris,Dubai
+235,2026-01-22,MAD,MCO,90,78,1.53,2.53,Real Madrid,Monaco
+230,2026-01-21,VIR,ULK,80,85,2.37,1.6,Virtus Bologna,Fenerbahce
+222,2026-01-20,BAR,DUB,91,89,1.3,3.53,Barcelona,Dubai
+226,2026-01-20,MUN,PAR,63,67,1.29,3.55,Bayern,Partizan Mozzart Bet
+223,2026-01-20,HTA,IST,71,66,1.15,5.45,Hapoel Tel Aviv,Anadolu Efes
+229,2026-01-20,ASV,ZAL,77,96,2.31,1.62,Lyon-Villeurbanne,Zalgiris Kaunas
+224,2026-01-20,OLY,TEL,100,93,1.13,6.07,Olympiacos,Maccabi Tel Aviv
+225,2026-01-20,PAN,BAS,93,74,1.19,4.77,Panathinaikos,Baskonia
+227,2026-01-20,MAD,MIL,106,77,1.22,4.19,Real Madrid,Olimpia Milano
+228,2026-01-20,PAM,PRS,98,84,1.21,4.4,Valencia,Paris
+217,2026-01-16,ULK,PAM,82,79,1.43,2.84,Fenerbahce,Valencia
+218,2026-01-16,ASV,HTA,73,81,3.85,1.27,Lyon-Villeurbanne,Hapoel Tel Aviv
+220,2026-01-16,MAD,BAR,80,61,1.49,2.65,Real Madrid,Barcelona
+211,2026-01-15,IST,BAS,75,89,1.47,2.7,Anadolu Efes,Baskonia
+212,2026-01-15,MUN,PAN,85,78,2.56,1.52,Bayern,Panathinaikos
+215,2026-01-15,DUB,VIR,72,80,1.44,2.8,Dubai,Virtus Bologna
+213,2026-01-15,TEL,ZAL,100,97,1.71,2.15,Maccabi Tel Aviv,Zalgiris Kaunas
+216,2026-01-15,MIL,RED,96,104,1.44,2.82,Olimpia Milano,Crvena Zvezda Meridianbet
+214,2026-01-15,PRS,MCO,87,95,2.57,1.52,Paris,Monaco
+219,2026-01-14,PAR,OLY,66,104,4.27,1.22,Partizan Mozzart Bet,Olympiacos
+208,2026-01-09,BAR,PAR,88,70,1.18,5.02,Barcelona,Partizan Mozzart Bet
+207,2026-01-09,MIL,IST,87,74,1.39,3.02,Olimpia Milano,Anadolu Efes
+209,2026-01-09,OLY,MUN,95,80,1.12,6.43,Olympiacos,Bayern
+206,2026-01-09,BAS,ASV,78,73,1.4,3.01,Baskonia,Lyon-Villeurbanne
+210,2026-01-09,ZAL,RED,99,67,1.57,2.42,Zalgiris Kaunas,Crvena Zvezda Meridianbet
+201,2026-01-08,DUB,ULK,92,81,2.42,1.57,Dubai,Fenerbahce
+204,2026-01-08,PAN,VIR,84,71,1.19,4.72,Panathinaikos,Virtus Bologna
+202,2026-01-08,MAD,TEL,98,86,1.21,4.5,Real Madrid,Maccabi Tel Aviv
+203,2026-01-08,PAM,MCO,92,101,1.79,2.02,Valencia,Monaco
+199,2026-01-07,IST,PRS,79,84,1.52,2.58,Anadolu Efes,Paris
+200,2026-01-07,MUN,BAS,96,89,1.42,2.87,Bayern,Baskonia
+191,2026-01-06,MCO,PAR,101,84,1.11,6.93,Monaco,Partizan Mozzart Bet
+193,2026-01-06,BAR,TEL,93,83,1.28,3.77,Barcelona,Maccabi Tel Aviv
+192,2026-01-06,RED,PAM,89,106,1.57,2.41,Crvena Zvezda Meridianbet,Valencia
+194,2026-01-06,ULK,OLY,88,80,1.65,2.27,Fenerbahce,Olympiacos
+195,2026-01-06,HTA,DUB,85,60,1.29,3.67,Hapoel Tel Aviv,Dubai
+196,2026-01-06,ASV,MAD,69,80,3.47,1.32,Lyon-Villeurbanne,Real Madrid
+197,2026-01-06,PAN,MIL,74,87,1.21,4.5,Panathinaikos,Olimpia Milano
+198,2026-01-06,VIR,ZAL,83,79,1.79,2.03,Virtus Bologna,Zalgiris Kaunas
+185,2026-01-02,IST,RED,65,87,1.68,2.21,Anadolu Efes,Crvena Zvezda Meridianbet
+187,2026-01-02,MUN,TEL,95,71,1.98,1.84,Bayern,Maccabi Tel Aviv
+188,2026-01-02,PAN,OLY,82,87,1.55,2.5,Panathinaikos,Olympiacos
+189,2026-01-02,MAD,DUB,107,93,1.27,3.84,Real Madrid,Dubai
+186,2026-01-02,BAS,ULK,93,108,2.27,1.65,Baskonia,Fenerbahce
+190,2026-01-02,VIR,MIL,97,85,2.11,1.77,Virtus Bologna,Olimpia Milano
+181,2025-12-30,BAR,MCO,74,90,1.75,2.09,Barcelona,Monaco
+182,2025-12-30,HTA,ZAL,80,93,1.3,3.59,Hapoel Tel Aviv,Zalgiris Kaunas
+183,2025-12-30,ASV,PRS,94,89,1.98,1.83,Lyon-Villeurbanne,Paris
+184,2025-12-30,PAM,PAR,86,73,1.16,5.48,Valencia,Partizan Mozzart Bet
+178,2025-12-26,MCO,MAD,100,95,1.54,2.52,Monaco,Real Madrid
+179,2025-12-26,PAR,TEL,87,112,1.59,2.38,Partizan Mozzart Bet,Maccabi Tel Aviv
+180,2025-12-26,VIR,OLY,94,97,2.52,1.54,Virtus Bologna,Olympiacos
+171,2025-12-23,MUN,HTA,72,82,2.82,1.44,Bayern,Hapoel Tel Aviv
+177,2025-12-23,DUB,MIL,99,92,1.78,2.05,Dubai,Olimpia Milano
+172,2025-12-23,ULK,BAR,72,71,1.56,2.46,Fenerbahce,Barcelona
+174,2025-12-23,PRS,RED,102,92,2.04,1.79,Paris,Crvena Zvezda Meridianbet
+175,2025-12-23,PAM,BAS,91,81,1.24,4.1,Valencia,Baskonia
+176,2025-12-23,ZAL,PAN,85,92,2.02,1.8,Zalgiris Kaunas,Panathinaikos
+165,2025-12-19,IST,DUB,76,80,1.42,2.9,Anadolu Efes,Dubai
+166,2025-12-19,MCO,MUN,103,77,1.18,4.76,Monaco,Bayern
+167,2025-12-19,RED,VIR,90,89,1.32,3.41,Crvena Zvezda Meridianbet,Virtus Bologna
+169,2025-12-19,OLY,ASV,107,84,1.08,8.05,Olympiacos,Lyon-Villeurbanne
+170,2025-12-19,ZAL,PAR,109,68,1.33,3.3,Zalgiris Kaunas,Partizan Mozzart Bet
+162,2025-12-18,TEL,PAM,85,82,1.97,1.83,Maccabi Tel Aviv,Valencia
+161,2025-12-18,MIL,ULK,72,87,1.81,2.0,Olimpia Milano,Fenerbahce
+163,2025-12-18,PAN,HTA,93,82,1.49,2.63,Panathinaikos,Hapoel Tel Aviv
+164,2025-12-18,MAD,PRS,95,90,1.22,4.36,Real Madrid,Paris
+158,2025-12-17,ASV,MUN,76,74,2.05,1.78,Lyon-Villeurbanne,Bayern
+159,2025-12-17,PAR,VIR,68,86,1.44,2.85,Partizan Mozzart Bet,Virtus Bologna
+157,2025-12-17,BAS,MCO,85,73,2.54,1.53,Baskonia,Monaco
+160,2025-12-17,ZAL,IST,64,87,1.42,2.94,Zalgiris Kaunas,Anadolu Efes
+151,2025-12-16,DUB,TEL,95,97,1.62,2.34,Dubai,Maccabi Tel Aviv
+153,2025-12-16,ULK,PAN,77,81,1.76,2.11,Fenerbahce,Panathinaikos
+154,2025-12-16,HTA,RED,84,78,1.31,3.51,Hapoel Tel Aviv,Crvena Zvezda Meridianbet
+152,2025-12-16,MIL,MAD,89,82,2.03,1.81,Olimpia Milano,Real Madrid
+155,2025-12-16,OLY,PAM,92,99,1.38,3.11,Olympiacos,Valencia
+156,2025-12-16,PRS,BAR,69,85,1.96,1.88,Paris,Barcelona
+147,2025-12-12,MCO,ULK,86,92,1.37,3.14,Monaco,Fenerbahce
+148,2025-12-12,BAR,OLY,98,85,1.8,2.04,Barcelona,Olympiacos
+142,2025-12-12,DUB,MUN,89,88,1.44,2.86,Dubai,Bayern
+149,2025-12-12,PAR,RED,79,76,1.82,2.01,Partizan Mozzart Bet,Crvena Zvezda Meridianbet
+150,2025-12-12,VIR,HTA,74,79,2.28,1.65,Virtus Bologna,Hapoel Tel Aviv
+141,2025-12-11,TEL,ASV,92,84,1.33,3.45,Maccabi Tel Aviv,Lyon-Villeurbanne
+143,2025-12-11,MIL,PAN,96,89,2.19,1.7,Olimpia Milano,Panathinaikos
+144,2025-12-11,PRS,ZAL,105,108,1.66,2.26,Paris,Zalgiris Kaunas
+145,2025-12-11,MAD,BAS,94,87,1.22,4.51,Real Madrid,Baskonia
+146,2025-12-11,PAM,IST,94,82,1.31,3.58,Valencia,Anadolu Efes
+138,2025-12-05,BAS,MIL,88,78,1.91,1.92,Baskonia,Olimpia Milano
+140,2025-12-05,VIR,DUB,79,78,1.55,2.52,Virtus Bologna,Dubai
+136,2025-12-04,IST,MAD,75,81,2.77,1.47,Anadolu Efes,Real Madrid
+131,2025-12-04,MCO,PRS,125,104,1.27,3.93,Monaco,Paris
+133,2025-12-04,HTA,ASV,87,80,1.08,8.63,Hapoel Tel Aviv,Lyon-Villeurbanne
+132,2025-12-04,PAR,MUN,92,85,1.64,2.3,Partizan Mozzart Bet,Bayern
+135,2025-12-04,ZAL,TEL,65,83,1.32,3.5,Zalgiris Kaunas,Maccabi Tel Aviv
+127,2025-11-26,MCO,IST,102,66,1.22,4.45,Monaco,Anadolu Efes
+129,2025-11-26,BAR,ASV,88,78,1.11,7.05,Barcelona,Lyon-Villeurbanne
+128,2025-11-26,RED,OLY,91,80,1.99,1.84,Crvena Zvezda Meridianbet,Olympiacos
+130,2025-11-26,TEL,MIL,88,102,2.21,1.69,Maccabi Tel Aviv,Olimpia Milano
+121,2025-11-25,DUB,PRS,90,89,1.52,2.61,Dubai,Paris
+126,2025-11-25,ULK,VIR,66,64,1.29,3.68,Fenerbahce,Virtus Bologna
+122,2025-11-25,HTA,MAD,74,75,1.6,2.41,Hapoel Tel Aviv,Real Madrid
+123,2025-11-25,PAN,PAR,91,69,1.24,4.27,Panathinaikos,Partizan Mozzart Bet
+124,2025-11-25,PAM,MUN,90,64,1.34,3.37,Valencia,Bayern
+125,2025-11-25,ZAL,BAS,82,67,1.31,3.55,Zalgiris Kaunas,Baskonia
+117,2025-11-21,OLY,PRS,98,86,1.15,5.6,Olympiacos,Paris
+118,2025-11-21,PAR,ULK,87,99,1.7,2.19,Partizan Mozzart Bet,Fenerbahce
+116,2025-11-21,BAS,MUN,95,73,1.74,2.14,Baskonia,Bayern
+119,2025-11-21,PAM,RED,76,73,1.5,2.66,Valencia,Crvena Zvezda Meridianbet
+120,2025-11-21,VIR,TEL,99,89,1.51,2.63,Virtus Bologna,Maccabi Tel Aviv
+112,2025-11-20,IST,BAR,74,73,2.68,1.49,Anadolu Efes,Barcelona
+113,2025-11-20,MIL,HTA,83,105,2.21,1.7,Olimpia Milano,Hapoel Tel Aviv
+114,2025-11-20,PAN,DUB,103,82,1.22,4.43,Panathinaikos,Dubai
+115,2025-11-20,MAD,ZAL,100,99,1.3,3.62,Real Madrid,Zalgiris Kaunas
+111,2025-11-19,ASV,MCO,52,84,3.57,1.31,Lyon-Villeurbanne,Monaco
+106,2025-11-14,IST,MUN,74,72,1.43,2.88,Anadolu Efes,Bayern
+109,2025-11-14,BAR,VIR,88,81,1.23,4.38,Barcelona,Virtus Bologna
+107,2025-11-14,DUB,ZAL,95,89,1.65,2.29,Dubai,Zalgiris Kaunas
+105,2025-11-13,RED,MCO,91,79,2.53,1.54,Crvena Zvezda Meridianbet,Monaco
+101,2025-11-13,ULK,HTA,74,68,2.01,1.82,Fenerbahce,Hapoel Tel Aviv
+102,2025-11-13,TEL,BAS,89,83,1.45,2.82,Maccabi Tel Aviv,Baskonia
+103,2025-11-13,PRS,PAM,90,86,1.71,2.19,Paris,Valencia
+104,2025-11-13,MAD,PAN,77,87,1.45,2.83,Real Madrid,Panathinaikos
+99,2025-11-12,MUN,BAR,74,75,1.78,2.07,Bayern,Barcelona
+98,2025-11-12,MIL,ASV,80,72,1.14,6.12,Olimpia Milano,Lyon-Villeurbanne
+100,2025-11-12,OLY,ZAL,95,78,1.39,3.05,Olympiacos,Zalgiris Kaunas
+96,2025-11-11,DUB,RED,102,86,1.73,2.16,Dubai,Crvena Zvezda Meridianbet
+91,2025-11-11,ULK,TEL,84,75,1.36,3.25,Fenerbahce,Maccabi Tel Aviv
+92,2025-11-11,HTA,BAS,114,89,1.21,4.6,Hapoel Tel Aviv,Baskonia
+93,2025-11-11,PRS,PAN,95,101,2.16,1.73,Paris,Panathinaikos
+97,2025-11-11,PAR,MCO,78,76,2.0,1.83,Partizan Mozzart Bet,Monaco
+94,2025-11-11,PAM,MAD,89,76,1.97,1.87,Valencia,Real Madrid
+95,2025-11-11,VIR,IST,99,89,1.72,2.17,Virtus Bologna,Anadolu Efes
+88,2025-11-07,BAR,MAD,92,101,1.88,1.95,Barcelona,Real Madrid
+89,2025-11-07,OLY,PAR,80,71,1.23,4.4,Olympiacos,Partizan Mozzart Bet
+90,2025-11-07,ZAL,PAM,86,77,1.59,2.43,Zalgiris Kaunas,Valencia
+84,2025-11-06,DUB,HTA,97,109,2.49,1.56,Dubai,Hapoel Tel Aviv
+85,2025-11-06,ULK,ASV,81,67,1.07,9.58,Fenerbahce,Lyon-Villeurbanne
+81,2025-11-06,PRS,MUN,82,86,1.55,2.51,Paris,Bayern
+82,2025-11-06,BAS,VIR,87,76,1.67,2.24,Baskonia,Virtus Bologna
+83,2025-11-05,RED,PAN,86,68,1.79,2.07,Crvena Zvezda Meridianbet,Panathinaikos
+77,2025-10-31,MCO,PAN,92,84,1.77,2.09,Monaco,Panathinaikos
+79,2025-10-31,OLY,HTA,62,58,1.45,2.82,Olympiacos,Hapoel Tel Aviv
+80,2025-10-31,PAR,BAR,76,78,1.81,2.05,Partizan Mozzart Bet,Barcelona
+78,2025-10-31,BAS,IST,86,75,2.41,1.6,Baskonia,Anadolu Efes
+72,2025-10-30,MUN,VIR,86,70,1.5,2.65,Bayern,Virtus Bologna
+73,2025-10-30,TEL,RED,92,99,1.87,1.97,Maccabi Tel Aviv,Crvena Zvezda Meridianbet
+71,2025-10-30,MIL,PRS,86,77,1.6,2.41,Olimpia Milano,Paris
+74,2025-10-30,MAD,ULK,84,58,1.53,2.57,Real Madrid,Fenerbahce
+75,2025-10-30,PAM,DUB,80,78,1.34,3.38,Valencia,Dubai
+76,2025-10-30,ZAL,ASV,96,59,1.25,4.03,Zalgiris Kaunas,Lyon-Villeurbanne
+69,2025-10-29,HTA,PAR,97,84,1.34,3.37,Hapoel Tel Aviv,Partizan Mozzart Bet
+70,2025-10-29,OLY,MCO,87,92,1.41,3.0,Olympiacos,Monaco
+63,2025-10-28,BAR,MIL,74,72,1.39,3.1,Barcelona,Olimpia Milano
+64,2025-10-28,MUN,MAD,90,84,2.8,1.46,Bayern,Real Madrid
+62,2025-10-28,RED,ASV,79,65,1.35,3.32,Crvena Zvezda Meridianbet,Lyon-Villeurbanne
+65,2025-10-28,PAN,TEL,99,85,1.2,4.68,Panathinaikos,Maccabi Tel Aviv
+66,2025-10-28,PRS,IST,80,90,1.62,2.33,Paris,Anadolu Efes
+61,2025-10-28,BAS,DUB,92,85,2.18,1.72,Baskonia,Dubai
+67,2025-10-28,PAM,ULK,94,79,1.84,2.0,Valencia,Fenerbahce
+68,2025-10-28,ZAL,VIR,86,65,1.47,2.73,Zalgiris Kaunas,Virtus Bologna
+57,2025-10-24,IST,ULK,69,79,1.85,1.98,Anadolu Efes,Fenerbahce
+58,2025-10-24,MUN,OLY,71,96,2.55,1.53,Bayern,Olympiacos
+59,2025-10-24,PAR,PRS,83,101,1.52,2.58,Partizan Mozzart Bet,Paris
+60,2025-10-24,VIR,PAN,92,75,2.57,1.53,Virtus Bologna,Panathinaikos
+54,2025-10-23,BAR,ZAL,73,88,1.41,2.97,Barcelona,Zalgiris Kaunas
+52,2025-10-23,RED,BAS,90,72,1.25,4.18,Crvena Zvezda Meridianbet,Baskonia
+55,2025-10-23,HTA,MCO,85,77,1.8,2.05,Hapoel Tel Aviv,Monaco
+56,2025-10-23,ASV,DUB,85,79,2.11,1.76,Lyon-Villeurbanne,Dubai
+53,2025-10-23,MIL,PAM,100,103,1.78,2.08,Olimpia Milano,Valencia
+51,2025-10-22,TEL,MAD,92,91,2.6,1.52,Maccabi Tel Aviv,Real Madrid
+45,2025-10-17,IST,PAN,81,95,1.75,2.12,Anadolu Efes,Panathinaikos
+46,2025-10-17,MCO,PAM,90,84,1.42,2.95,Monaco,Valencia
+48,2025-10-17,RED,MAD,90,75,2.49,1.56,Crvena Zvezda Meridianbet,Real Madrid
+49,2025-10-17,ASV,VIR,83,90,1.69,2.19,Lyon-Villeurbanne,Virtus Bologna
+50,2025-10-17,PRS,HTA,88,89,2.03,1.82,Paris,Hapoel Tel Aviv
+47,2025-10-17,BAS,PAR,79,91,2.75,1.48,Baskonia,Partizan Mozzart Bet
+41,2025-10-16,DUB,BAR,83,78,1.89,1.94,Dubai,Barcelona
+42,2025-10-16,ULK,MUN,88,73,1.32,3.52,Fenerbahce,Bayern
+43,2025-10-16,TEL,OLY,94,95,2.75,1.47,Maccabi Tel Aviv,Olympiacos
+44,2025-10-16,ZAL,MIL,78,89,1.3,3.65,Zalgiris Kaunas,Olimpia Milano
+36,2025-10-15,PAN,ASV,91,85,1.08,8.5,Panathinaikos,Lyon-Villeurbanne
+37,2025-10-15,PRS,BAS,105,87,1.5,2.67,Paris,Baskonia
+38,2025-10-15,MAD,PAR,93,86,1.36,3.27,Real Madrid,Partizan Mozzart Bet
+39,2025-10-15,PAM,HTA,93,100,1.75,2.12,Valencia,Hapoel Tel Aviv
+40,2025-10-15,VIR,MCO,77,73,2.62,1.51,Virtus Bologna,Monaco
+32,2025-10-14,MUN,MIL,64,53,1.84,2.0,Bayern,Olimpia Milano
+31,2025-10-14,RED,ZAL,88,79,1.94,1.89,Crvena Zvezda Meridianbet,Zalgiris Kaunas
+33,2025-10-14,ULK,DUB,69,93,1.24,4.22,Fenerbahce,Dubai
+35,2025-10-14,TEL,BAR,71,92,2.06,1.79,Maccabi Tel Aviv,Barcelona
+34,2025-10-14,OLY,IST,78,82,1.4,3.05,Olympiacos,Anadolu Efes
+28,2025-10-10,BAR,PAM,108,102,1.43,2.88,Barcelona,Valencia
+29,2025-10-10,MUN,ZAL,70,98,1.82,2.02,Bayern,Zalgiris Kaunas
+30,2025-10-10,ULK,RED,81,86,1.22,4.52,Fenerbahce,Crvena Zvezda Meridianbet
+27,2025-10-10,OLY,DUB,86,67,1.23,4.37,Olympiacos,Dubai
+23,2025-10-09,MIL,MCO,79,82,2.13,1.75,Olimpia Milano,Monaco
+24,2025-10-09,PRS,VIR,90,79,1.47,2.75,Paris,Virtus Bologna
+26,2025-10-09,PAR,IST,93,87,1.65,2.28,Partizan Mozzart Bet,Anadolu Efes
+25,2025-10-09,MAD,ASV,85,72,1.09,8.13,Real Madrid,Lyon-Villeurbanne
+22,2025-10-09,BAS,PAN,84,86,2.83,1.45,Baskonia,Panathinaikos
+21,2025-10-08,HTA,TEL,90,103,1.27,3.93,Hapoel Tel Aviv,Maccabi Tel Aviv
+14,2025-10-03,IST,HTA,81,87,1.76,2.11,Anadolu Efes,Hapoel Tel Aviv
+16,2025-10-03,MCO,DUB,103,81,1.33,3.45,Monaco,Dubai
+17,2025-10-03,ASV,BAS,102,95,1.82,2.02,Lyon-Villeurbanne,Baskonia
+15,2025-10-03,TEL,PRS,94,101,1.74,2.14,Maccabi Tel Aviv,Paris
+18,2025-10-03,PAN,BAR,96,103,1.24,4.2,Panathinaikos,Barcelona
+19,2025-10-03,PAM,VIR,103,94,1.47,2.78,Valencia,Virtus Bologna
+20,2025-10-03,ZAL,ULK,84,81,2.09,1.77,Zalgiris Kaunas,Fenerbahce
+11,2025-10-02,MUN,RED,97,88,1.5,2.65,Bayern,Crvena Zvezda Meridianbet
+12,2025-10-02,PAR,MIL,80,78,1.55,2.52,Partizan Mozzart Bet,Olimpia Milano
+13,2025-10-02,MAD,OLY,89,77,1.73,2.16,Real Madrid,Olympiacos
+9,2025-10-01,MCO,ZAL,84,89,1.29,3.68,Monaco,Zalgiris Kaunas
+8,2025-10-01,ULK,PRS,96,77,1.31,3.58,Fenerbahce,Paris
+10,2025-10-01,ASV,PAM,77,80,2.2,1.7,Lyon-Villeurbanne,Valencia
+1,2025-09-30,IST,TEL,85,78,1.34,3.37,Anadolu Efes,Maccabi Tel Aviv
+3,2025-09-30,RED,MIL,82,92,1.6,2.39,Crvena Zvezda Meridianbet,Olimpia Milano
+4,2025-09-30,DUB,PAR,89,76,1.9,1.93,Dubai,Partizan Mozzart Bet
+5,2025-09-30,HTA,BAR,103,87,1.74,2.14,Hapoel Tel Aviv,Barcelona
+6,2025-09-30,PAN,MUN,87,79,1.16,5.55,Panathinaikos,Bayern
+2,2025-09-30,BAS,OLY,96,102,3.07,1.39,Baskonia,Olympiacos
+7,2025-09-30,VIR,MAD,74,68,2.63,1.5,Virtus Bologna,Real Madrid

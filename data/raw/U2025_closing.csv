@@ -1,0 +1,187 @@
+gameCode,date,home,away,hs,as,odds_home,odds_away,src_home,src_away
+195,2026-04-28,BOU,BES,73,71,2.28,1.58,JL Bourg,Besiktas
+194,2026-04-22,BES,BOU,60,72,1.26,3.67,Besiktas,JL Bourg
+193,2026-04-08,BOU,TTK,94,78,1.62,2.22,JL Bourg,Turk Telekom
+192,2026-04-03,BAH,BES,72,82,1.81,1.92,Bahcesehir Kol.,Besiktas
+191,2026-04-03,TTK,BOU,73,76,1.3,3.38,Turk Telekom,JL Bourg
+190,2026-03-31,BES,BAH,91,72,1.32,3.38,Besiktas,Bahcesehir Kol.
+189,2026-03-31,BOU,TTK,71,99,1.56,2.37,JL Bourg,Turk Telekom
+187,2026-03-18,BES,TRN,77,76,1.15,5.28,Besiktas,Trento
+185,2026-03-18,JER,TTK,90,91,1.56,2.33,Hapoel Jerusalem,Turk Telekom
+188,2026-03-17,BAH,CLU,75,72,1.23,3.98,Bahcesehir Kol.,Cluj-Napoca
+186,2026-03-17,BOU,LJU,83,79,1.5,2.52,JL Bourg,Cedevita Olimpija
+183,2026-03-11,BUD,CLU,82,100,1.26,3.7,Buducnost,Cluj-Napoca
+181,2026-03-11,LJU,NIN,73,65,1.18,4.48,Cedevita Olimpija,Chemnitz
+182,2026-03-11,TTK,MAN,98,81,1.31,3.27,Turk Telekom,Manresa
+180,2026-02-11,BUD,BOU,96,84,1.49,2.55,Buducnost,JL Bourg
+176,2026-02-11,LLI,LKB,58,66,1.63,2.2,London Lions,Lietkabelis
+178,2026-02-11,TTK,NIN,79,62,1.07,7.82,Turk Telekom,Chemnitz
+174,2026-02-11,CLU,ARI,111,92,1.76,1.98,Cluj-Napoca,Aris
+172,2026-02-11,HAM,MAN,94,116,3.15,1.34,Hamburg,Manresa
+175,2026-02-11,KLA,BAH,86,91,4.03,1.22,Neptunas,Bahcesehir Kol.
+173,2026-02-11,VNC,JER,83,80,2.17,1.64,Venezia,Hapoel Jerusalem
+177,2026-02-10,NIO,BES,74,114,4.98,1.15,Panionios,Besiktas
+179,2026-02-10,TRN,ULM,76,68,1.34,3.13,Trento,Ulm
+171,2026-02-10,WRO,LJU,81,114,3.55,1.28,Slask Wroclaw,Cedevita Olimpija
+165,2026-02-05,HAM,LJU,74,88,3.93,1.23,Hamburg,Cedevita Olimpija
+169,2026-02-04,BES,TTK,91,81,1.25,3.75,Besiktas,Turk Telekom
+168,2026-02-04,NIN,TRN,81,67,1.72,2.06,Chemnitz,Trento
+166,2026-02-04,BOU,LLI,86,85,1.09,6.95,JL Bourg,London Lions
+170,2026-02-04,LKB,NIO,89,62,1.47,2.58,Lietkabelis,Panionios
+162,2026-02-04,ARI,KLA,83,64,1.3,3.35,Aris,Neptunas
+164,2026-02-04,MAN,VNC,75,91,1.56,2.34,Manresa,Venezia
+167,2026-02-03,ULM,BUD,90,103,1.8,1.94,Ulm,Buducnost
+161,2026-02-03,BAH,WRO,80,82,1.01,15.83,Bahcesehir Kol.,Slask Wroclaw
+160,2026-01-28,BOU,ULM,97,66,1.22,4.0,JL Bourg,Ulm
+156,2026-01-28,NIO,LLI,79,78,1.54,2.41,Panionios,London Lions
+155,2026-01-28,BAH,ARI,81,79,1.15,5.03,Bahcesehir Kol.,Aris
+151,2026-01-28,HAM,WRO,99,96,1.6,2.25,Hamburg,Slask Wroclaw
+153,2026-01-28,MAN,CLU,101,99,1.5,2.5,Manresa,Cluj-Napoca
+154,2026-01-28,KLA,JER,98,92,3.18,1.33,Neptunas,Hapoel Jerusalem
+152,2026-01-28,VNC,LJU,86,84,1.45,2.63,Venezia,Cedevita Olimpija
+159,2026-01-27,BUD,NIN,97,81,1.1,6.68,Buducnost,Chemnitz
+158,2026-01-27,TRN,BES,87,74,2.88,1.39,Trento,Besiktas
+157,2026-01-27,TTK,LKB,85,75,1.11,6.43,Turk Telekom,Lietkabelis
+148,2026-01-21,BES,BUD,96,74,1.27,3.57,Besiktas,Buducnost
+149,2026-01-21,LKB,TRN,93,94,2.08,1.7,Lietkabelis,Trento
+146,2026-01-21,LLI,ULM,72,73,1.92,1.81,London Lions,Ulm
+150,2026-01-21,NIO,TTK,61,106,3.12,1.34,Panionios,Turk Telekom
+145,2026-01-21,HAM,VNC,95,87,5.85,1.12,Hamburg,Venezia
+143,2026-01-21,MAN,KLA,97,96,1.27,3.57,Manresa,Neptunas
+147,2026-01-20,NIN,BOU,88,82,2.75,1.42,Chemnitz,JL Bourg
+144,2026-01-20,LJU,CLU,86,80,1.45,2.64,Cedevita Olimpija,Cluj-Napoca
+142,2026-01-20,JER,BAH,82,94,1.52,2.45,Hapoel Jerusalem,Bahcesehir Kol.
+138,2026-01-14,BUD,LKB,95,81,1.1,6.35,Buducnost,Lietkabelis
+139,2026-01-14,BOU,BES,99,103,1.83,1.9,JL Bourg,Besiktas
+136,2026-01-14,TTK,LLI,88,63,1.07,7.7,Turk Telekom,London Lions
+140,2026-01-14,ULM,NIN,88,76,1.56,2.33,Ulm,Chemnitz
+135,2026-01-14,ARI,JER,77,96,2.57,1.48,Aris,Hapoel Jerusalem
+131,2026-01-14,VNC,WRO,103,76,1.08,7.27,Venezia,Slask Wroclaw
+137,2026-01-13,TRN,NIO,88,87,1.25,3.8,Trento,Panionios
+134,2026-01-13,BAH,MAN,92,96,1.16,4.87,Bahcesehir Kol.,Manresa
+132,2026-01-13,CLU,HAM,103,92,1.04,9.42,Cluj-Napoca,Hamburg
+133,2026-01-13,KLA,LJU,85,104,2.05,1.71,Neptunas,Cedevita Olimpija
+128,2026-01-07,LKB,BOU,73,86,2.95,1.37,Lietkabelis,JL Bourg
+126,2026-01-07,LLI,NIN,70,78,1.57,2.32,London Lions,Chemnitz
+129,2026-01-07,NIO,BUD,97,85,4.33,1.2,Panionios,Buducnost
+130,2026-01-07,TTK,TRN,92,86,1.29,3.42,Turk Telekom,Trento
+124,2026-01-07,HAM,KLA,94,98,2.7,1.43,Hamburg,Neptunas
+121,2026-01-07,WRO,JER,72,115,5.45,1.15,Slask Wroclaw,Hapoel Jerusalem
+125,2026-01-07,VNC,CLU,90,83,1.56,2.35,Venezia,Cluj-Napoca
+127,2026-01-06,BES,ULM,97,76,1.09,6.97,Besiktas,Ulm
+123,2026-01-06,LJU,BAH,59,67,2.15,1.65,Cedevita Olimpija,Bahcesehir Kol.
+122,2026-01-06,MAN,ARI,113,99,1.45,2.63,Manresa,Aris
+119,2026-01-02,ULM,LKB,79,89,1.33,3.17,Ulm,Lietkabelis
+112,2026-01-02,KLA,VNC,103,118,1.99,1.77,Neptunas,Venezia
+117,2025-12-30,BUD,TTK,91,81,1.72,2.08,Buducnost,Turk Telekom
+118,2025-12-30,BOU,NIO,81,79,1.04,10.24,JL Bourg,Panionios
+116,2025-12-30,TRN,LLI,85,73,1.48,2.59,Trento,London Lions
+114,2025-12-30,ARI,LJU,60,89,1.53,2.44,Aris,Cedevita Olimpija
+113,2025-12-30,BAH,HAM,105,68,1.02,13.75,Bahcesehir Kol.,Hamburg
+111,2025-12-30,CLU,WRO,94,92,1.14,5.71,Cluj-Napoca,Slask Wroclaw
+115,2025-12-30,JER,MAN,105,69,1.21,4.2,Hapoel Jerusalem,Manresa
+120,2025-12-23,NIN,BES,97,95,5.1,1.16,Chemnitz,Besiktas
+108,2025-12-17,NIO,ULM,69,94,2.0,1.76,Panionios,Ulm
+109,2025-12-17,TTK,BOU,76,80,1.34,3.16,Turk Telekom,JL Bourg
+105,2025-12-17,CLU,KLA,118,97,1.34,3.16,Cluj-Napoca,Neptunas
+103,2025-12-17,HAM,ARI,89,92,3.35,1.31,Hamburg,Aris
+101,2025-12-17,WRO,MAN,90,96,2.4,1.55,Slask Wroclaw,Manresa
+104,2025-12-17,VNC,BAH,94,85,2.06,1.72,Venezia,Bahcesehir Kol.
+107,2025-12-16,LKB,NIN,79,85,1.68,2.17,Lietkabelis,Chemnitz
+102,2025-12-16,LJU,JER,81,84,2.2,1.67,Cedevita Olimpija,Hapoel Jerusalem
+96,2025-12-10,BUD,LLI,94,63,1.13,6.0,Buducnost,London Lions
+98,2025-12-10,ULM,TTK,53,87,2.5,1.52,Ulm,Turk Telekom
+93,2025-12-10,ARI,VNC,90,86,1.64,2.24,Aris,Venezia
+92,2025-12-10,BAH,CLU,84,72,1.22,4.25,Bahcesehir Kol.,Cluj-Napoca
+95,2025-12-10,MAN,LJU,99,82,1.88,1.89,Manresa,Cedevita Olimpija
+99,2025-12-09,NIN,NIO,73,68,1.21,4.38,Chemnitz,Panionios
+97,2025-12-09,BOU,TRN,73,91,1.2,4.5,JL Bourg,Trento
+94,2025-12-09,JER,HAM,86,76,1.01,14.83,Hapoel Jerusalem,Hamburg
+87,2025-12-05,BES,NIO,101,83,1.02,13.17,Besiktas,Panionios
+90,2025-12-05,BOU,BUD,88,73,1.56,2.42,JL Bourg,Buducnost
+82,2025-12-05,MAN,HAM,99,72,1.04,10.58,Manresa,Hamburg
+88,2025-12-04,NIN,TTK,63,87,2.15,1.7,Chemnitz,Turk Telekom
+86,2025-12-04,LKB,LLI,61,74,1.5,2.55,Lietkabelis,London Lions
+89,2025-12-04,ULM,TRN,87,100,1.47,2.67,Ulm,Trento
+84,2025-12-04,ARI,CLU,88,98,1.46,2.7,Aris,Cluj-Napoca
+85,2025-12-04,BAH,KLA,85,100,1.07,8.73,Bahcesehir Kol.,Neptunas
+81,2025-12-04,LJU,WRO,108,74,1.2,4.45,Cedevita Olimpija,Slask Wroclaw
+83,2025-12-04,JER,VNC,98,66,1.3,3.52,Hapoel Jerusalem,Venezia
+76,2025-11-19,LLI,BOU,68,72,2.85,1.42,London Lions,JL Bourg
+80,2025-11-19,NIO,LKB,72,79,2.0,1.79,Panionios,Lietkabelis
+79,2025-11-19,TTK,BES,84,93,2.13,1.71,Turk Telekom,Besiktas
+75,2025-11-19,LJU,HAM,93,73,1.03,12.42,Cedevita Olimpija,Hamburg
+74,2025-11-19,VNC,MAN,97,93,1.35,3.17,Venezia,Manresa
+77,2025-11-18,BUD,ULM,101,71,1.17,4.97,Buducnost,Ulm
+78,2025-11-18,TRN,NIN,94,105,1.69,2.15,Trento,Chemnitz
+73,2025-11-18,CLU,JER,89,101,1.95,1.83,Cluj-Napoca,Hapoel Jerusalem
+72,2025-11-18,KLA,ARI,87,93,2.03,1.79,Neptunas,Aris
+71,2025-11-18,WRO,BAH,99,91,5.0,1.17,Slask Wroclaw,Bahcesehir Kol.
+68,2025-11-12,BES,TRN,97,83,1.13,6.0,Besiktas,Trento
+69,2025-11-12,NIN,BUD,71,84,2.09,1.72,Chemnitz,Buducnost
+67,2025-11-12,LKB,TTK,74,100,2.8,1.42,Lietkabelis,Turk Telekom
+66,2025-11-12,LLI,NIO,97,72,1.28,3.67,London Lions,Panionios
+62,2025-11-12,LJU,VNC,93,65,1.66,2.2,Cedevita Olimpija,Venezia
+63,2025-11-12,CLU,MAN,110,86,1.47,2.67,Cluj-Napoca,Manresa
+70,2025-11-11,ULM,BOU,64,96,2.37,1.58,Ulm,JL Bourg
+65,2025-11-11,ARI,BAH,76,86,2.97,1.39,Aris,Bahcesehir Kol.
+64,2025-11-11,JER,KLA,110,93,1.13,5.98,Hapoel Jerusalem,Neptunas
+61,2025-11-11,WRO,HAM,92,81,1.41,2.9,Slask Wroclaw,Hamburg
+56,2025-11-05,ULM,LLI,87,86,1.29,3.52,Ulm,London Lions
+51,2025-11-05,ARI,WRO,85,78,1.29,3.5,Aris,Slask Wroclaw
+52,2025-11-05,BAH,JER,82,90,1.36,3.08,Bahcesehir Kol.,Hapoel Jerusalem
+54,2025-11-05,CLU,LJU,87,93,1.43,2.77,Cluj-Napoca,Cedevita Olimpija
+53,2025-11-05,KLA,MAN,100,87,2.28,1.62,Neptunas,Manresa
+55,2025-11-05,VNC,HAM,90,55,1.04,11.17,Venezia,Hamburg
+58,2025-11-04,BUD,BES,82,79,2.01,1.79,Buducnost,Besiktas
+57,2025-11-04,BOU,NIN,85,82,1.28,3.63,JL Bourg,Chemnitz
+59,2025-11-04,TRN,LKB,78,74,1.49,2.58,Trento,Lietkabelis
+60,2025-11-04,TTK,NIO,95,67,1.04,11.5,Turk Telekom,Panionios
+49,2025-10-29,BES,BOU,90,60,1.28,3.6,Besiktas,JL Bourg
+50,2025-10-29,NIN,ULM,89,78,1.83,1.95,Chemnitz,Ulm
+48,2025-10-29,LKB,BUD,91,98,2.45,1.55,Lietkabelis,Buducnost
+46,2025-10-29,LLI,TTK,77,89,2.62,1.48,London Lions,Turk Telekom
+43,2025-10-29,LJU,KLA,91,94,1.25,3.93,Cedevita Olimpija,Neptunas
+44,2025-10-29,MAN,BAH,67,81,2.06,1.75,Manresa,Bahcesehir Kol.
+41,2025-10-29,WRO,VNC,92,104,3.2,1.34,Slask Wroclaw,Venezia
+47,2025-10-28,NIO,TRN,87,91,2.77,1.45,Panionios,Trento
+42,2025-10-28,HAM,CLU,76,95,3.92,1.25,Hamburg,Cluj-Napoca
+45,2025-10-28,JER,ARI,103,76,1.24,4.03,Hapoel Jerusalem,Aris
+39,2025-10-22,BUD,NIO,91,63,1.16,5.17,Buducnost,Panionios
+36,2025-10-22,NIN,LLI,67,68,1.17,5.0,Chemnitz,London Lions
+38,2025-10-22,BOU,LKB,93,65,1.22,4.33,JL Bourg,Lietkabelis
+40,2025-10-22,TRN,TTK,60,80,2.33,1.6,Trento,Turk Telekom
+33,2025-10-22,BAH,LJU,92,76,1.16,5.12,Bahcesehir Kol.,Cedevita Olimpija
+37,2025-10-21,ULM,BES,99,101,2.13,1.7,Ulm,Besiktas
+32,2025-10-21,ARI,MAN,79,86,2.01,1.79,Aris,Manresa
+31,2025-10-21,JER,WRO,86,69,1.11,6.77,Hapoel Jerusalem,Slask Wroclaw
+34,2025-10-21,KLA,HAM,97,88,1.2,4.53,Neptunas,Hamburg
+26,2025-10-16,LLI,TRN,87,71,2.65,1.47,London Lions,Trento
+30,2025-10-15,BES,NIN,93,88,1.29,3.62,Besiktas,Chemnitz
+29,2025-10-15,LKB,ULM,94,98,1.95,1.84,Lietkabelis,Ulm
+28,2025-10-15,NIO,BOU,56,66,2.78,1.43,Panionios,JL Bourg
+25,2025-10-15,MAN,JER,101,94,1.86,1.92,Manresa,Hapoel Jerusalem
+21,2025-10-15,WRO,CLU,94,93,2.7,1.46,Slask Wroclaw,Cluj-Napoca
+22,2025-10-15,VNC,KLA,89,69,1.25,3.87,Venezia,Neptunas
+27,2025-10-14,TTK,BUD,79,72,1.72,2.1,Turk Telekom,Buducnost
+24,2025-10-14,LJU,ARI,80,59,1.58,2.37,Cedevita Olimpija,Aris
+23,2025-10-14,HAM,BAH,85,106,8.97,1.06,Hamburg,Bahcesehir Kol.
+20,2025-10-08,BUD,TRN,96,107,1.19,4.55,Buducnost,Trento
+17,2025-10-08,NIN,LKB,86,67,1.55,2.44,Chemnitz,Lietkabelis
+19,2025-10-08,BOU,TTK,88,80,1.43,2.78,JL Bourg,Turk Telekom
+13,2025-10-08,ARI,HAM,98,76,1.24,4.02,Aris,Hamburg
+14,2025-10-08,BAH,VNC,93,74,1.2,4.43,Bahcesehir Kol.,Venezia
+12,2025-10-08,JER,LJU,84,99,1.31,3.43,Hapoel Jerusalem,Cedevita Olimpija
+11,2025-10-08,MAN,WRO,74,62,1.11,6.68,Manresa,Slask Wroclaw
+16,2025-10-07,BES,LLI,99,73,1.06,8.65,Besiktas,London Lions
+18,2025-10-07,ULM,NIO,103,96,1.21,4.32,Ulm,Panionios
+15,2025-10-07,KLA,CLU,102,107,1.95,1.83,Neptunas,Cluj-Napoca
+6,2025-10-02,LLI,BUD,59,86,2.77,1.44,London Lions,Buducnost
+10,2025-10-01,LKB,BES,85,79,3.37,1.32,Lietkabelis,Besiktas
+7,2025-10-01,TRN,BOU,48,79,2.02,1.78,Trento,JL Bourg
+5,2025-10-01,LJU,MAN,76,69,2.06,1.75,Cedevita Olimpija,Manresa
+2,2025-10-01,CLU,BAH,90,98,2.7,1.46,Cluj-Napoca,Bahcesehir Kol.
+8,2025-09-30,TTK,ULM,93,96,1.52,2.53,Turk Telekom,Ulm
+4,2025-09-30,HAM,JER,85,100,5.13,1.17,Hamburg,Hapoel Jerusalem
+1,2025-09-30,WRO,KLA,95,85,2.3,1.61,Slask Wroclaw,Neptunas
+3,2025-09-30,VNC,ARI,81,85,1.35,3.2,Venezia,Aris

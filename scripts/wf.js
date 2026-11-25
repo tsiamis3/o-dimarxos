@@ -10,8 +10,8 @@ const RT = require(path.join(__dirname, "ratings.js"));
 const ROOT = path.join(__dirname, "..");
 const MIN_PRIOR = 2;
 
-function league(LEAGUE, { quiet = false, ratings = true } = {}) {
-const DB0 = JSON.parse(fs.readFileSync(path.join(ROOT, "site", "db", `${LEAGUE}.json`), "utf8"));
+function league(LEAGUE, { quiet = false, ratings = true, file = null } = {}) {
+const DB0 = JSON.parse(fs.readFileSync(file || path.join(ROOT, "site", "db", `${LEAGUE}.json`), "utf8"));
 const RE = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, "data", "sim_re.json"), "utf8")).re; } catch { return null; } })();
 if (RE) DB0.re = RE;
 const console = quiet ? { log() {} } : global.console;
