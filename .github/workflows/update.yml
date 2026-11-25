@@ -21,9 +21,6 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 150          # το ΠΡΩΤΟ run κατεβάζει 4 σεζόν x 2 διοργανώσεις
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -136,5 +133,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+
+  # Το deploy σε δικό του job, αφού τελειώσει το update: έτσι το artifact έχει σίγουρα ολοκληρωθεί
+  # (μέσα στο ίδιο job το deploy-pages κάποιες φορές δεν το έβρισκε: «Found 0 artifact(s)»)
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
