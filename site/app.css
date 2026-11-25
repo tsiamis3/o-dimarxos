@@ -170,3 +170,13 @@ details.tree { border: 1px solid var(--line); border-radius: var(--r); backgroun
 .st-legend i.st-a { border-color: var(--st-a); } .st-legend i.st-b { border-color: var(--st-b); } .st-legend i.st-c { border-color: var(--st-c); }
 .st-legend i.dash { border-top-style: dashed; }
 .st-hero .v { font-size: 24px; } .st-hero .v.good { color: var(--good); } .st-hero .v.bad { color: var(--bad); }
+
+/* ---------- μοντέλο ML ---------- */
+.ml-split { display: flex; gap: 2px; margin-top: 8px; font-size: 12px; border-radius: 6px; overflow: hidden; }
+.ml-split span { padding: 6px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.ml-split .tr { background: var(--accent-soft); } .ml-split .va { background: var(--surface-2); } .ml-split .te { background: var(--st-a); color: #fff; font-weight: 600; }
+.ml-node { fill: var(--surface); stroke: var(--fg); stroke-width: 1.2; } .ml-node.out { fill: var(--st-a); stroke: var(--st-a); }
+.st-chart .ml-lab, .ml-lab { font: 11px var(--font-body); fill: var(--fg); }
+.st-chart line.st-a { stroke: var(--st-a); } .st-chart line.st-b { stroke: var(--st-b); }
+.ml-coef { display: grid; grid-template-columns: 130px 1fr 48px; gap: 8px; align-items: center; font-size: 12px; min-height: 20px; }
+.ml-coef svg { width: 100%; height: 14px; } .ml-coef b { text-align: right; font-size: 12px; }

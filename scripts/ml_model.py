@@ -207,7 +207,7 @@ T = D.loc[m_te].reset_index(drop=True)
 
 
 def betting(p, min_ev=0.05, frac=0.25, cap=0.03, max_odds=5, gap=0.15):
-    bank, peak, dd, n, w, st_sum, pr_sum, curve = 100.0, 100.0, 0.0, 0, 0, 0.0, 0.0, []
+    bank, peak, dd, n, w, st_sum, pr_sum, curve, blist = 100.0, 100.0, 0.0, 0, 0, 0.0, 0.0, [], []
     for d in sorted(T.date.unique()):
         start = bank
         for i in T.index[T.date == d]:
@@ -220,14 +220,47 @@ def betting(p, min_ev=0.05, frac=0.25, cap=0.03, max_odds=5, gap=0.15):
                 if st <= 0:
                     continue
                 prof = st * b if won else -st
-                bank += prof; n += 1; w += int(won); st_sum += st; pr_sum += prof
+                bank += prof; n += 1; w += int(won); st_sum += st; pr_sum += prof; blist.append((st, prof))
         peak = max(peak, bank); dd = max(dd, (peak - bank) / peak); curve.append([d, round(bank, 2)])
-    return {"n": n, "wins": w, "roi": round(pr_sum / st_sum, 4) if st_sum else None, "final": round(bank, 2), "max_dd": round(dd, 4), "curve": curve}
+    ci = None
+    if blist:
+        a = np.array(blist); r = np.random.default_rng(1)
+        bs = [(lambda i: a[i, 1].sum() / a[i, 0].sum())(r.integers(0, len(a), len(a))) for _ in range(2000)]
+        ci = [round(float(np.percentile(bs, 2.5)), 4), round(float(np.percentile(bs, 97.5)), 4)]
+        p_pos = round(float(np.mean(np.array(bs) > 0)), 3)
+    return {"n": n, "wins": w, "roi": round(pr_sum / st_sum, 4) if st_sum else None, "roi_ci": ci, "p_roi_pos": p_pos if blist else None,
+            "final": round(bank, 2), "max_dd": round(dd, 4), "curve": curve}
 
 
 bets = {k: betting(v) for k, v in res.items() if k != "market"}
+# πόσο σίγουρη είναι η διαφορά από την αγορά (bootstrap σε αγώνες, ζευγαρωτά)
+llv = lambda p_, yy: -(yy * np.log(np.clip(p_, 1e-4, 1)) + (1 - yy) * np.log(np.clip(1 - p_, 1e-4, 1)))
+r_ = np.random.default_rng(3); vs_market = {}
+for k in ["sim", "logistic", "market+sim", "mlp"]:
+    dlt = llv(res[k], yte) - llv(res["market"], yte)
+    bs = [dlt[r_.integers(0, len(dlt), len(dlt))].mean() for _ in range(2000)]
+    vs_market[k] = {"diff": round(float(dlt.mean()), 4), "ci": [round(float(np.percentile(bs, 2.5)), 4), round(float(np.percentile(bs, 97.5)), 4)],
+                    "p_better": round(float(np.mean(np.array(bs) < 0)), 3)}
+print("  log-loss μοντέλο − αγορά (2026):", vs_market)
 for k, v in bets.items():
     print(f"  στοιχήματα {NAMES[k]:42s} n={v['n']:3d} ROI {v['roi']} κεφάλαιο {v['final']}")
+
+# ---------------------------------------------------------------- δεύτερη ανεξάρτητη δοκιμή: εκπαίδευση 2023, επιλογή 2024, κρίση 2025
+a_tr, a_va, a_te = (D.season == 2023) & odd, (D.season == 2024) & odd, (D.season == 2025) & odd
+mu2 = D.loc[D.season == 2023, cols_all].mean(); sd2 = D.loc[D.season == 2023, cols_all].std().replace(0, 1)
+Z2 = lambda m, cols: ((D.loc[m, cols] - mu2[cols]) / sd2[cols]).to_numpy(float)
+y_tr2, y_va2, y_te2 = y[a_tr], y[a_va], y[a_te]
+best2 = min([(metrics(LogisticRegression(C=C, max_iter=2000).fit(Z2(a_tr, cols_all), y_tr2).predict_proba(Z2(a_va, cols_all))[:, 1], y_va2)["logloss"], C) for C in [0.01, 0.03, 0.1, 0.3, 1, 3]])[1]
+LR2 = LogisticRegression(C=best2, max_iter=2000).fit(np.vstack([Z2(a_tr, cols_all), Z2(a_va, cols_all)]), np.r_[y_tr2, y_va2])
+two2 = LogisticRegression(C=1e6).fit(D.loc[a_tr | a_va, ["mkt_logit", "sim_logit"]], y[a_tr | a_va])
+nets2, _ = train_mlp(Z2(a_tr, cols_all), y_tr2, Z2(a_va, cols_all), y_va2)
+res2 = {"market": D.loc[a_te, "mkt_p"].to_numpy(), "logistic": LR2.predict_proba(Z2(a_te, cols_all))[:, 1],
+        "market+sim": two2.predict_proba(D.loc[a_te, ["mkt_logit", "sim_logit"]])[:, 1], "mlp": ens(nets2, Z2(a_te, cols_all))}
+T_keep = T; T = D.loc[a_te].reset_index(drop=True)
+second = {k: {**metrics(v, y_te2), **({"bets": {kk: vv for kk, vv in betting(v).items() if kk != "curve"}} if k != "market" else {})} for k, v in res2.items()}
+T = T_keep
+for k, v in second.items():
+    print(f"  2025 · {NAMES[k]:42s} log-loss {v['logloss']:.4f}", (f"στοιχ. n={v['bets']['n']} ROI {v['bets']['roi']}" if "bets" in v else ""))
 
 # ---------------------------------------------------------------- διαφορά και σύνολο (όλοι οι αγώνες, χωρίς αγορά)
 reg = {}
@@ -252,7 +285,7 @@ out = {
     "mlp": {"layers": net0.sizes, "activation": ["ReLU", "ReLU", "σιγμοειδής"], "l2": net0.l2, "lr": net0.lr, "seeds": len(nets),
             "best_epochs": [int(n.best_epoch) for n in nets], "curve": curves[0], "curve_nomkt": curves0[0],
             "W": [np.round(w, 3).tolist() for w in net0.W], "params": int(sum(w.size for w in net0.W) + sum(b.size for b in net0.b))},
-    "test": table, "test_by_league": by_league, "bets": bets, "regression": reg,
+    "test": table, "test_by_league": by_league, "bets": bets, "regression": reg, "vs_market": vs_market, "second": {"seasons": "εκπαίδευση 2023 · επιλογή 2024 · κρίση 2025", **second},
 }
 for k in out["test"]:
     out["test"][k]["key"] = k

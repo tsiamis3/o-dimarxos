@@ -721,6 +721,116 @@ Views.strategy = () => {
     <li><b>Τι θα χρειαζόταν:</b> μοντέλο που κερδίζει την αγορά (ratings από πολλές σεζόν, απουσίες, ενδεκάδες), αποδόσεις ανοίγματος πριν «κάτσει» η αγορά, ή αγορές που τιμολογούνται χειρότερα (στατιστικά παικτών) — και μετά ξανά αυτή η δοκιμή.</li></ol></section>`;
 };
 
+// ----------------------------------------------------------------------------- Μοντέλο δεύτερου επιπέδου (λογιστική + νευρωνικό)
+let MLD = null;
+const MLSHORT = { sim_logit: "MC: P(νίκη)", sim_margin: "MC: διαφορά", sim_margin_sd: "MC: σ διαφοράς", sim_total: "MC: σύνολο", sim_total_sd: "MC: σ συνόλου",
+  r_margin: "Ratings: διαφορά", r_total: "Ratings: σύνολο", r_net_home: "Rating γηπ.", r_net_away: "Rating φιλ.", pace: "Ρυθμός", rest_diff: "Ξεκούραση (διαφ.)",
+  g14_home: "Αγώνες 14ημ. γηπ.", g14_away: "Αγώνες 14ημ. φιλ.", gp_min: "Αγώνες σεζόν", is_E: "EuroLeague", is_U: "EuroCup", is_GBL: "GBL", mkt_logit: "Αγορά: P(νίκη)" };
+/** Σχήμα ροής: δεδομένα → Monte Carlo → χαρακτηριστικά → μοντέλα → πιθανότητα → Kelly. */
+function mlFlow(M) {
+  const B = (x, y, w, h, a, b, cls = "") => `<g class="dg ${cls}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/><text x="${x + w / 2}" y="${y + (b ? h / 2 - 3 : h / 2 + 4)}" class="a">${a}</text>${b ? `<text x="${x + w / 2}" y="${y + h / 2 + 13}" class="b">${b}</text>` : ""}</g>`;
+  const A = (x1, y1, x2, y2) => `<path d="M${x1},${y1} L${x2},${y2}" class="dg-ar" marker-end="url(#mlm)"/>`;
+  const n = (s) => M.sizes[s].games.toLocaleString("el-GR");
+  return `<div class="dg-wrap"><svg viewBox="0 0 980 300" class="dg-svg" role="img" aria-label="Δομή του αλγορίθμου"><defs><marker id="mlm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+    ${B(10, 30, 170, 56, "Box scores", "GBL · EuroLeague · EuroCup", "file")}${B(10, 110, 170, 56, "4 σεζόν 2023–2026", `${(M.sizes.train.games + M.sizes.valid.games + M.sizes.test.games).toLocaleString("el-GR")} αγώνες`, "file")}${B(10, 200, 170, 56, "Αποδόσεις κλεισίματος", "betexplorer (1/2)", "file")}
+    ${A(182, 58, 218, 98)}${A(182, 138, 218, 112)}
+    ${B(220, 70, 190, 70, "Monte Carlo walk-forward", "2.000 αγώνες ανά παιχνίδι", "hot")}
+    ${A(412, 105, 448, 130)}${A(182, 228, 448, 165)}
+    ${B(450, 105, 160, 80, `${M.features.length} χαρακτηριστικά`, "τυποποιημένα (z-score)")}
+    ${A(612, 128, 648, 60)}${A(612, 145, 648, 145)}${A(612, 162, 648, 230)}
+    ${B(650, 30, 170, 56, "Λογιστική", "L2, λ από το 2025", "q")}${B(650, 117, 170, 56, `Νευρωνικό ${M.mlp.layers.join("→")}`, `${M.mlp.params} παράμετροι · ${M.mlp.seeds} seeds`, "q")}${B(650, 204, 170, 56, "Αγορά", "μέτρο σύγκρισης", "")}
+    ${A(822, 58, 858, 128)}${A(822, 145, 858, 145)}${A(822, 232, 858, 162)}
+    ${B(860, 110, 110, 70, "P(νίκη)", "→ Kelly ¼", "out")}
+    <text x="315" y="160" class="lab" style="font-size:11px;fill:var(--muted)">log5 με β · ratings · αβεβαιότητα</text></svg></div>
+    <div class="ml-split"><span class="tr" style="flex:${M.sizes.train.games}">εκπαίδευση · 2023–2024 · ${n("train")} αγώνες</span><span class="va" style="flex:${M.sizes.valid.games}">επιλογή · 2025 · ${n("valid")}</span><span class="te" style="flex:${Math.max(M.sizes.test.games, 380)}">κρίση · 2026 · ${n("test")}</span></div>`;
+}
+/** Το δίκτυο με τα πραγματικά βάρη (πρώτο seed): μπλε θετικά, κεχριμπαρί αρνητικά, πάχος ∝ |w|. */
+function mlNet(M) {
+  const L = M.mlp.layers, W = M.mlp.W, H = 18 * 26 + 30, xs = [190, 420, 610, 760], feats = M.features.map((f) => f.col);
+  const ys = L.map((n) => Array.from({ length: n }, (_, i) => 15 + ((H - 30) * (i + 0.5)) / n));
+  const mx = Math.max(...W.flat(2).map(Math.abs));
+  let g = "";
+  W.forEach((M_, l) => M_.forEach((row, i) => row.forEach((w, j) => { const a = Math.abs(w) / mx; if (a < 0.08) return;
+    g += `<line x1="${xs[l]}" y1="${ys[l][i]}" x2="${xs[l + 1]}" y2="${ys[l + 1][j]}" class="${w > 0 ? "st-a" : "st-b"}" stroke-width="${(0.4 + 2.6 * a).toFixed(2)}" opacity="${(0.15 + 0.75 * a).toFixed(2)}"/>`; })));
+  ys.forEach((col, l) => col.forEach((y, i) => { g += `<circle cx="${xs[l]}" cy="${y}" r="${l === 0 ? 5 : 7}" class="ml-node${l === L.length - 1 ? " out" : ""}"><title>${l === 0 ? esc(MLSHORT[feats[i]] || feats[i]) : l === L.length - 1 ? "έξοδος: P(νίκη γηπεδούχου)" : `κρυφό επίπεδο ${l}, νευρώνας ${i + 1} (ReLU)`}</title></circle>`;
+    if (l === 0) g += `<text x="${xs[0] - 10}" y="${y + 4}" text-anchor="end" class="ml-lab">${esc(MLSHORT[feats[i]] || feats[i])}</text>`; }));
+  g += `<text x="${xs[3] + 14}" y="${ys[3][0] + 4}" class="ml-lab">P(νίκη)</text>`;
+  ["είσοδοι (" + L[0] + ")", "ReLU (" + L[1] + ")", "ReLU (" + L[2] + ")", "σιγμοειδής"].forEach((t, l) => { g += `<text x="${xs[l]}" y="${H + 6}" text-anchor="middle" class="ml-lab" style="font-weight:600">${t}</text>`; });
+  return `<div class="dg-wrap"><svg viewBox="0 0 860 ${H + 16}" class="st-chart" style="min-width:640px" role="img" aria-label="Το νευρωνικό δίκτυο">${g}</svg></div>
+    <div class="st-legend"><span><i class="st-a"></i>θετικό βάρος</span><span><i class="st-b"></i>αρνητικό βάρος</span><span>πάχος = μέγεθος· τα πολύ μικρά βάρη δεν σχεδιάζονται</span></div>`;
+}
+function mlCurve(cur, cur0) {
+  const w = 420, h = 170, L = 40, R = 10, T = 10, B = 24, all = [...cur.flat(), ...cur0.flat()], lo = Math.min(...all), hi = Math.max(...all.filter((v) => v < 0.75));
+  const n = Math.max(cur.length, cur0.length), X = (i) => L + ((w - L - R) * i) / (n - 1), Y = (v) => T + (h - T - B) * (1 - (Math.min(v, hi) - lo) / (hi - lo));
+  const line = (c, k, cls, dash) => `<polyline fill="none" class="${cls}" stroke-width="2" ${dash ? 'stroke-dasharray="5 4"' : ""} points="${c.map((x, i) => `${X(i).toFixed(1)},${Y(x[k]).toFixed(1)}`).join(" ")}"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" class="st-chart" role="img" aria-label="Καμπύλες εκπαίδευσης">${[lo, (lo + hi) / 2, hi].map((v) => `<text x="${L - 4}" y="${Y(v) + 4}" text-anchor="end" class="ax">${v.toFixed(3)}</text><line x1="${L}" x2="${w - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-dasharray="2 4"/>`).join("")}
+    ${line(cur, 0, "st-a", true)}${line(cur, 1, "st-a")}${line(cur0, 1, "st-b")}<text x="${L}" y="${h - 6}" class="ax">εποχή 1</text><text x="${w - R}" y="${h - 6}" class="ax" text-anchor="end">${n}</text></svg>
+    <div class="st-legend"><span><i class="st-a dash"></i>εκπαίδευση (με αγορά)</span><span><i class="st-a"></i>επιλογή 2025 (με αγορά)</span><span><i class="st-b"></i>επιλογή 2025 (χωρίς αγορά)</span></div>`;
+}
+function mlCalib(T) {
+  const w = 300, h = 300, P = 34, X = (v) => P + (w - 2 * P) * v, Y = (v) => h - P - (h - 2 * P) * v;
+  const pts = (c, cls) => c.map(([p, o, n]) => `<circle cx="${X(p)}" cy="${Y(o)}" r="${3 + Math.sqrt(n) / 2.5}" class="${cls} dot" opacity=".85"><title>προβλ. ${pct(p)} · πραγμ. ${pct(o)} · ${n} αγώνες</title></circle>`).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" class="st-chart" style="max-width:320px" role="img" aria-label="Βαθμονόμηση"><line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke="var(--line)" stroke-dasharray="4 4"/>
+    <line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(0)}" stroke="var(--line)"/><line x1="${X(0)}" y1="${Y(0)}" x2="${X(0)}" y2="${Y(1)}" stroke="var(--line)"/>
+    ${[0, 0.5, 1].map((v) => `<text x="${X(v)}" y="${h - 12}" text-anchor="middle" class="ax">${pct(v)}</text><text x="${P - 6}" y="${Y(v) + 4}" text-anchor="end" class="ax">${pct(v)}</text>`).join("")}
+    ${pts(T.market.calib, "st-c")}${pts(T.mlp.calib, "st-a")}${pts(T.sim.calib, "st-b")}<text x="${w / 2}" y="${h - 1}" text-anchor="middle" class="ax">πρόβλεψη</text></svg>
+    <div class="st-legend"><span><i class="st-c"></i>αγορά</span><span><i class="st-a"></i>νευρωνικό</span><span><i class="st-b"></i>Monte Carlo</span></div>`;
+}
+Views.ml = () => {
+  if (!MLD) { fetch("ml.json?v=__BUILD__").then((r) => (r.ok ? r.json() : null)).then((x) => { MLD = x || { error: true }; if (route().view === "ml") render(); }).catch(() => { MLD = { error: true }; render(); });
+    return `<div class="empty">Φόρτωση…</div>`; }
+  if (MLD.error) return `<div class="empty">Τα αποτελέσματα δεν βρέθηκαν.</div>`;
+  const M = MLD, T = M.test, V = M.vs_market, S2 = M.second, f4 = (v) => v.toFixed(4);
+  const order = ["market", "sim_raw", "sim", "market+sim", "logistic", "mlp", "mlp_nomkt"], bestLL = Math.min(...order.map((k) => T[k].logloss));
+  const pc = (x) => (x == null ? "–" : `<span style="color:var(--${x >= 0 ? "good" : "bad"})">${x >= 0 ? "+" : ""}${(100 * x).toFixed(1)}%</span>`);
+  const coefMax = Math.max(...M.logistic.coef.map((c) => Math.max(Math.abs(c.lo), Math.abs(c.hi))));
+  const forest = (() => { const C = M.logistic.coef, w = 460, rh = 20, L = 140, R = 50, h = C.length * rh + 24, X = (v) => L + ((w - L - R) * (v + coefMax)) / (2 * coefMax);
+    let g = `<line x1="${X(0)}" x2="${X(0)}" y1="4" y2="${h - 18}" stroke="var(--line)"/>` + [-coefMax, 0, coefMax].map((v) => `<text x="${X(v)}" y="${h - 4}" text-anchor="middle" class="ax">${v > 0 ? "+" : ""}${v.toFixed(1)}</text>`).join("");
+    C.forEach((c, i) => { const y = 12 + i * rh, cls = c.coef >= 0 ? "st-a" : "st-b";
+      g += `<text x="${L - 8}" y="${y + 4}" text-anchor="end" class="ml-lab">${esc(MLSHORT[c.feat] || c.feat)}</text><line x1="${X(c.lo)}" x2="${X(c.hi)}" y1="${y}" y2="${y}" class="${cls}" stroke-width="2"/>
+        <circle cx="${X(c.coef)}" cy="${y}" r="4" class="${cls} dot"><title>${esc(c.label)}: ${c.coef} (95%: ${c.lo} έως ${c.hi})</title></circle><text x="${w - 4}" y="${y + 4}" text-anchor="end" class="ax">${c.coef > 0 ? "+" : ""}${c.coef.toFixed(2)}</text>`; });
+    return `<svg viewBox="0 0 ${w} ${h}" class="st-chart" role="img" aria-label="Συντελεστές λογιστικής">${g}</svg>`; })();
+  return `<section class="card"><h2>Μοντέλο δεύτερου επιπέδου: Monte Carlo + δεδομένα → πιθανότητα → Kelly</h2>
+    <p style="margin:0 0 10px;max-width:82ch">Η προσομοίωση δεν χρησιμοποιείται πια μόνη της: τα αποτελέσματά της γίνονται <b>είσοδοι</b> σε ένα δεύτερο μοντέλο, μαζί με τα ratings, το πρόγραμμα (ξεκούραση, πυκνότητα αγώνων) και την απόδοση της αγοράς, και αυτό μαθαίνει από ${(M.sizes.train.games + M.sizes.valid.games).toLocaleString("el-GR")} παιγμένους αγώνες τριών σεζόν να δίνει την πιθανότητα νίκης. Το ποσό του στοιχήματος <b>δεν</b> μαθαίνεται: βγαίνει από το Kelly. Κρίνεται στη φετινή σεζόν, που δεν έχει δει ποτέ.</p>
+    ${mlFlow(M)}</section>
+  <section class="card"><h2>Το κρίσιμο ερώτημα: προσθέτει κάτι το Monte Carlo πάνω στην αγορά;</h2>
+    <div class="tiles">${[["market", "Αγορά"], ["mlp", "Νευρωνικό (+ αγορά)"], ["logistic", "Λογιστική (+ αγορά)"], ["sim", "Monte Carlo"]].map(([k, l]) => tile(f4(T[k].logloss), `log-loss 2026 · ${l}`)).join("")}
+      ${tile(`${pct(V.mlp.p_better)}`, "πιθανότητα το νευρωνικό να είναι όντως καλύτερο από την αγορά")}</div>
+    <p style="margin:10px 0 0;max-width:82ch">Όταν το μοντέλο ξέρει την αγορά, ο συντελεστής του Monte Carlo είναι <b>${M.two.coef_sim}</b> (95%: ${M.two.sim_ci[0]} έως ${M.two.sim_ci[1]}) — δεν διαφέρει από το μηδέν· της αγοράς ${M.two.coef_market} (${M.two.market_ci[0]}–${M.two.market_ci[1]}), δηλαδή περίπου 1: η αγορά μόνη της τα λέει όλα. Στο 2026 τα μοντέλα με αγορά βγαίνουν οριακά καλύτερα (log-loss −${Math.abs(V.mlp.diff).toFixed(4)}), αλλά το διάστημα περιλαμβάνει το μηδέν και στο 2025 (δεύτερη δοκιμή) βγαίνουν χειρότερα.</p></section>
+  <section class="card"><h2>Το νευρωνικό δίκτυο</h2>
+    <div class="grid" style="align-items:start"><div style="grid-column:1/-1">${mlNet(M)}</div></div>
+    <div class="grid" style="margin-top:10px"><div><h3>Αρχιτεκτονική</h3><ul style="margin:0;padding-left:18px;line-height:1.7;font-size:14px">
+      <li><b>Είσοδος:</b> ${M.mlp.layers[0]} χαρακτηριστικά, τυποποιημένα με τον μέσο και την τυπική απόκλιση της εκπαίδευσης.</li>
+      <li><b>Κρυφά επίπεδα:</b> ${M.mlp.layers[1]} και ${M.mlp.layers[2]} νευρώνες, ReLU (max(0, x)).</li>
+      <li><b>Έξοδος:</b> 1 νευρώνας, σιγμοειδής → πιθανότητα νίκης γηπεδούχου.</li>
+      <li><b>Παράμετροι:</b> ${M.mlp.params} (βάρη + σταθερές). Αρχικοποίηση He.</li>
+      <li><b>Σφάλμα:</b> cross-entropy (log-loss) + L2 ${M.mlp.l2} στα βάρη.</li>
+      <li><b>Εκπαίδευση:</b> Adam (ρυθμός ${M.mlp.lr}), όλο το σύνολο ανά βήμα, <b>early stopping</b> όταν το σφάλμα στο 2025 σταματά να πέφτει (καλύτερη εποχή: ${M.mlp.best_epochs.join(", ")}).</li>
+      <li><b>Σύνολο:</b> ${M.mlp.seeds} δίκτυα με διαφορετική αρχικοποίηση, μέσος όρος των προβλέψεων.</li></ul></div>
+      <div><h3>Καμπύλες εκπαίδευσης</h3>${mlCurve(M.mlp.curve, M.mlp.curve_nomkt)}<p class="muted" style="font-size:12px">Το σφάλμα στην επιλογή (2025) πέφτει λίγο και μετά ανεβαίνει: εκεί σταματά η εκπαίδευση, πριν το δίκτυο «μάθει» την τύχη της εκπαίδευσης. Χωρίς την αγορά μένει σταθερά ψηλότερα.</p></div></div></section>
+  <section class="grid"><div class="card"><h3>Λογιστική παλινδρόμηση: συντελεστές</h3>${forest}
+      <p class="muted" style="font-size:12px">Σε τυποποιημένες μονάδες (1 τυπική απόκλιση), με 95% διάστημα από bootstrap. Η αγορά κυριαρχεί. Οι συντελεστές του Monte Carlo (πιθανότητα και διαφορά) έχουν αντίθετα πρόσημα επειδή λένε σχεδόν το ίδιο πράγμα και αλληλοαναιρούνται. L2 με λ από το 2025 (C = ${M.logistic.C}).</p></div>
+    <div class="card"><h3>Βαθμονόμηση (2026)</h3>${mlCalib(T)}<p class="muted" style="font-size:12px">Κάθε κουκκίδα: αγώνες με παρόμοια πρόβλεψη· στη διαγώνιο = σωστή βαθμονόμηση. Μέγεθος ∝ αγώνες.</p></div></section>
+  <section><h2>Αποτελέσματα στη φετινή σεζόν (2026, ${T.market.n} αγώνες με αποδόσεις)</h2><div class="tbl"><table><thead><tr><th>Μοντέλο</th><th class="n">log-loss</th><th class="n">Brier</th><th class="n">σωστός νικητής</th><th class="n">έναντι αγοράς</th><th class="n">στοιχήματα</th><th class="n">ROI (95%)</th><th class="n">κεφάλαιο 100 →</th></tr></thead><tbody>
+    ${order.map((k) => { const x = T[k], b = M.bets[k], v = V[k];
+      return `<tr><td>${esc(x.name)}</td><td class="n" style="${x.logloss === bestLL ? "font-weight:700;color:var(--good)" : ""}">${f4(x.logloss)}</td><td class="n">${f4(x.brier)}</td><td class="n">${pct(x.acc)}</td>
+        <td class="n">${v ? `${v.diff > 0 ? "+" : ""}${v.diff.toFixed(4)} <span class="muted" style="font-size:11px">[${v.ci[0].toFixed(3)}, ${v.ci[1].toFixed(3)}]</span>` : k === "market" ? "—" : ""}</td>
+        <td class="n">${b ? b.n : "—"}</td><td class="n">${b?.roi != null ? `${pc(b.roi)} <span class="muted" style="font-size:11px">${b.roi_ci ? `[${Math.round(100 * b.roi_ci[0])}%, ${Math.round(100 * b.roi_ci[1])}%]` : ""}</span>` : "—"}</td><td class="n">${b ? `<b>${b.final.toFixed(1)}</b>` : "—"}</td></tr>`; }).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:12px">log-loss και Brier: μικρότερο = καλύτερο. «Έναντι αγοράς»: διαφορά log-loss (αρνητικό = καλύτερο από την αγορά) με 95% διάστημα (bootstrap σε αγώνες). Στοιχήματα: κανόνες «Αξίας» (EV ≥ 5%, ¼ Kelly, όριο 3%, απόδοση ≤ 5, διαφωνία ≤ 15 μονάδες), καμία ρύθμιση πάνω στο 2026.</p></section>
+  <section class="card"><h2>Κεφάλαιο στο 2026</h2>${bankChart([{ pts: M.bets.mlp.curve, cls: "st-a", label: "Νευρωνικό (+ αγορά)", short: "NN" }, { pts: M.bets.logistic.curve, cls: "st-b", label: "Λογιστική (+ αγορά)", short: "LR" }, { pts: M.bets.sim.curve, cls: "st-c", label: "Monte Carlo (βαθμονομημένο)", short: "MC" }])}</section>
+  <section class="grid"><div class="card"><h3>Δεύτερη δοκιμή: ${esc(S2.seasons)}</h3><div class="tbl"><table><thead><tr><th>Μοντέλο</th><th class="n">log-loss</th><th class="n">στοιχήματα</th><th class="n">ROI</th></tr></thead><tbody>
+      ${["market", "market+sim", "logistic", "mlp"].map((k) => `<tr><td>${esc(T[k].name)}</td><td class="n">${f4(S2[k].logloss)}</td><td class="n">${S2[k].bets ? S2[k].bets.n : "—"}</td><td class="n">${S2[k].bets ? pc(S2[k].bets.roi) : "—"}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted" style="font-size:12px">Η ίδια διαδικασία, ένα χρόνο νωρίτερα: εκεί τα μοντέλα είναι <b>χειρότερα</b> από την αγορά και χάνουν. Το κέρδος του 2026 δεν επαναλαμβάνεται: είναι, πιθανότατα, τύχη.</p></div>
+    <div class="card"><h3>Διαφορά και σύνολο (2026)</h3><div class="tbl"><table><thead><tr><th>Μέσο απόλυτο σφάλμα</th><th class="n">διαφορά</th><th class="n">σύνολο</th></tr></thead><tbody>
+      ${[["mean", "Σταθερός μέσος όρος"], ["sim", "Monte Carlo"], ["ratings", "Ratings"], ["ridge", "Παλινδρόμηση (όλα)"]].map(([k, l]) => `<tr><td>${l}</td><td class="n">±${M.regression.margin[k].toFixed(2)}</td><td class="n">±${M.regression.total[k].toFixed(2)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted" style="font-size:12px">Χωρίς αποδόσεις για χάντικαπ και σύνολο δεν γίνεται σύγκριση με την αγορά· τα μοντέλα είναι ουσιαστικά ισοδύναμα μεταξύ τους.</p></div></section>
+  <section class="card"><h2>Τι σημαίνει</h2><ol style="margin:0;max-width:82ch;line-height:1.6">
+    <li><b>Η αγορά περιέχει σχεδόν όλη την πληροφορία.</b> Με δεδομένη την απόδοση κλεισίματος, το Monte Carlo, τα ratings και το πρόγραμμα δεν προσθέτουν κάτι που να φαίνεται με βεβαιότητα σε ~2.000 αγώνες.</li>
+    <li><b>Το νευρωνικό δεν βοηθά περισσότερο από τη λογιστική.</b> Με τόσους αγώνες και τόσο αδύναμο σήμα, ένα πιο σύνθετο μοντέλο βρίσκει περισσότερο θόρυβο, όχι περισσότερη αλήθεια.</li>
+    <li><b>Ένα θετικό ROI σε μία σεζόν δεν αρκεί.</b> Το +${(100 * M.bets.mlp.roi).toFixed(0)}% του 2026 έχει διάστημα από ${Math.round(100 * M.bets.mlp.roi_ci[0])}% έως +${Math.round(100 * M.bets.mlp.roi_ci[1])}% και η ίδια μέθοδος έχασε στο 2025.</li>
+    <li><b>Πού αξίζει να ψάξουμε:</b> πληροφορία που η αγορά ενσωματώνει αργά (απουσίες την τελευταία στιγμή, αποδόσεις ανοίγματος), αγορές που τιμολογούνται χειρότερα (στατιστικά παικτών, όπου οι κατανομές μας είναι καλά βαθμονομημένες) — και πάντα η ίδια δοκιμή σε σεζόν που το μοντέλο δεν έχει δει.</li></ol></section>`;
+};
+
 Views.sims = () => {
   const G = SIMS ? Object.entries(SIMS.games).sort((a, b) => a[1].date.localeCompare(b[1].date)) : [];
   const C = SIMS?.check, up = G.filter(([, S]) => !S.played), pl = G.filter(([, S]) => S.played).reverse();
@@ -1055,7 +1165,7 @@ function route() {
   const [, view = "", arg = ""] = (location.hash || "#/").split("/");
   return { view: view || "home", arg: decodeURIComponent(arg) };
 }
-const NAV = { strategy: "#/strategy", value: "#/value", sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
+const NAV = { ml: "#/ml", strategy: "#/strategy", value: "#/value", sims: "#/sims", home: "#/", standings: "#/standings", teams: "#/teams", team: "#/teams", players: "#/players", player: "#/players", games: "#/games", game: "#/games" };
 function render() {
   const { view, arg } = route(), V = Views[view] || Views.home, el = $("#view");
   if (Live.stop) Live.stop();
