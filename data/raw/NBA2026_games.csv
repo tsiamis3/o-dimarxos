@@ -260,15 +260,15 @@ gameCode,Round,date,time,homecode,hometeam,awaycode,awayteam,homescore,awayscore
 401909314,6,2026-11-24,19:00,ORL,Orlando Magic,DET,Detroit Pistons,86.0,104.0,True
 401909315,6,2026-11-24,20:00,WSH,Washington Wizards,BOS,Boston Celtics,116.0,131.0,True
 401909316,6,2026-11-24,22:00,DEN,Denver Nuggets,DAL,Dallas Mavericks,101.0,120.0,True
-401909317,6,2026-11-25,17:00,PHI,Philadelphia 76ers,MIA,Miami Heat,,,False
-401909318,6,2026-11-25,19:00,CHA,Charlotte Hornets,CHI,Chicago Bulls,,,False
-401909319,6,2026-11-25,19:30,NY,New York Knicks,CLE,Cleveland Cavaliers,,,False
-401909320,6,2026-11-25,19:30,OKC,Oklahoma City Thunder,MIN,Minnesota Timberwolves,,,False
-401909321,6,2026-11-25,20:00,MEM,Memphis Grizzlies,LAC,LA Clippers,,,False
-401909322,6,2026-11-25,20:00,MIL,Milwaukee Bucks,BKN,Brooklyn Nets,,,False
-401909323,6,2026-11-25,20:30,HOU,Houston Rockets,PHX,Phoenix Suns,,,False
-401909324,6,2026-11-25,22:00,GS,Golden State Warriors,SAC,Sacramento Kings,,,False
-401909325,6,2026-11-25,22:00,POR,Portland Trail Blazers,SA,San Antonio Spurs,,,False
+401909317,6,2026-11-25,17:00,PHI,Philadelphia 76ers,MIA,Miami Heat,111.0,104.0,True
+401909318,6,2026-11-25,19:00,CHA,Charlotte Hornets,CHI,Chicago Bulls,105.0,107.0,True
+401909319,6,2026-11-25,19:30,NY,New York Knicks,CLE,Cleveland Cavaliers,121.0,102.0,True
+401909320,6,2026-11-25,19:30,OKC,Oklahoma City Thunder,MIN,Minnesota Timberwolves,106.0,113.0,True
+401909321,6,2026-11-25,20:00,MEM,Memphis Grizzlies,LAC,LA Clippers,115.0,97.0,True
+401909322,6,2026-11-25,20:00,MIL,Milwaukee Bucks,BKN,Brooklyn Nets,97.0,104.0,True
+401909323,6,2026-11-25,20:30,HOU,Houston Rockets,PHX,Phoenix Suns,116.0,104.0,True
+401909324,6,2026-11-25,22:00,GS,Golden State Warriors,SAC,Sacramento Kings,129.0,110.0,True
+401909325,6,2026-11-25,22:00,POR,Portland Trail Blazers,SA,San Antonio Spurs,116.0,111.0,True
 401909326,6,2026-11-27,19:00,NY,New York Knicks,MIA,Miami Heat,,,False
 401909327,6,2026-11-27,19:30,DET,Detroit Pistons,MIL,Milwaukee Bucks,,,False
 401909328,6,2026-11-27,19:30,IND,Indiana Pacers,PHI,Philadelphia 76ers,,,False
